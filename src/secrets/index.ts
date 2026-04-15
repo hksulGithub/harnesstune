@@ -1,0 +1,1 @@
+export { SecretStore } from './SecretStore';

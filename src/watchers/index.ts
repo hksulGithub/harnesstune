@@ -1,0 +1,1 @@
+export { FileWatcherManager } from './FileWatcherManager';
