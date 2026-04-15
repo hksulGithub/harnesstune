@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import { WorkspaceRegistry } from './registry';
 import { FileWatcherManager } from './watchers';
 import { SecretStore } from './secrets';
+import { SidebarViewProvider } from './panels';
+import { StatusBarManager } from './statusbar';
 import { WorkspaceRecord } from './types';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -110,7 +112,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const openCmd = vscode.commands.registerCommand(
     'harnesstune.openWorkspace',
-    () => vscode.window.showInformationMessage('HarnessTune: Open Workspace (not yet implemented)')
+    (workspaceId?: string) => {
+      if (!workspaceId) {
+        vscode.window.showInformationMessage('HarnessTune: No workspace selected');
+        return;
+      }
+      const ws = registry.getById(workspaceId);
+      if (ws) {
+        vscode.window.showInformationMessage(`HarnessTune: Opening workspace "${ws.name}"`);
+      } else {
+        vscode.window.showWarningMessage(`HarnessTune: Workspace not found`);
+      }
+    }
   );
 
   const refreshCmd = vscode.commands.registerCommand(
@@ -125,8 +138,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(connectCmd, removeCmd, openCmd, refreshCmd, dashboardCmd);
 
-  // Expose services for use by sidebar/panel providers in later plans
-  void secretStore; // referenced here so TypeScript doesn't warn; used in Plans 03+
+  // ── Sidebar WebviewView ─────────────────────────────────────────────────────
+  const sidebarProvider = new SidebarViewProvider(context.extensionUri, registry);
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(SidebarViewProvider.viewType, sidebarProvider)
+  );
+
+  // ── Status bar ─────────────────────────────────────────────────────────────
+  const statusBarManager = new StatusBarManager(registry);
+  context.subscriptions.push(statusBarManager);
+
+  // Expose services for use by later phases
+  void secretStore; // referenced here so TypeScript doesn't warn; used in Phase 2+
 
   console.log('HarnessTune extension activated.');
 }

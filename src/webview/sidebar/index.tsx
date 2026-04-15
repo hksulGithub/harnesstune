@@ -1,4 +1,10 @@
-// Sidebar webview entry point — full implementation in Plan 03
-// This placeholder allows the esbuild dual-target build to succeed
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { App } from './App';
+import './styles/sidebar.css';
 
-export {};
+const container = document.getElementById('root');
+if (container) {
+  const root = createRoot(container);
+  root.render(<App />);
+}

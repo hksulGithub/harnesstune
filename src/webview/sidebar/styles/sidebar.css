@@ -1,0 +1,103 @@
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--vscode-sideBar-background);
+  color: var(--vscode-sideBar-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+}
+
+.workspace-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.workspace-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: 3px;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+
+.workspace-item:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.workspace-item:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.workspace-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.workspace-name {
+  font-size: 13px;
+  color: var(--vscode-sideBar-foreground);
+  line-height: 1.4;
+}
+
+.workspace-path {
+  font-size: 11px;
+  opacity: 0.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-badges {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.badge {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+
+.badge-running {
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+}
+
+.badge-error {
+  background: var(--vscode-errorForeground);
+  color: var(--vscode-editor-background);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 20px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.empty-state p {
+  margin: 0 0 12px;
+}
+
+.connect-button {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: none;
+  padding: 6px 14px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+}
+
+.connect-button:hover {
+  background: var(--vscode-button-hoverBackground);
+}
