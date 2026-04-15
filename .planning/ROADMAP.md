@@ -50,10 +50,10 @@ All five phases below constitute Milestone 1. Completion delivers a functional, 
 
 **Research Flag:** Standard patterns — skip research-phase. VSCode WebviewView, esbuild dual-target, and `RelativePattern` watchers are HIGH confidence and well-documented.
 
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
-- [ ] 01-PLAN-extension-scaffold.md — Extension scaffold, esbuild build, shared type contracts
+- [x] 01-PLAN-extension-scaffold.md — Extension scaffold, esbuild build, shared type contracts
 - [ ] 02-PLAN-workspace-registry.md — Workspace registry, file watchers, secrets storage
 - [ ] 03-PLAN-sidebar-statusbar.md — React sidebar WebviewView, status badges, status bar
 
@@ -198,7 +198,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation — Extension Scaffold, Registry, Sidebar | 0/3 | Planned | - |
+| 1. Foundation — Extension Scaffold, Registry, Sidebar | 1/3 | In Progress|  |
 | 2. Claude Code Adapter + Dashboard | 0/? | Not started | - |
 | 3. Agent Schematic (Live Topology) | 0/? | Not started | - |
 | 4. Chat Interface + Terminal | 0/? | Not started | - |

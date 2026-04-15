@@ -7,8 +7,8 @@
 
 ### Extension Foundation (FOUN)
 
-- [ ] **FOUN-01**: Extension activates in VSCode and registers commands with `HarnessTune:` prefix
-- [ ] **FOUN-02**: Extension uses esbuild dual-target build (CJS extension host + ESM webview bundles)
+- [x] **FOUN-01**: Extension activates in VSCode and registers commands with `HarnessTune:` prefix
+- [x] **FOUN-02**: Extension uses esbuild dual-target build (CJS extension host + ESM webview bundles)
 - [ ] **FOUN-03**: Extension stores workspace registry as JSON at `globalStorageUri`
 - [ ] **FOUN-04**: Extension stores API keys via `context.secrets`, never in globalState
 
@@ -121,8 +121,8 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FOUN-01 | Phase 1 | Pending |
-| FOUN-02 | Phase 1 | Pending |
+| FOUN-01 | Phase 1 | Complete |
+| FOUN-02 | Phase 1 | Complete |
 | FOUN-03 | Phase 1 | Pending |
 | FOUN-04 | Phase 1 | Pending |
 | WKSP-01 | Phase 1 | Pending |
