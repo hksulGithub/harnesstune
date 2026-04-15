@@ -1,0 +1,7 @@
+{
+  "researcher_model": "sonnet",
+  "synthesizer_model": "sonnet",
+  "roadmapper_model": "sonnet",
+  "commit_docs": true,
+  "project_root": "/Users/hksul/Dropbox/Research_obsidian/ClaudeVault2/agents/Ethan/harnesstune"
+}
