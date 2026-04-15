@@ -15,7 +15,7 @@ All five phases below constitute Milestone 1. Completion delivers a functional, 
 
 ## Phases
 
-- [ ] **Phase 1: Foundation — Extension Scaffold, Registry, Sidebar** - Extension loads, workspaces can be added/removed, sidebar renders with status indicators
+- [x] **Phase 1: Foundation — Extension Scaffold, Registry, Sidebar** - Extension loads, workspaces can be added/removed, sidebar renders with status indicators
 - [ ] **Phase 2: Claude Code Adapter + Dashboard** - First end-to-end data pipeline from Claude Code hooks through to live dashboard display with agent controls
 - [ ] **Phase 3: Agent Schematic (Live Topology)** - Interactive D3/React Flow graph showing real-time agent hierarchy reconstructed from hook events
 - [ ] **Phase 4: Chat Interface + Terminal** - Embedded terminal per workspace routing to the configured LLM backend
@@ -50,12 +50,12 @@ All five phases below constitute Milestone 1. Completion delivers a functional, 
 
 **Research Flag:** Standard patterns — skip research-phase. VSCode WebviewView, esbuild dual-target, and `RelativePattern` watchers are HIGH confidence and well-documented.
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans executed
 
 Plans:
-- [x] 01-PLAN-extension-scaffold.md — Extension scaffold, esbuild build, shared type contracts
-- [ ] 02-PLAN-workspace-registry.md — Workspace registry, file watchers, secrets storage
-- [ ] 03-PLAN-sidebar-statusbar.md — React sidebar WebviewView, status badges, status bar
+- [x] 01-PLAN.md — Extension scaffold, esbuild build, shared type contracts
+- [x] 02-PLAN.md — Workspace registry, file watchers, secrets storage
+- [x] 03-PLAN.md — React sidebar WebviewView, status badges, status bar
 
 ---
 
@@ -198,7 +198,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation — Extension Scaffold, Registry, Sidebar | 2/3 | In Progress|  |
+| 1. Foundation — Extension Scaffold, Registry, Sidebar | 3/3 | Complete | 2026-04-16 |
 | 2. Claude Code Adapter + Dashboard | 0/? | Not started | - |
 | 3. Agent Schematic (Live Topology) | 0/? | Not started | - |
 | 4. Chat Interface + Terminal | 0/? | Not started | - |
@@ -210,19 +210,19 @@ Plans:
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FOUN-01 | Phase 1 | Pending |
-| FOUN-02 | Phase 1 | Pending |
-| FOUN-03 | Phase 1 | Pending |
-| FOUN-04 | Phase 1 | Pending |
-| WKSP-01 | Phase 1 | Pending |
-| WKSP-03 | Phase 1 | Pending |
-| WKSP-04 | Phase 1 | Pending |
-| WKSP-05 | Phase 1 | Pending |
-| SIDE-01 | Phase 1 | Pending |
-| SIDE-02 | Phase 1 | Pending |
-| SIDE-03 | Phase 1 | Pending |
-| SIDE-04 | Phase 1 | Pending |
-| SIDE-05 | Phase 1 | Pending |
+| FOUN-01 | Phase 1 | Complete |
+| FOUN-02 | Phase 1 | Complete |
+| FOUN-03 | Phase 1 | Complete |
+| FOUN-04 | Phase 1 | Complete |
+| WKSP-01 | Phase 1 | Complete |
+| WKSP-03 | Phase 1 | Complete |
+| WKSP-04 | Phase 1 | Complete |
+| WKSP-05 | Phase 1 | Complete |
+| SIDE-01 | Phase 1 | Complete |
+| SIDE-02 | Phase 1 | Complete |
+| SIDE-03 | Phase 1 | Complete |
+| SIDE-04 | Phase 1 | Complete |
+| SIDE-05 | Phase 1 | Complete |
 | DASH-01 | Phase 2 | Pending |
 | DASH-02 | Phase 2 | Pending |
 | DASH-03 | Phase 2 | Pending |
@@ -278,4 +278,4 @@ These decisions are locked. Plan-phase should not re-litigate them.
 ---
 
 *Roadmap created: 2026-04-16*
-*Last updated: 2026-04-16 — initial creation after requirements definition and research synthesis*
+*Last updated: 2026-04-16 — Phase 1 complete*

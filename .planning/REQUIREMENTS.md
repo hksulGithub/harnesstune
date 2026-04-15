@@ -22,11 +22,11 @@
 
 ### Sidebar (SIDE)
 
-- [ ] **SIDE-01**: Sidebar shows workspace list with status indicators (running/idle/warning/error)
-- [ ] **SIDE-02**: Status indicators use color + shape (never color alone) for accessibility
-- [ ] **SIDE-03**: Clicking a workspace opens its workspace view in the editor area
-- [ ] **SIDE-04**: Sidebar is a WebviewView with React, registered via `registerWebviewViewProvider`
-- [ ] **SIDE-05**: Status bar item shows running agent count + error badge
+- [x] **SIDE-01**: Sidebar shows workspace list with status indicators (running/idle/warning/error)
+- [x] **SIDE-02**: Status indicators use color + shape (never color alone) for accessibility
+- [x] **SIDE-03**: Clicking a workspace opens its workspace view in the editor area
+- [x] **SIDE-04**: Sidebar is a WebviewView with React, registered via `registerWebviewViewProvider`
+- [x] **SIDE-05**: Status bar item shows running agent count + error badge
 
 ### Dashboard (DASH)
 
@@ -130,11 +130,11 @@
 | WKSP-03 | Phase 1 | Complete |
 | WKSP-04 | Phase 1 | Complete |
 | WKSP-05 | Phase 1 | Complete |
-| SIDE-01 | Phase 1 | Pending |
-| SIDE-02 | Phase 1 | Pending |
-| SIDE-03 | Phase 1 | Pending |
-| SIDE-04 | Phase 1 | Pending |
-| SIDE-05 | Phase 1 | Pending |
+| SIDE-01 | Phase 1 | Complete |
+| SIDE-02 | Phase 1 | Complete |
+| SIDE-03 | Phase 1 | Complete |
+| SIDE-04 | Phase 1 | Complete |
+| SIDE-05 | Phase 1 | Complete |
 | DASH-01 | Phase 2 | Pending |
 | DASH-02 | Phase 2 | Pending |
 | DASH-03 | Phase 2 | Pending |
