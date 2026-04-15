@@ -1,0 +1,1 @@
+export { WorkspaceRegistry } from './WorkspaceRegistry';
