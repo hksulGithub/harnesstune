@@ -9,16 +9,16 @@
 
 - [x] **FOUN-01**: Extension activates in VSCode and registers commands with `HarnessTune:` prefix
 - [x] **FOUN-02**: Extension uses esbuild dual-target build (CJS extension host + ESM webview bundles)
-- [ ] **FOUN-03**: Extension stores workspace registry as JSON at `globalStorageUri`
-- [ ] **FOUN-04**: Extension stores API keys via `context.secrets`, never in globalState
+- [x] **FOUN-03**: Extension stores workspace registry as JSON at `globalStorageUri`
+- [x] **FOUN-04**: Extension stores API keys via `context.secrets`, never in globalState
 
 ### Workspace Management (WKSP)
 
-- [ ] **WKSP-01**: User can create a new workspace by connecting to an existing agent directory
+- [x] **WKSP-01**: User can create a new workspace by connecting to an existing agent directory
 - [ ] **WKSP-02**: User can create a new workspace from a scaffold template
-- [ ] **WKSP-03**: User can remove a workspace from the registry
-- [ ] **WKSP-04**: Workspace registry persists absolute paths and survives VSCode restarts
-- [ ] **WKSP-05**: File watcher pipeline monitors agent directories using RelativePattern with absolute base paths
+- [x] **WKSP-03**: User can remove a workspace from the registry
+- [x] **WKSP-04**: Workspace registry persists absolute paths and survives VSCode restarts
+- [x] **WKSP-05**: File watcher pipeline monitors agent directories using RelativePattern with absolute base paths
 
 ### Sidebar (SIDE)
 
@@ -123,13 +123,13 @@
 |-------------|-------|--------|
 | FOUN-01 | Phase 1 | Complete |
 | FOUN-02 | Phase 1 | Complete |
-| FOUN-03 | Phase 1 | Pending |
-| FOUN-04 | Phase 1 | Pending |
-| WKSP-01 | Phase 1 | Pending |
+| FOUN-03 | Phase 1 | Complete |
+| FOUN-04 | Phase 1 | Complete |
+| WKSP-01 | Phase 1 | Complete |
 | WKSP-02 | Phase 5 | Pending |
-| WKSP-03 | Phase 1 | Pending |
-| WKSP-04 | Phase 1 | Pending |
-| WKSP-05 | Phase 1 | Pending |
+| WKSP-03 | Phase 1 | Complete |
+| WKSP-04 | Phase 1 | Complete |
+| WKSP-05 | Phase 1 | Complete |
 | SIDE-01 | Phase 1 | Pending |
 | SIDE-02 | Phase 1 | Pending |
 | SIDE-03 | Phase 1 | Pending |
