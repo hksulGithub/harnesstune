@@ -29,15 +29,30 @@ const sidebarConfig = {
   define: { 'process.env.NODE_ENV': '"development"' },
 };
 
+// Dashboard webview bundle (ESM, browser)
+const dashboardConfig = {
+  entryPoints: ['src/webview/dashboard/index.tsx'],
+  bundle: true,
+  outfile: 'dist/webview/dashboard.js',
+  format: 'esm',
+  platform: 'browser',
+  target: 'es2022',
+  sourcemap: true,
+  minify: false,
+  define: { 'process.env.NODE_ENV': '"development"' },
+};
+
 if (isWatch) {
   const extCtx = await esbuild.context(extensionConfig);
   const sidebarCtx = await esbuild.context(sidebarConfig);
-  await Promise.all([extCtx.watch(), sidebarCtx.watch()]);
+  const dashboardCtx = await esbuild.context(dashboardConfig);
+  await Promise.all([extCtx.watch(), sidebarCtx.watch(), dashboardCtx.watch()]);
   console.log('[esbuild] Watching for changes...');
 } else {
   await Promise.all([
     esbuild.build(extensionConfig),
     esbuild.build(sidebarConfig),
+    esbuild.build(dashboardConfig),
   ]);
   console.log('[esbuild] Build complete.');
 
