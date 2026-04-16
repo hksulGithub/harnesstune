@@ -30,9 +30,9 @@
 
 ### Dashboard (DASH)
 
-- [ ] **DASH-01**: Main dashboard WebviewPanel shows aggregate health across all workspaces
-- [ ] **DASH-02**: Per-workspace mini dashboard shows summary cards (total agents, running, errors, cost)
-- [ ] **DASH-03**: Agent detail panel shows: role, model, status, current task, recent actions, config excerpt
+- [x] **DASH-01**: Main dashboard WebviewPanel shows aggregate health across all workspaces
+- [x] **DASH-02**: Per-workspace mini dashboard shows summary cards (total agents, running, errors, cost)
+- [x] **DASH-03**: Agent detail panel shows: role, model, status, current task, recent actions, config excerpt
 - [ ] **DASH-04**: Dashboard panels persist across VSCode restarts via WebviewPanelSerializer
 - [ ] **DASH-05**: Dashboard uses typed postMessage contracts (HostToWebviewMessage / WebviewToHostMessage)
 
@@ -135,9 +135,9 @@
 | SIDE-03 | Phase 1 | Complete |
 | SIDE-04 | Phase 1 | Complete |
 | SIDE-05 | Phase 1 | Complete |
-| DASH-01 | Phase 2 | Pending |
-| DASH-02 | Phase 2 | Pending |
-| DASH-03 | Phase 2 | Pending |
+| DASH-01 | Phase 2 | Complete |
+| DASH-02 | Phase 2 | Complete |
+| DASH-03 | Phase 2 | Complete |
 | DASH-04 | Phase 2 | Pending |
 | DASH-05 | Phase 2 | Pending |
 | CTRL-01 | Phase 2 | Pending |
