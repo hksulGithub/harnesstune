@@ -1,4 +1,5 @@
 import * as esbuild from 'esbuild';
+import { copyFileSync, mkdirSync } from 'fs';
 
 const isWatch = process.argv.includes('--watch');
 
@@ -7,7 +8,7 @@ const extensionConfig = {
   entryPoints: ['src/extension.ts'],
   bundle: true,
   outfile: 'dist/extension.js',
-  external: ['vscode'],
+  external: ['vscode', 'sql.js'],
   format: 'cjs',
   platform: 'node',
   target: 'node20',
@@ -39,4 +40,13 @@ if (isWatch) {
     esbuild.build(sidebarConfig),
   ]);
   console.log('[esbuild] Build complete.');
+
+  // Copy sql.js WASM binary to dist/ for runtime resolution
+  try {
+    mkdirSync('dist', { recursive: true });
+    copyFileSync('node_modules/sql.js/dist/sql-wasm.wasm', 'dist/sql-wasm.wasm');
+    console.log('[esbuild] sql-wasm.wasm copied to dist/');
+  } catch (e) {
+    console.warn('[esbuild] sql-wasm.wasm copy skipped:', e.message);
+  }
 }
