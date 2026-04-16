@@ -16,7 +16,7 @@ All five phases below constitute Milestone 1. Completion delivers a functional, 
 ## Phases
 
 - [x] **Phase 1: Foundation — Extension Scaffold, Registry, Sidebar** - Extension loads, workspaces can be added/removed, sidebar renders with status indicators
-- [ ] **Phase 2: Claude Code Adapter + Dashboard** - First end-to-end data pipeline from Claude Code hooks through to live dashboard display with agent controls
+- [x] **Phase 2: Claude Code Adapter + Dashboard** - First end-to-end data pipeline from Claude Code hooks through to live dashboard display with agent controls
 - [ ] **Phase 3: Agent Schematic (Live Topology)** - Interactive D3/React Flow graph showing real-time agent hierarchy reconstructed from hook events
 - [ ] **Phase 4: Chat Interface + Terminal** - Embedded terminal per workspace routing to the configured LLM backend
 - [ ] **Phase 5: Workspace Scaffolding + OpenClaw Adapter** - Template-based workspace creation and a second adapter proving the adapter pattern generalizes
@@ -126,9 +126,10 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 01-PLAN-extension-scaffold.md — Extension scaffold, esbuild build, shared type contracts
-- [ ] 02-PLAN-workspace-registry.md — Workspace registry, file watchers, secrets storage
-- [ ] 03-PLAN-sidebar-statusbar.md — React sidebar WebviewView, status badges, status bar
+- [ ] 03-01-PLAN.md — Topology types, AgentEvent extension, topologyReducer, shared AgentDetailPanel
+- [ ] 03-02-PLAN.md — SchematicPanel host class, React SVG graph components, CSS
+- [ ] 03-03-PLAN.md — Extension wiring, serializer, event pipeline, human verification
+
 
 ---
 
@@ -199,8 +200,8 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation — Extension Scaffold, Registry, Sidebar | 3/3 | Complete | 2026-04-16 |
-| 2. Claude Code Adapter + Dashboard | 0/4 | Planning complete | - |
-| 3. Agent Schematic (Live Topology) | 0/? | Not started | - |
+| 2. Claude Code Adapter + Dashboard | 4/4 | Complete | 2026-04-16 |
+| 3. Agent Schematic (Live Topology) | 0/3 | Planned | - |
 | 4. Chat Interface + Terminal | 0/? | Not started | - |
 | 5. Workspace Scaffolding + OpenClaw Adapter | 0/? | Not started | - |
 
@@ -223,24 +224,24 @@ Plans:
 | SIDE-03 | Phase 1 | Complete |
 | SIDE-04 | Phase 1 | Complete |
 | SIDE-05 | Phase 1 | Complete |
-| DASH-01 | Phase 2 | Pending |
-| DASH-02 | Phase 2 | Pending |
-| DASH-03 | Phase 2 | Pending |
-| DASH-04 | Phase 2 | Pending |
-| DASH-05 | Phase 2 | Pending |
-| CTRL-01 | Phase 2 | Pending |
-| CTRL-02 | Phase 2 | Pending |
-| CTRL-03 | Phase 2 | Pending |
-| CTRL-04 | Phase 2 | Pending |
-| CCAD-01 | Phase 2 | Pending |
-| CCAD-02 | Phase 2 | Pending |
-| CCAD-03 | Phase 2 | Pending |
-| CCAD-04 | Phase 2 | Pending |
-| CCAD-05 | Phase 2 | Pending |
-| CCAD-06 | Phase 2 | Pending |
-| NOTF-01 | Phase 2 | Pending |
-| NOTF-02 | Phase 2 | Pending |
-| NOTF-03 | Phase 2 | Pending |
+| DASH-01 | Phase 2 | Complete |
+| DASH-02 | Phase 2 | Complete |
+| DASH-03 | Phase 2 | Complete |
+| DASH-04 | Phase 2 | Complete |
+| DASH-05 | Phase 2 | Complete |
+| CTRL-01 | Phase 2 | Complete |
+| CTRL-02 | Phase 2 | Complete |
+| CTRL-03 | Phase 2 | Complete |
+| CTRL-04 | Phase 2 | Complete |
+| CCAD-01 | Phase 2 | Complete |
+| CCAD-02 | Phase 2 | Complete |
+| CCAD-03 | Phase 2 | Complete |
+| CCAD-04 | Phase 2 | Complete |
+| CCAD-05 | Phase 2 | Complete |
+| CCAD-06 | Phase 2 | Complete |
+| NOTF-01 | Phase 2 | Complete |
+| NOTF-02 | Phase 2 | Complete |
+| NOTF-03 | Phase 2 | Complete |
 | SCHM-01 | Phase 3 | Pending |
 | SCHM-02 | Phase 3 | Pending |
 | SCHM-03 | Phase 3 | Pending |
@@ -278,4 +279,4 @@ These decisions are locked. Plan-phase should not re-litigate them.
 ---
 
 *Roadmap created: 2026-04-16*
-*Last updated: 2026-04-16 — Phase 1 complete*
+*Last updated: 2026-04-16 — Phase 2 complete*
