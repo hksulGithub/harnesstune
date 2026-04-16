@@ -87,12 +87,12 @@ Plans:
 
 **Research Flag:** Needs validation before implementation — confirm that programmatic JSON merge into `~/.claude/settings.json` does not clobber existing user config. Test HTTP hook behavior under the known `CLAUDECODE=1` subprocess env var bug (claude-agent-sdk-python #573).
 
-**Plans:** 3 plans
+**Plans:** 4 plans
 
-Plans:
-- [x] 01-PLAN-extension-scaffold.md — Extension scaffold, esbuild build, shared type contracts
-- [ ] 02-PLAN-workspace-registry.md — Workspace registry, file watchers, secrets storage
-- [ ] 03-PLAN-sidebar-statusbar.md — React sidebar WebviewView, status badges, status bar
+- [ ] 02-01-PLAN.md — Type contracts, hook server, Claude Code adapter, jest setup
+- [ ] 02-02-PLAN.md — sql.js event store, agent controls, notification service
+- [ ] 02-03-PLAN.md — Dashboard WebviewPanel and React UI components
+- [ ] 02-04-PLAN.md — Extension wiring, WebviewPanelSerializer, Command Palette commands
 
 ---
 
@@ -199,7 +199,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation — Extension Scaffold, Registry, Sidebar | 3/3 | Complete | 2026-04-16 |
-| 2. Claude Code Adapter + Dashboard | 0/? | Not started | - |
+| 2. Claude Code Adapter + Dashboard | 0/4 | Planning complete | - |
 | 3. Agent Schematic (Live Topology) | 0/? | Not started | - |
 | 4. Chat Interface + Terminal | 0/? | Not started | - |
 | 5. Workspace Scaffolding + OpenClaw Adapter | 0/? | Not started | - |
