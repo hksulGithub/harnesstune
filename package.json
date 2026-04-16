@@ -53,11 +53,19 @@
         "command": "harnesstune.stopAgent",
         "title": "Stop Agent",
         "category": "HarnessTune"
+      },
+      {
+        "command": "harnesstune.showSchematic",
+        "title": "Show Agent Schematic",
+        "category": "HarnessTune"
       }
     ],
     "webviewPanelSerializer": [
       {
         "viewType": "harnesstune.dashboard"
+      },
+      {
+        "viewType": "harnesstune.schematic"
       }
     ],
     "viewsContainers": {
@@ -86,6 +94,7 @@
     "test": "jest --passWithNoTests"
   },
   "devDependencies": {
+    "@types/d3-hierarchy": "^3.1.7",
     "@types/jest": "^30.0.0",
     "@types/node": "^20.0.0",
     "@types/react": "^18.3.0",
@@ -98,6 +107,7 @@
     "typescript": "^5.6.0"
   },
   "dependencies": {
+    "d3-hierarchy": "^3.1.2",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "sql.js": "^1.14.1"

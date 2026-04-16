@@ -159,6 +159,7 @@ export class ClaudeCodeHookAdapter implements AgentBackendAdapter {
       model: p.model as string | undefined,
       tokenUsage,
       error: p.error as string | undefined,
+      parentToolUseId: (p.parent_tool_use_id as string | undefined) ?? (p.parentToolUseId as string | undefined),
       raw,
     };
   }

@@ -61,12 +61,20 @@ export class AgentEventStore {
         output_tokens INTEGER,
         cache_read_tokens INTEGER,
         error TEXT,
+        parent_tool_use_id TEXT,
         raw TEXT NOT NULL
       );
       CREATE INDEX IF NOT EXISTS idx_session ON agent_events(session_id);
       CREATE INDEX IF NOT EXISTS idx_workspace ON agent_events(workspace_id);
       CREATE INDEX IF NOT EXISTS idx_timestamp ON agent_events(timestamp DESC);
     `);
+
+    // Migration: add parent_tool_use_id column to existing databases
+    try {
+      this.db.run(`ALTER TABLE agent_events ADD COLUMN parent_tool_use_id TEXT`);
+    } catch {
+      // Column already exists — ignore
+    }
   }
 
   insertEvent(event: AgentEvent): void {
@@ -78,8 +86,8 @@ export class AgentEventStore {
       `INSERT INTO agent_events (
         id, workspace_id, session_id, agent_id, event_type, timestamp,
         tool_name, tool_input, model, input_tokens, output_tokens, cache_read_tokens,
-        error, raw
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        error, parent_tool_use_id, raw
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         event.id,
         event.workspaceId,
@@ -94,6 +102,7 @@ export class AgentEventStore {
         event.tokenUsage?.outputTokens ?? null,
         event.tokenUsage?.cacheReadTokens ?? null,
         event.error ?? null,
+        event.parentToolUseId ?? null,
         JSON.stringify(event.raw),
       ]
     );
@@ -234,7 +243,19 @@ export class AgentEventStore {
           }
         : undefined,
       error: row['error'] ? String(row['error']) : undefined,
+      parentToolUseId: row['parent_tool_use_id'] ? String(row['parent_tool_use_id']) : undefined,
       raw,
     };
+  }
+
+  getHierarchyEvents(workspaceId: string): AgentEvent[] {
+    const stmt = this.db.prepare(
+      `SELECT * FROM agent_events
+       WHERE workspace_id = ?
+         AND event_type IN ('SessionStart', 'SessionEnd', 'SubagentStart', 'SubagentStop')
+       ORDER BY timestamp ASC`
+    );
+    stmt.bind([workspaceId]);
+    return this.collectRows(stmt);
   }
 }

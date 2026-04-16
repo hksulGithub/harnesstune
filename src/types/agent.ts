@@ -22,6 +22,8 @@ export interface AgentEvent {
   model?: string;                // gen_ai.request.model
   tokenUsage?: AgentTokenUsage;
   error?: string;                // For failure events
+  parentToolUseId?: string;      // For SubagentStart — links child to parent
+  parentSessionId?: string;      // Resolved by topology reducer from parentToolUseId correlation
   raw: unknown;                  // Full original hook payload
 }
 
