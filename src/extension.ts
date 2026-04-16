@@ -2,7 +2,8 @@ import * as vscode from 'vscode';
 import { WorkspaceRegistry } from './registry';
 import { FileWatcherManager } from './watchers';
 import { SecretStore } from './secrets';
-import { SidebarViewProvider, DashboardPanel } from './panels';
+import { SidebarViewProvider, DashboardPanel, SchematicPanel } from './panels';
+import { buildTopology } from './topology';
 import { StatusBarManager } from './statusbar';
 import { WorkspaceRecord } from './types';
 import { ClaudeCodeHookAdapter } from './adapters';
@@ -197,15 +198,41 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         events: [event],
       });
     }
+
+    // 5. Push to schematic if open — rebuild topology with new event
+    if (SchematicPanel.currentPanel) {
+      const allHierarchyEvents: AgentEvent[] = [];
+      for (const ws of registry.getAll()) {
+        allHierarchyEvents.push(...eventStore.getHierarchyEvents(ws.id));
+      }
+      const topology = buildTopology(allHierarchyEvents);
+      SchematicPanel.currentPanel.postMessage({
+        type: 'schematic:topologyUpdate',
+        state: topology,
+      });
+    }
   });
   context.subscriptions.push(onAdapterEvent);
 
-  // Push session state changes to dashboard
+  // Push session state changes to dashboard and schematic
   const onSessionChange = controlManager.onDidChangeSession((session) => {
     if (DashboardPanel.currentPanel) {
       DashboardPanel.currentPanel.postMessage({
         type: 'dashboard:agentUpdate',
         session,
+      });
+    }
+
+    // Also update schematic on session state changes
+    if (SchematicPanel.currentPanel) {
+      const allHierarchyEvents: AgentEvent[] = [];
+      for (const ws of registry.getAll()) {
+        allHierarchyEvents.push(...eventStore.getHierarchyEvents(ws.id));
+      }
+      const topology = buildTopology(allHierarchyEvents);
+      SchematicPanel.currentPanel.postMessage({
+        type: 'schematic:topologyUpdate',
+        state: topology,
       });
     }
   });
@@ -293,6 +320,70 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
     })
   );
+
+  // ── Phase 3: Schematic Command ──────────────────────────────────────────────
+  const schematicCmd = vscode.commands.registerCommand(
+    'harnesstune.showSchematic',
+    () => {
+      const panel = SchematicPanel.createOrShow(context.extensionUri);
+      wireSchematicMessageHandler(panel);
+    }
+  );
+  context.subscriptions.push(schematicCmd);
+
+  // ── Phase 3: Schematic Serializer (D-20) ───────────────────────────────────
+  context.subscriptions.push(
+    vscode.window.registerWebviewPanelSerializer(SchematicPanel.viewType, {
+      async deserializeWebviewPanel(panel: vscode.WebviewPanel, _state: unknown) {
+        SchematicPanel.revive(panel, context.extensionUri);
+        const schematicPanel = SchematicPanel.currentPanel;
+        if (schematicPanel) {
+          wireSchematicMessageHandler(schematicPanel);
+        }
+      }
+    })
+  );
+
+  // ── Phase 3: Schematic message handler ──────────────────────────────────────
+  function wireSchematicMessageHandler(panel: SchematicPanel): void {
+    const msgHandler = panel.onDidReceiveMessage((msg) => {
+      switch (msg.type) {
+        case 'schematic:requestState': {
+          // Rebuild full topology from stored hierarchy events
+          const allHierarchyEvents: AgentEvent[] = [];
+          const workspaces = msg.workspaceId
+            ? [msg.workspaceId]
+            : registry.getAll().map(ws => ws.id);
+          for (const wsId of workspaces) {
+            allHierarchyEvents.push(...eventStore.getHierarchyEvents(wsId));
+          }
+          const topology = buildTopology(allHierarchyEvents, msg.workspaceId ?? undefined);
+          panel.postMessage({ type: 'schematic:topologyUpdate', state: topology });
+
+          // Also send workspace list for the workspace selector
+          panel.postMessage({
+            type: 'workspaces:update',
+            workspaces: registry.getAll(),
+          });
+          break;
+        }
+        case 'schematic:selectNode': {
+          // Click-to-inspect: send the selected node's session + events via schematic:nodeDetail
+          const session = controlManager.getAllSessions().find(
+            s => s.sessionId === msg.sessionId
+          ) ?? null;
+          const events = eventStore.getEventsBySession(msg.sessionId, 50);
+          panel.postMessage({
+            type: 'schematic:nodeDetail',
+            session,
+            events,
+          });
+          break;
+        }
+      }
+    });
+    context.subscriptions.push(msgHandler);
+  }
 
   // ── Phase 2: Agent Control Commands (CTRL-04) ─────────────────────────────────
   const pauseCmd = vscode.commands.registerCommand(
