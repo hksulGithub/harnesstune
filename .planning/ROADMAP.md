@@ -92,7 +92,7 @@ Plans:
 - [x] 02-01-PLAN.md — Type contracts, hook server, Claude Code adapter, jest setup
 - [x] 02-02-PLAN.md — sql.js event store, agent controls, notification service
 - [x] 02-03-PLAN.md — Dashboard WebviewPanel and React UI components
-- [ ] 02-04-PLAN.md — Extension wiring, WebviewPanelSerializer, Command Palette commands
+- [x] 02-04-PLAN.md — Extension wiring, WebviewPanelSerializer, Command Palette commands
 
 ---
 
