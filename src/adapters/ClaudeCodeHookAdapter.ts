@@ -45,6 +45,11 @@ export class ClaudeCodeHookAdapter implements AgentBackendAdapter {
     });
   }
 
+  /** Wire the pause checker into the hook server for PreToolUse gate. */
+  setPauseChecker(fn: (sessionId: string) => boolean): void {
+    this.hookServer.setPauseChecker(fn);
+  }
+
   async connect(workspaceId: string, _workspaceRootPath: string): Promise<void> {
     if (!this.serverStarted) {
       await this.hookServer.start();
