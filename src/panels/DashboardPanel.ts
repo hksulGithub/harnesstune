@@ -87,6 +87,9 @@ export class DashboardPanel {
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'dashboard.js'),
     );
+    const styleUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'dashboard.css'),
+    );
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -94,6 +97,7 @@ export class DashboardPanel {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource} 'unsafe-inline';">
+  <link rel="stylesheet" href="${styleUri}">
   <title>HarnessTune Dashboard</title>
 </head>
 <body>

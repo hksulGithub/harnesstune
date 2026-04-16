@@ -170,7 +170,7 @@ export default function App(): React.ReactElement {
                 session={s}
                 recentEvent={events.filter(e => e.sessionId === s.sessionId).at(-1)}
                 isSelected={s.sessionId === selectedSessionId}
-                onSelect={setSelectedSessionId}
+                onSelect={(id) => setSelectedSessionId(prev => prev === id ? null : id)}
               />
             ))
           )}

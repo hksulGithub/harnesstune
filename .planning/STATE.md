@@ -2,16 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 1
-status: Ready to execute
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-04-16T10:30:30.391Z"
+status: Executing Phase 03
+last_updated: "2026-04-16T14:47:18.718Z"
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 7
+  total_plans: 10
   completed_plans: 6
-  percent: 86
+  percent: 60
 ---
 
 # GSD State: HarnessTune
@@ -21,20 +19,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-16)
 
 **Core value:** Engineers running multiple agent systems can see and control all their agents from one place inside VSCode.
-**Current focus:** Phase 02 — claude-code-adapter-dashboard
+**Current focus:** Phase 03 — agent-schematic-live-topology
 
 ## Current Position
 
-Phase: 02 (claude-code-adapter-dashboard) — EXECUTING
-Plan: 2 of 4
-**Phase:** 02-claude-code-adapter-dashboard — PLANNED
-**Current Plan:** 1
-**Last Completed:** Phase 1 complete (all 3 plans)
-**Stopped At:** Completed 02-03-PLAN.md
+Phase: 03 (agent-schematic-live-topology) — EXECUTING
+Plan: 1 of 3
+**Last Completed:** Phase 2 complete (all 4 plans, human verification passed)
+**Next Phase:** 03-agent-schematic
 
 ## Progress
 
-[░░░░░░░░░░] 0% (0/4 plans in Phase 2 — ready to execute)
+[██████████] 100% (4/4 plans in Phase 2 — verified and complete)
 
 ## Current Milestone
 
@@ -43,7 +39,7 @@ Plan: 2 of 4
 | Phase | Status | Notes |
 |-------|--------|-------|
 | 1 - Foundation | Complete | All 3 plans done — scaffold, types, registry, watchers, secrets, sidebar, status bar |
-| 2 - Claude Code Adapter + Dashboard | Planned | 4 plans (4 waves), 18 reqs covered, ready for execute-phase |
+| 2 - Claude Code Adapter + Dashboard | Complete | All 4 plans done + human verification passed — hook server, adapter, event store, dashboard, controls, notifications |
 | 3 - Agent Schematic | Not Started | D3/React Flow topology graph |
 | 4 - Chat Interface + Terminal | Not Started | Pseudoterminal per workspace |
 | 5 - Scaffolding + OpenClaw | Not Started | Templates, second adapter |
@@ -78,6 +74,16 @@ Plan: 2 of 4
 - **2026-04-16**: Phase 2 discuss-phase complete. 3 areas discussed (Hook Server Design, Dashboard Layout & Navigation, Agent Controls). 19 decisions captured in 02-CONTEXT.md. Ready for `/gsd-plan-phase 2`.
 - **2026-04-16**: Phase 2 UI-SPEC approved. 6-dimension check (5 PASS, 1 FLAG non-blocking). Design contract covers spacing, typography, color, components, copywriting, accessibility. Ready for `/gsd-plan-phase 2`.
 - **2026-04-16**: Phase 2 plan-phase complete. 4 plans created across 4 sequential waves. 18/18 requirements covered. Checker passed all 8 dimensions. Ready for `/gsd-execute-phase 2`.
+- **2026-04-16**: Phase 2 execution complete. All 4 plans executed (4 waves). Human verification passed all 8 checkpoints: dashboard opens, hooks inject, events flow, agent card toggle, pause/resume/stop (dashboard + command palette), error toast notifications. Fixes during verification: CSS `<link>` tag missing from webview HTML, codicon font unavailable in webviews (replaced with unicode), detail panel missing className, card toggle logic. Phase 2 complete.
+
+## Phase 2 Decisions (from execution)
+
+- **02-exec**: esbuild CSS extraction requires explicit `<link>` in webview HTML — not auto-injected
+- **02-exec**: VSCode codicons not available in webviews without explicit font loading — use unicode characters instead
+- **02-exec**: In-memory session state (AgentControlManager) — acceptable for Phase 2, persistence deferred
+- **02-exec**: PreToolUse pause gate returns `permissionDecision: "deny"` to block agent while paused
+
+- **2026-04-16**: Phase 3 discuss-phase complete. 4 areas discussed (Graph Library Choice, Layout Algorithm, Hierarchy Reconstruction, Panel Integration). 22 decisions captured in 03-CONTEXT.md. Ready for `/gsd-plan-phase 3`.
 
 ---
-*Last updated: 2026-04-16 after Phase 2 planning complete*
+*Last updated: 2026-04-16 after Phase 3 discuss-phase complete*

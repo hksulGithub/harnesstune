@@ -39,7 +39,7 @@ export function ControlButtons({ sessionId, controlState, size = 'small' }: Cont
           aria-label="Stopping agent"
           style={{ fontSize: iconSize }}
         >
-          <span className="codicon codicon-loading" />
+          ...
         </button>
       </div>
     );
@@ -55,7 +55,7 @@ export function ControlButtons({ sessionId, controlState, size = 'small' }: Cont
           title="Pause agent"
           style={{ fontSize: iconSize }}
         >
-          <span className="codicon codicon-debug-pause" />
+          ||
         </button>
         <button
           className="control-btn destructive"
@@ -64,7 +64,7 @@ export function ControlButtons({ sessionId, controlState, size = 'small' }: Cont
           title="Stop agent"
           style={{ fontSize: iconSize }}
         >
-          <span className="codicon codicon-debug-stop" />
+          &#9632;
         </button>
       </div>
     );
@@ -80,7 +80,7 @@ export function ControlButtons({ sessionId, controlState, size = 'small' }: Cont
           title="Resume agent"
           style={{ fontSize: iconSize }}
         >
-          <span className="codicon codicon-debug-continue" />
+          &#9654;
         </button>
         <button
           className="control-btn destructive"
@@ -89,7 +89,7 @@ export function ControlButtons({ sessionId, controlState, size = 'small' }: Cont
           title="Stop agent"
           style={{ fontSize: iconSize }}
         >
-          <span className="codicon codicon-debug-stop" />
+          &#9632;
         </button>
       </div>
     );

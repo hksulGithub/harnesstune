@@ -288,6 +288,7 @@
   padding: 4px 0;
   font-size: 13px;
   border-bottom: 1px solid var(--vscode-widget-border);
+  justify-content: space-between;
 }
 
 .action-list .timestamp {

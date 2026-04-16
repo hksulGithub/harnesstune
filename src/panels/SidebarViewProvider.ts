@@ -63,6 +63,9 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'sidebar.js'),
     );
+    const styleUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'sidebar.css'),
+    );
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -70,6 +73,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource} 'unsafe-inline';">
+  <link rel="stylesheet" href="${styleUri}">
   <title>HarnessTune</title>
 </head>
 <body>
