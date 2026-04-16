@@ -123,11 +123,11 @@ Plans:
 
 **Research Flag:** Needs research-phase during planning — (1) React Flow commercial licensing: verify MIT terms apply to HarnessTune's distribution before committing; if commercial license required, use D3.js directly. (2) `dagre` vs `d3-dag` vs `elkjs`: dagre is unmaintained (last commit 2021); confirm replacement before implementation.
 
-**Plans:** 3 plans
+**Plans:** 2/3 plans executed
 
 Plans:
-- [ ] 03-01-PLAN.md — Topology types, AgentEvent extension, topologyReducer, shared AgentDetailPanel
-- [ ] 03-02-PLAN.md — SchematicPanel host class, React SVG graph components, CSS
+- [x] 03-01-PLAN.md — Topology types, AgentEvent extension, topologyReducer, shared AgentDetailPanel
+- [x] 03-02-PLAN.md — SchematicPanel host class, React SVG graph components, CSS
 - [ ] 03-03-PLAN.md — Extension wiring, serializer, event pipeline, human verification
 
 
@@ -201,7 +201,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Foundation — Extension Scaffold, Registry, Sidebar | 3/3 | Complete | 2026-04-16 |
 | 2. Claude Code Adapter + Dashboard | 4/4 | Complete | 2026-04-16 |
-| 3. Agent Schematic (Live Topology) | 0/3 | Planned | - |
+| 3. Agent Schematic (Live Topology) | 2/3 | In Progress|  |
 | 4. Chat Interface + Terminal | 0/? | Not started | - |
 | 5. Workspace Scaffolding + OpenClaw Adapter | 0/? | Not started | - |
 

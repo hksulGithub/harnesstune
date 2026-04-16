@@ -45,12 +45,12 @@
 
 ### Agent Schematic (SCHM)
 
-- [ ] **SCHM-01**: Interactive topology graph renders in a WebviewPanel using D3.js or React Flow
+- [x] **SCHM-01**: Interactive topology graph renders in a WebviewPanel using D3.js or React Flow
 - [ ] **SCHM-02**: Graph reconstructs agent hierarchy from SubagentStart/SubagentStop events
 - [ ] **SCHM-03**: Clicking a node shows agent info (role, status, config, instructions, recent actions)
-- [ ] **SCHM-04**: Graph supports zoom, pan, and "fit to view"
-- [ ] **SCHM-05**: Edges animate to show message-in-flight between agents
-- [ ] **SCHM-06**: Graph uses hierarchical layout (dagre/d3-dag) by default
+- [x] **SCHM-04**: Graph supports zoom, pan, and "fit to view"
+- [x] **SCHM-05**: Edges animate to show message-in-flight between agents
+- [x] **SCHM-06**: Graph uses hierarchical layout (dagre/d3-dag) by default
 
 ### Chat Interface (CHAT)
 
@@ -153,12 +153,12 @@
 | NOTF-01 | Phase 2 | Pending |
 | NOTF-02 | Phase 2 | Pending |
 | NOTF-03 | Phase 2 | Pending |
-| SCHM-01 | Phase 3 | Pending |
+| SCHM-01 | Phase 3 | Complete |
 | SCHM-02 | Phase 3 | Pending |
 | SCHM-03 | Phase 3 | Pending |
-| SCHM-04 | Phase 3 | Pending |
-| SCHM-05 | Phase 3 | Pending |
-| SCHM-06 | Phase 3 | Pending |
+| SCHM-04 | Phase 3 | Complete |
+| SCHM-05 | Phase 3 | Complete |
+| SCHM-06 | Phase 3 | Complete |
 | CHAT-01 | Phase 4 | Pending |
 | CHAT-02 | Phase 4 | Pending |
 | CHAT-03 | Phase 4 | Pending |
