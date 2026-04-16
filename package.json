@@ -38,6 +38,26 @@
         "command": "harnesstune.showDashboard",
         "title": "Show Dashboard",
         "category": "HarnessTune"
+      },
+      {
+        "command": "harnesstune.pauseAgent",
+        "title": "Pause Agent",
+        "category": "HarnessTune"
+      },
+      {
+        "command": "harnesstune.resumeAgent",
+        "title": "Resume Agent",
+        "category": "HarnessTune"
+      },
+      {
+        "command": "harnesstune.stopAgent",
+        "title": "Stop Agent",
+        "category": "HarnessTune"
+      }
+    ],
+    "webviewPanelSerializer": [
+      {
+        "viewType": "harnesstune.dashboard"
       }
     ],
     "viewsContainers": {
