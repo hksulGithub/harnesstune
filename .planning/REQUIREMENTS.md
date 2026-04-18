@@ -54,10 +54,10 @@
 
 ### Chat Interface (CHAT)
 
-- [ ] **CHAT-01**: Embedded terminal per workspace using VSCode native Pseudoterminal API
-- [ ] **CHAT-02**: Terminal routes to the workspace's configured LLM backend (Claude Code first)
+- [x] **CHAT-01**: Embedded terminal per workspace using VSCode native Pseudoterminal API
+- [x] **CHAT-02**: Terminal routes to the workspace's configured LLM backend (Claude Code first)
 - [ ] **CHAT-03**: Terminal panel retains context when hidden (retainContextWhenHidden: true)
-- [ ] **CHAT-04**: User can send instructions and receive responses in the terminal
+- [x] **CHAT-04**: User can send instructions and receive responses in the terminal
 
 ### Claude Code Adapter (CCAD)
 
@@ -159,10 +159,10 @@
 | SCHM-04 | Phase 3 | Complete |
 | SCHM-05 | Phase 3 | Complete |
 | SCHM-06 | Phase 3 | Complete |
-| CHAT-01 | Phase 4 | Pending |
-| CHAT-02 | Phase 4 | Pending |
+| CHAT-01 | Phase 4 | Complete |
+| CHAT-02 | Phase 4 | Complete |
 | CHAT-03 | Phase 4 | Pending |
-| CHAT-04 | Phase 4 | Pending |
+| CHAT-04 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 40 total

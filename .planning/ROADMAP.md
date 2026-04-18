@@ -17,7 +17,7 @@ All five phases below constitute Milestone 1. Completion delivers a functional, 
 
 - [x] **Phase 1: Foundation — Extension Scaffold, Registry, Sidebar** - Extension loads, workspaces can be added/removed, sidebar renders with status indicators
 - [x] **Phase 2: Claude Code Adapter + Dashboard** - First end-to-end data pipeline from Claude Code hooks through to live dashboard display with agent controls
-- [ ] **Phase 3: Agent Schematic (Live Topology)** - Interactive D3/React Flow graph showing real-time agent hierarchy reconstructed from hook events
+- [x] **Phase 3: Agent Schematic (Live Topology)** - Interactive D3/React Flow graph showing real-time agent hierarchy reconstructed from hook events
 - [ ] **Phase 4: Chat Interface + Terminal** - Embedded terminal per workspace routing to the configured LLM backend
 - [ ] **Phase 5: Workspace Scaffolding + OpenClaw Adapter** - Template-based workspace creation and a second adapter proving the adapter pattern generalizes
 
@@ -123,12 +123,12 @@ Plans:
 
 **Research Flag:** Needs research-phase during planning — (1) React Flow commercial licensing: verify MIT terms apply to HarnessTune's distribution before committing; if commercial license required, use D3.js directly. (2) `dagre` vs `d3-dag` vs `elkjs`: dagre is unmaintained (last commit 2021); confirm replacement before implementation.
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans executed
 
 Plans:
 - [x] 03-01-PLAN.md — Topology types, AgentEvent extension, topologyReducer, shared AgentDetailPanel
 - [x] 03-02-PLAN.md — SchematicPanel host class, React SVG graph components, CSS
-- [ ] 03-03-PLAN.md — Extension wiring, serializer, event pipeline, human verification
+- [x] 03-03-PLAN.md — Extension wiring, serializer, event pipeline, human verification
 
 
 ---
@@ -155,12 +155,11 @@ Plans:
 
 **Research Flag:** Standard patterns — skip research-phase. VSCode native `Pseudoterminal` API is HIGH confidence. Note: if users later require the terminal embedded inline within the schematic panel (rather than in the VSCode terminal area), that requires `xterm.js` + `node-pty` and is a v2 decision requiring explicit validation.
 
-**Plans:** 3 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] 01-PLAN-extension-scaffold.md — Extension scaffold, esbuild build, shared type contracts
-- [ ] 02-PLAN-workspace-registry.md — Workspace registry, file watchers, secrets storage
-- [ ] 03-PLAN-sidebar-statusbar.md — React sidebar WebviewView, status badges, status bar
+- [x] 04-01-PLAN.md — Pseudoterminal class, stream-JSON parser, output formatter
+- [ ] 04-02-PLAN.md — TerminalManager, extension wiring, openTerminal command, human verification
 
 ---
 
@@ -195,14 +194,25 @@ Plans:
 
 ---
 
+## Backlog (Future Milestones)
+
+### 999.1 Remote Workspace Management
+**Idea:** Control and monitor agent workspaces on remote machines — other MacBooks, Linux servers, cloud VMs. Support heterogeneous agent backends (Claude Code, OpenClaw, etc.) across the network from a single HarnessTune instance.
+
+**Why:** The current architecture is entirely local (localhost HookServer, local filesystem paths, PID-based signals). Remote support requires network transport (WebSocket/SSH tunneling), authentication/authorization, remote adapter implementations, and a host+path workspace model.
+
+**Scope:** Touches nearly every layer — registry, adapters, control manager, sidebar, schematic. Should be its own milestone after Milestone 1 is solid.
+
+---
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation — Extension Scaffold, Registry, Sidebar | 3/3 | Complete | 2026-04-16 |
 | 2. Claude Code Adapter + Dashboard | 4/4 | Complete | 2026-04-16 |
-| 3. Agent Schematic (Live Topology) | 2/3 | In Progress|  |
-| 4. Chat Interface + Terminal | 0/? | Not started | - |
+| 3. Agent Schematic (Live Topology) | 3/3 | Complete | 2026-04-18 |
+| 4. Chat Interface + Terminal | 0/2 | Not started | - |
 | 5. Workspace Scaffolding + OpenClaw Adapter | 0/? | Not started | - |
 
 ---
@@ -242,12 +252,12 @@ Plans:
 | NOTF-01 | Phase 2 | Complete |
 | NOTF-02 | Phase 2 | Complete |
 | NOTF-03 | Phase 2 | Complete |
-| SCHM-01 | Phase 3 | Pending |
-| SCHM-02 | Phase 3 | Pending |
-| SCHM-03 | Phase 3 | Pending |
-| SCHM-04 | Phase 3 | Pending |
-| SCHM-05 | Phase 3 | Pending |
-| SCHM-06 | Phase 3 | Pending |
+| SCHM-01 | Phase 3 | Complete |
+| SCHM-02 | Phase 3 | Complete |
+| SCHM-03 | Phase 3 | Complete |
+| SCHM-04 | Phase 3 | Complete |
+| SCHM-05 | Phase 3 | Complete |
+| SCHM-06 | Phase 3 | Complete |
 | CHAT-01 | Phase 4 | Pending |
 | CHAT-02 | Phase 4 | Pending |
 | CHAT-03 | Phase 4 | Pending |
@@ -271,7 +281,7 @@ These decisions are locked. Plan-phase should not re-litigate them.
 | D3.js for live topology, NOT Mermaid | Mermaid cannot dynamically add/remove nodes without full DOM re-render + flicker; click events have known bugs; CSP concerns in webview context |
 | `WebviewView` for sidebar, NOT `TreeView` | Custom health indicators (badges, sparklines) exceed `TreeView` rendering capability |
 | `acquireVsCodeApi()` called once per webview, stored in module scope | Throws on second call — the most common webview bug |
-| `retainContextWhenHidden: true` on terminal panel ONLY | Each retained panel holds 80–150MB browser context; use `getState/setState` for all data panels |
+| `retainContextWhenHidden: true` on terminal panel ONLY | Each retained panel holds 80-150MB browser context; use `getState/setState` for all data panels |
 | Absolute paths in workspace registry | VSCode opens in different working directories; relative paths silently resolve incorrectly |
 | `RelativePattern` with absolute base for all file watchers | String glob patterns only watch inside the current VSCode workspace folder; agent dirs are typically outside it |
 | `@vscode/webview-ui-toolkit` — DO NOT USE | Officially deprecated January 2025; use VSCode Elements or plain CSS with VSCode CSS variables |
@@ -279,4 +289,4 @@ These decisions are locked. Plan-phase should not re-litigate them.
 ---
 
 *Roadmap created: 2026-04-16*
-*Last updated: 2026-04-16 — Phase 2 complete*
+*Last updated: 2026-04-18 — Phase 4 planned*

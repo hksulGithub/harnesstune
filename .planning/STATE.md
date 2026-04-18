@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-last_updated: "2026-04-16T15:05:38.366Z"
+status: Phase complete — ready for verification
+last_updated: "2026-04-18T07:11:56.509Z"
 progress:
   total_phases: 5
-  completed_phases: 1
-  total_plans: 10
-  completed_plans: 8
-  percent: 80
+  completed_phases: 2
+  total_plans: 12
+  completed_plans: 10
+  percent: 83
 ---
 
 # GSD State: HarnessTune
@@ -23,14 +23,14 @@ See: .planning/PROJECT.md (updated 2026-04-16)
 
 ## Current Position
 
-Phase: 03 (agent-schematic-live-topology) — EXECUTING
-Plan: 3 of 3
-**Last Completed:** Phase 2 complete (all 4 plans, human verification passed)
-**Next Phase:** 03-agent-schematic
+Phase: 03 (agent-schematic-live-topology) — AWAITING HUMAN VERIFICATION
+Plan: 3 of 3 (Task 1 done, Task 2 human checkpoint pending)
+**Last Completed:** Plan 03-03 Task 1 (extension wiring)
+**Blocked on:** Human verification of 8 checkpoints
 
 ## Progress
 
-[██████████] 100% (4/4 plans in Phase 2 — verified and complete)
+[█████████░] 90% (Plan 03-03 Task 1 done, human verification pending)
 
 ## Current Milestone
 
@@ -40,7 +40,7 @@ Plan: 3 of 3
 |-------|--------|-------|
 | 1 - Foundation | Complete | All 3 plans done — scaffold, types, registry, watchers, secrets, sidebar, status bar |
 | 2 - Claude Code Adapter + Dashboard | Complete | All 4 plans done + human verification passed — hook server, adapter, event store, dashboard, controls, notifications |
-| 3 - Agent Schematic | Not Started | D3/React Flow topology graph |
+| 3 - Agent Schematic | Awaiting Verification | 3 plans coded, human verification pending |
 | 4 - Chat Interface + Terminal | Not Started | Pseudoterminal per workspace |
 | 5 - Scaffolding + OpenClaw | Not Started | Templates, second adapter |
 
@@ -58,6 +58,7 @@ Plan: 3 of 3
 - [Phase 01-03]: acquireVsCodeApi() called once in module-scope vscodeApi.ts — shared across all sidebar components
 - [Phase 03-agent-schematic-live-topology]: fitToViewCounter integer trigger avoids useImperativeHandle for fit-to-view signal between App and GraphArea
 - [Phase 03-agent-schematic-live-topology]: SVG title child element for viewport rect tooltip — React types reject title attribute on SVGRectElement
+- [Phase 04]: OutputFormatter is stateless static class; normalizeStreamEvent maps stream-JSON to AgentEvent pipeline; non-error tool_results suppressed in terminal
 
 ## Performance Metrics
 
@@ -67,6 +68,7 @@ Plan: 3 of 3
 | 01 | 02 | 5 min | 2 | 7 |
 | 01 | 03 | 3 min | 2 | 12 |
 | Phase 03-agent-schematic-live-topology P02 | 6 | 2 tasks | 13 files |
+| Phase 04 P01 | 2 min | 2 tasks | 5 files |
 
 ## Session Log
 
@@ -87,6 +89,7 @@ Plan: 3 of 3
 - **02-exec**: PreToolUse pause gate returns `permissionDecision: "deny"` to block agent while paused
 
 - **2026-04-16**: Phase 3 discuss-phase complete. 4 areas discussed (Graph Library Choice, Layout Algorithm, Hierarchy Reconstruction, Panel Integration). 22 decisions captured in 03-CONTEXT.md. Ready for `/gsd-plan-phase 3`.
+- **2026-04-17**: Phase 3 Plan 03 Task 1 complete (extension wiring). Human verification checkpoint (Task 2) pending — 8 checkpoints need testing with live extension.
 
 ---
-*Last updated: 2026-04-16 after Phase 3 discuss-phase complete*
+*Last updated: 2026-04-17 — Phase 3 awaiting human verification*
