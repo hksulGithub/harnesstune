@@ -159,7 +159,7 @@ Plans:
 
 Plans:
 - [x] 04-01-PLAN.md — Pseudoterminal class, stream-JSON parser, output formatter
-- [ ] 04-02-PLAN.md — TerminalManager, extension wiring, openTerminal command, human verification
+- [~] 04-02-PLAN.md — TerminalManager, extension wiring, openTerminal command, human verification (Task 1 done, awaiting human verification)
 
 ---
 
@@ -212,7 +212,7 @@ Plans:
 | 1. Foundation — Extension Scaffold, Registry, Sidebar | 3/3 | Complete | 2026-04-16 |
 | 2. Claude Code Adapter + Dashboard | 4/4 | Complete | 2026-04-16 |
 | 3. Agent Schematic (Live Topology) | 3/3 | Complete | 2026-04-18 |
-| 4. Chat Interface + Terminal | 0/2 | Not started | - |
+| 4. Chat Interface + Terminal | 1/2 | Awaiting verification | - |
 | 5. Workspace Scaffolding + OpenClaw Adapter | 0/? | Not started | - |
 
 ---
