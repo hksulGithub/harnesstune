@@ -10,6 +10,7 @@ import { ClaudeCodeHookAdapter } from './adapters';
 import { AgentEventStore } from './database';
 import { AgentControlManager } from './controls';
 import { NotificationService } from './notifications';
+import { TerminalManager } from './terminal';
 import type { AgentEvent } from './types';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -169,22 +170,32 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // ── Phase 2: Notifications ───────────────────────────────────────────────────
   const notificationService = new NotificationService(registry);
 
+  // Track all session IDs seen during this activation (including stopped ones)
+  // so the schematic only shows sessions from this VS Code session, not old DB cruft
+  const seenSessionIds = new Set<string>();
+
   // ── Phase 2: Event Pipeline ──────────────────────────────────────────────────
   // When adapter receives a hook event: store it, notify, and push to dashboard
   const onAdapterEvent = adapter.onDidReceiveEvent((event: AgentEvent) => {
+    seenSessionIds.add(event.sessionId);
+
     // 1. Persist event
     eventStore.insertEvent(event);
 
     // 2. Session lifecycle management
-    if (event.eventType === 'SessionStart') {
-      controlManager.registerSession(event.sessionId, event.workspaceId, event.model);
-      if (event.raw && typeof event.raw === 'object' && 'pid' in event.raw) {
-        const pid = (event.raw as { pid?: number }).pid;
-        if (pid && pid > 0) {
-          controlManager.updateSessionPid(event.sessionId, pid);
+    // Claude Code does NOT fire SessionStart hooks — auto-register on first-seen event
+    if (!controlManager.getSession(event.sessionId)) {
+      if (event.eventType !== 'SessionEnd' && event.eventType !== 'Stop') {
+        controlManager.registerSession(event.sessionId, event.workspaceId, event.model);
+        if (event.raw && typeof event.raw === 'object' && 'pid' in event.raw) {
+          const pid = (event.raw as { pid?: number }).pid;
+          if (pid && pid > 0) {
+            controlManager.updateSessionPid(event.sessionId, pid);
+          }
         }
       }
-    } else if (event.eventType === 'SessionEnd' || event.eventType === 'Stop') {
+    }
+    if (event.eventType === 'SessionEnd' || event.eventType === 'Stop') {
       controlManager.unregisterSession(event.sessionId);
     }
 
@@ -205,7 +216,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       for (const ws of registry.getAll()) {
         allHierarchyEvents.push(...eventStore.getHierarchyEvents(ws.id));
       }
-      const topology = buildTopology(allHierarchyEvents);
+      const topology = buildTopology(allHierarchyEvents, undefined, seenSessionIds);
       SchematicPanel.currentPanel.postMessage({
         type: 'schematic:topologyUpdate',
         state: topology,
@@ -229,7 +240,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       for (const ws of registry.getAll()) {
         allHierarchyEvents.push(...eventStore.getHierarchyEvents(ws.id));
       }
-      const topology = buildTopology(allHierarchyEvents);
+      const topology = buildTopology(allHierarchyEvents, undefined, seenSessionIds);
       SchematicPanel.currentPanel.postMessage({
         type: 'schematic:topologyUpdate',
         state: topology,
@@ -357,7 +368,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           for (const wsId of workspaces) {
             allHierarchyEvents.push(...eventStore.getHierarchyEvents(wsId));
           }
-          const topology = buildTopology(allHierarchyEvents, msg.workspaceId ?? undefined);
+          const topology = buildTopology(allHierarchyEvents, msg.workspaceId ?? undefined, seenSessionIds);
           panel.postMessage({ type: 'schematic:topologyUpdate', state: topology });
 
           // Also send workspace list for the workspace selector
@@ -461,6 +472,95 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
 
   context.subscriptions.push(pauseCmd, resumeCmd, stopCmd);
+
+  // ── Phase 4: Terminal Manager ──────────────────────────────────────────────
+  const terminalManager = new TerminalManager((event: AgentEvent) => {
+    // Feed terminal stream-JSON events into the same pipeline as hook events
+    seenSessionIds.add(event.sessionId);
+
+    // 1. Persist
+    eventStore.insertEvent(event);
+
+    // 2. Session lifecycle
+    if (!controlManager.getSession(event.sessionId)) {
+      if (event.eventType !== 'SessionEnd' && event.eventType !== 'Stop') {
+        controlManager.registerSession(event.sessionId, event.workspaceId, event.model);
+      }
+    }
+    if (event.eventType === 'SessionEnd' || event.eventType === 'Stop') {
+      controlManager.unregisterSession(event.sessionId);
+    }
+
+    // 3. Notifications
+    notificationService.handleEvent(event);
+
+    // 4. Push to dashboard
+    if (DashboardPanel.currentPanel) {
+      DashboardPanel.currentPanel.postMessage({
+        type: 'dashboard:agentEvents',
+        events: [event],
+      });
+    }
+
+    // 5. Push to schematic
+    if (SchematicPanel.currentPanel) {
+      const allHierarchyEvents: AgentEvent[] = [];
+      for (const ws of registry.getAll()) {
+        allHierarchyEvents.push(...eventStore.getHierarchyEvents(ws.id));
+      }
+      const topology = buildTopology(allHierarchyEvents, undefined, seenSessionIds);
+      SchematicPanel.currentPanel.postMessage({
+        type: 'schematic:topologyUpdate',
+        state: topology,
+      });
+    }
+  });
+  context.subscriptions.push(terminalManager);
+
+  const openTerminalCmd = vscode.commands.registerCommand(
+    'harnesstune.openTerminal',
+    async (workspaceId?: string) => {
+      let ws: WorkspaceRecord | undefined;
+
+      if (workspaceId) {
+        ws = registry.getById(workspaceId);
+      } else {
+        // Prompt user to pick a workspace
+        const workspaces = registry.getAll();
+        if (workspaces.length === 0) {
+          vscode.window.showInformationMessage('HarnessTune: No workspaces connected. Connect a workspace first.');
+          return;
+        }
+        if (workspaces.length === 1) {
+          ws = workspaces[0];
+        } else {
+          const items = workspaces.map(w => ({
+            label: w.name,
+            description: w.rootPath,
+            id: w.id,
+          }));
+          const selected = await vscode.window.showQuickPick(items, {
+            placeHolder: 'Select workspace to open terminal for',
+          });
+          if (!selected) { return; }
+          ws = registry.getById(selected.id);
+        }
+      }
+
+      if (!ws) {
+        vscode.window.showWarningMessage('HarnessTune: Workspace not found');
+        return;
+      }
+
+      const config = vscode.workspace.getConfiguration('harnesstune');
+      const skipPermissions = config.get<boolean>('dangerouslySkipPermissions', false);
+
+      terminalManager.openTerminal(ws.id, ws.name, ws.rootPath, {
+        dangerouslySkipPermissions: skipPermissions,
+      });
+    }
+  );
+  context.subscriptions.push(openTerminalCmd);
 
   // ── Phase 2: Auto-connect existing workspaces ─────────────────────────────────
   for (const workspace of registry.getAll()) {

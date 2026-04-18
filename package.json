@@ -58,8 +58,24 @@
         "command": "harnesstune.showSchematic",
         "title": "Show Agent Schematic",
         "category": "HarnessTune"
+      },
+      {
+        "command": "harnesstune.openTerminal",
+        "title": "Open Terminal",
+        "category": "HarnessTune"
       }
     ],
+    "configuration": {
+      "title": "HarnessTune",
+      "properties": {
+        "harnesstune.dangerouslySkipPermissions": {
+          "type": "boolean",
+          "default": false,
+          "description": "Pass --dangerously-skip-permissions to Claude Code terminal sessions. Skips all permission prompts.",
+          "scope": "resource"
+        }
+      }
+    },
     "webviewPanelSerializer": [
       {
         "viewType": "harnesstune.dashboard"
