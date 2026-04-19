@@ -78,6 +78,21 @@
         "command": "harnesstune.interruptChat",
         "title": "Interrupt Chat Session",
         "category": "HarnessTune"
+      },
+      {
+        "command": "harnesstune.addRemoteWorkspace",
+        "title": "Add Remote Workspace",
+        "category": "HarnessTune"
+      },
+      {
+        "command": "harnesstune.messageAgent",
+        "title": "Message Agent",
+        "category": "HarnessTune"
+      },
+      {
+        "command": "harnesstune.configureRemoteWorkspace",
+        "title": "Configure Remote Workspace",
+        "category": "HarnessTune"
       }
     ],
     "keybindings": [

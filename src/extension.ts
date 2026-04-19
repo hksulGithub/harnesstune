@@ -7,14 +7,15 @@ import { SidebarViewProvider, DashboardPanel, SchematicPanel, ChatPanel, ChatMan
 import { buildTopology } from './topology';
 import { StatusBarManager } from './statusbar';
 import { WorkspaceRecord } from './types';
-import { ClaudeCodeHookAdapter, AdapterRegistry, OpenClawAdapter } from './adapters';
+import type { WorkspaceStatus, AgentEvent } from './types';
+import { ClaudeCodeHookAdapter, AdapterRegistry, OpenClawAdapter, RemoteAdapter } from './adapters';
 import type { WorkspaceConnectionConfig, AgentBackendAdapter, BackendType } from './adapters';
+import { RelayClient } from './relay';
 import { AgentEventStore } from './database';
 import { AgentControlManager } from './controls';
 import { NotificationService } from './notifications';
 import { ScaffoldService } from './scaffold';
 // TerminalManager replaced by ChatManager (webview-based chat panels)
-import type { AgentEvent } from './types';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   console.log('HarnessTune extension activating...');
@@ -103,6 +104,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
 
       try {
+        // Clean up relay token for remote workspaces
+        const wsToRemove = registry.getById(selected.id);
+        if (wsToRemove?.mode === 'remote') {
+          await secretStore.deleteRelayToken(selected.id);
+        }
+
+        // Disconnect active adapter if running
+        const activeAdapter = activeAdapters.get(selected.id);
+        if (activeAdapter) {
+          await activeAdapter.disconnect(selected.id);
+          activeAdapter.dispose();
+          activeAdapters.delete(selected.id);
+        }
+
         watcherManager.unwatchWorkspace(selected.id);
         await registry.remove(selected.id);
         vscode.window.showInformationMessage(`HarnessTune: Removed workspace "${selected.label}"`);
@@ -219,6 +234,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const ws = registry.getById(workspaceId);
       if (!ws) {
         vscode.window.showWarningMessage(`HarnessTune: Workspace not found`);
+        return;
+      }
+
+      // Remote workspaces don't have a chat panel yet — deferred to Phase 10
+      if (ws.mode === 'remote') {
+        vscode.window.showInformationMessage(`Remote workspace "${ws.name}" — Report timeline coming in Phase 10.`);
         return;
       }
 
@@ -342,6 +363,47 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Per-workspace adapter connect function — idempotent, routes by backendType
   async function connectWorkspace(workspace: WorkspaceRecord): Promise<void> {
     if (activeAdapters.has(workspace.id)) { return; } // idempotent
+
+    if (workspace.mode === 'remote') {
+      // Remote workspace — create RemoteAdapter directly
+      const token = await secretStore.getRelayToken(workspace.id);
+      if (!token) {
+        console.error(`HarnessTune: No relay token found for remote workspace "${workspace.name}"`);
+        await registry.update(workspace.id, { status: 'auth_error' as WorkspaceStatus });
+        return;
+      }
+      try {
+        const adapter = new RemoteAdapter(
+          workspace.relayUrl!,
+          token,
+          workspace.channelId!,
+          workspace.pollInterval ?? 30_000,
+          workspace.lastCursor,
+        );
+        const sub = adapter.onDidReceiveEvent(handleEvent);
+        context.subscriptions.push(sub);
+
+        // Wire status changes to registry updates
+        const statusSub = adapter.onStatusChange(async ({ status, lastHeartbeatAt: _lh }) => {
+          const wsStatus = status as WorkspaceStatus;
+          await registry.update(workspace.id, { status: wsStatus });
+          // Persist cursor on each poll cycle
+          const cursor = adapter.getCursor();
+          if (cursor) {
+            await registry.update(workspace.id, { lastCursor: cursor });
+          }
+        });
+        context.subscriptions.push(statusSub);
+
+        await adapter.connect(workspace.id, workspace.rootPath);
+        activeAdapters.set(workspace.id, adapter);
+        context.subscriptions.push(adapter);
+      } catch (err) {
+        console.error(`HarnessTune: Failed to connect remote workspace "${workspace.name}":`, err);
+      }
+      return;
+    }
+
     const config: WorkspaceConnectionConfig = {
       backendType: workspace.backendType ?? 'claude-code',
       host: workspace.connectionConfig?.host ?? 'localhost',
@@ -742,6 +804,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
       if (!workspace) { return; }
 
+      // Delegate to remote configure flow for remote workspaces
+      if (workspace.mode === 'remote') {
+        await vscode.commands.executeCommand('harnesstune.configureRemoteWorkspace', workspace.id);
+        return;
+      }
+
       // Step 2: Pick new backend type
       const backendTypes: Array<{ label: string; description: string; value: BackendType }> = [
         { label: 'Claude Code', description: 'Interactive Claude Code agent via hooks', value: 'claude-code' },
@@ -797,6 +865,165 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   );
   context.subscriptions.push(configureCmd);
+
+  // ── Phase 9: Add Remote Workspace command ────────────────────────────────────
+  const addRemoteCmd = vscode.commands.registerCommand('harnesstune.addRemoteWorkspace', async () => {
+    // Step 1: Relay URL
+    const relayUrl = await vscode.window.showInputBox({
+      title: 'Add Remote Workspace (1/2)',
+      prompt: 'Enter the relay URL (e.g., https://harnesstune-relay.vercel.app/api)',
+      placeHolder: 'https://harnesstune-relay.vercel.app/api',
+      validateInput: (value) => {
+        try {
+          const url = new URL(value);
+          if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+            return 'URL must use http or https protocol';
+          }
+          return undefined;
+        } catch {
+          return 'Enter a valid URL';
+        }
+      },
+    });
+    if (!relayUrl) { return; } // user cancelled
+
+    // Normalize: append /api if not already ending with /api
+    const normalizedUrl = relayUrl.endsWith('/api') ? relayUrl : relayUrl.replace(/\/+$/, '') + '/api';
+
+    // Step 2: Agent token (password mode)
+    const token = await vscode.window.showInputBox({
+      title: 'Add Remote Workspace (2/2)',
+      prompt: 'Enter the agent Bearer token',
+      password: true,
+      validateInput: (value) => value.trim().length === 0 ? 'Token cannot be empty' : undefined,
+    });
+    if (!token) { return; } // user cancelled
+
+    // Step 3: Auto health-check + auto-discover channelId + save
+    let channelId: string;
+    try {
+      const tempClient = new RelayClient({ relayUrl: normalizedUrl, token: token.trim(), channelId: '' });
+      await tempClient.checkHealth();
+      channelId = await tempClient.discoverChannelId();
+    } catch (err) {
+      const retry = await vscode.window.showErrorMessage(
+        `Could not connect to relay: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        'Retry', 'Cancel'
+      );
+      if (retry === 'Retry') {
+        await vscode.commands.executeCommand('harnesstune.addRemoteWorkspace');
+      }
+      return;
+    }
+
+    // Auto-name from channel metadata or relay hostname
+    let workspaceName: string;
+    try {
+      const client = new RelayClient({ relayUrl: normalizedUrl, token: token.trim(), channelId });
+      const channel = await client.getChannel();
+      workspaceName = channel.name ?? new URL(normalizedUrl).hostname;
+    } catch {
+      workspaceName = new URL(normalizedUrl).hostname;
+    }
+
+    // Save to registry
+    const record = await registry.add(workspaceName, 'remote://' + channelId, 'remote', {
+      mode: 'remote',
+      relayUrl: normalizedUrl,
+      channelId,
+    });
+
+    // Store token in SecretStore
+    await secretStore.setRelayToken(record.id, token.trim());
+
+    // Connect the workspace (starts polling)
+    await connectWorkspace(record);
+
+    vscode.window.showInformationMessage(`Remote workspace "${workspaceName}" added successfully.`);
+  });
+  context.subscriptions.push(addRemoteCmd);
+
+  // ── Phase 9: Message Agent command ───────────────────────────────────────────
+  const messageAgentCmd = vscode.commands.registerCommand('harnesstune.messageAgent', async (workspaceId?: string) => {
+    if (!workspaceId) { return; }
+    const workspace = registry.getById(workspaceId);
+    if (!workspace || workspace.mode !== 'remote') { return; }
+
+    const text = await vscode.window.showInputBox({
+      title: `Message Agent: ${workspace.name}`,
+      prompt: 'Enter message to send to the agent',
+      placeHolder: 'Type your message...',
+    });
+    if (!text) { return; }
+
+    const adapter = activeAdapters.get(workspaceId);
+    if (adapter && adapter instanceof RemoteAdapter) {
+      const client = adapter.getClient();
+      if (client) {
+        try {
+          await client.postMessage(text);
+          vscode.window.showInformationMessage(`Message sent to ${workspace.name}.`);
+        } catch (err) {
+          vscode.window.showErrorMessage(`Failed to send message: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        }
+      }
+    }
+  });
+  context.subscriptions.push(messageAgentCmd);
+
+  // ── Phase 9: Configure Remote Workspace command ───────────────────────────────
+  const configureRemoteCmd = vscode.commands.registerCommand('harnesstune.configureRemoteWorkspace', async (workspaceId?: string) => {
+    if (!workspaceId) { return; }
+    const workspace = registry.getById(workspaceId);
+    if (!workspace || workspace.mode !== 'remote') { return; }
+
+    const choice = await vscode.window.showQuickPick(
+      ['Update Relay URL', 'Update Poll Interval', 'Re-enter Token', 'Rename'],
+      { title: `Configure: ${workspace.name}` }
+    );
+    if (!choice) { return; }
+
+    switch (choice) {
+      case 'Update Relay URL': {
+        const url = await vscode.window.showInputBox({ value: workspace.relayUrl, prompt: 'Relay URL' });
+        if (url) { await registry.update(workspaceId, { relayUrl: url }); }
+        break;
+      }
+      case 'Update Poll Interval': {
+        const interval = await vscode.window.showInputBox({
+          value: String((workspace.pollInterval ?? 30000) / 1000),
+          prompt: 'Poll interval in seconds (15-300)',
+        });
+        if (interval) {
+          const ms = Math.max(15, Math.min(300, parseInt(interval, 10))) * 1000;
+          await registry.update(workspaceId, { pollInterval: ms });
+        }
+        break;
+      }
+      case 'Re-enter Token': {
+        const newToken = await vscode.window.showInputBox({ password: true, prompt: 'New Bearer token' });
+        if (newToken) {
+          await secretStore.setRelayToken(workspaceId, newToken.trim());
+          // Reconnect with new token
+          const existingAdapter = activeAdapters.get(workspaceId);
+          if (existingAdapter) {
+            await existingAdapter.disconnect(workspaceId);
+            existingAdapter.dispose();
+            activeAdapters.delete(workspaceId);
+          }
+          const updated = registry.getById(workspaceId);
+          if (updated) { await connectWorkspace(updated); }
+        }
+        break;
+      }
+      case 'Rename': {
+        const newName = await vscode.window.showInputBox({ value: workspace.name, prompt: 'Workspace name' });
+        if (newName) { await registry.update(workspaceId, { name: newName }); }
+        break;
+      }
+    }
+  });
+  context.subscriptions.push(configureRemoteCmd);
 
   // ── Phase 5: Auto-connect existing workspaces via AdapterRegistry ─────────────
   for (const workspace of registry.getAll()) {

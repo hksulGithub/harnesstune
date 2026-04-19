@@ -56,7 +56,7 @@ export interface IWorkspaceRegistry {
   getById(id: string): WorkspaceRecord | undefined;
   add(name: string, rootPath: string, backendType?: BackendType, options?: { mode?: WorkspaceMode; relayUrl?: string; channelId?: string; pollInterval?: number }): Promise<WorkspaceRecord>;
   remove(id: string): Promise<void>;
-  update(id: string, changes: Partial<Pick<WorkspaceRecord, 'status' | 'runningAgentCount' | 'errorCount' | 'backendType' | 'mode' | 'relayUrl' | 'pollInterval' | 'lastCursor'>>): Promise<void>;
+  update(id: string, changes: Partial<Pick<WorkspaceRecord, 'name' | 'status' | 'runningAgentCount' | 'errorCount' | 'backendType' | 'mode' | 'relayUrl' | 'pollInterval' | 'lastCursor'>>): Promise<void>;
   onDidChange: import('vscode').Event<WorkspaceRecord[]>;
 }
 

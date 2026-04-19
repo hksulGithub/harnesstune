@@ -143,7 +143,7 @@ export class WorkspaceRegistry implements IWorkspaceRegistry {
    */
   public async update(
     id: string,
-    changes: Partial<Pick<WorkspaceRecord, 'status' | 'runningAgentCount' | 'errorCount' | 'backendType' | 'mode' | 'relayUrl' | 'pollInterval' | 'lastCursor'>>
+    changes: Partial<Pick<WorkspaceRecord, 'name' | 'status' | 'runningAgentCount' | 'errorCount' | 'backendType' | 'mode' | 'relayUrl' | 'pollInterval' | 'lastCursor'>>
   ): Promise<void> {
     const record = this.workspaces.find(ws => ws.id === id);
     if (!record) {

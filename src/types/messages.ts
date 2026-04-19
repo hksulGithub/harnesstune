@@ -41,6 +41,7 @@ export type WebviewToHostMessage =
   | { type: 'chat:sendMessage'; text: string }
   | { type: 'chat:interrupt' }
   | { type: 'chat:requestHistory' }
+  | { type: 'workspace:configure'; workspaceId: string }
   | { type: 'workspace:addRemote'; relayUrl: string; token: string }
   | { type: 'reports:request'; workspaceId: string; since?: string }
   | { type: 'reports:sendMessage'; workspaceId: string; text: string }
