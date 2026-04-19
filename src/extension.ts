@@ -6,7 +6,8 @@ import { SidebarViewProvider, DashboardPanel, SchematicPanel } from './panels';
 import { buildTopology } from './topology';
 import { StatusBarManager } from './statusbar';
 import { WorkspaceRecord } from './types';
-import { ClaudeCodeHookAdapter } from './adapters';
+import { ClaudeCodeHookAdapter, AdapterRegistry } from './adapters';
+import type { WorkspaceConnectionConfig, AgentBackendAdapter } from './adapters';
 import { AgentEventStore } from './database';
 import { AgentControlManager } from './controls';
 import { NotificationService } from './notifications';
@@ -153,9 +154,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Expose services for use by later phases
   void secretStore; // referenced here so TypeScript doesn't warn; used in Phase 2+
 
-  // ── Phase 2: Hook Server + Adapter ──────────────────────────────────────────
-  // ClaudeCodeHookAdapter creates and manages its own HookServer internally
-  const adapter = new ClaudeCodeHookAdapter(context.globalStorageUri);
+  // ── Phase 5: Adapter Registry + per-workspace adapters ─────────────────────
+  const adapterRegistry = new AdapterRegistry();
+  const claudeCodeAdapter = new ClaudeCodeHookAdapter(context.globalStorageUri);
+  adapterRegistry.register('claude-code', { createAdapter: () => claudeCodeAdapter });
+  // OpenClaw factory registered in Plan 03; placeholder until then:
+  // adapterRegistry.register('openclaw', { createAdapter: () => new OpenClawAdapter() });
+
+  const activeAdapters = new Map<string, AgentBackendAdapter>();
 
   // ── Phase 2: Database ────────────────────────────────────────────────────────
   const eventStore = new AgentEventStore(context.globalStorageUri);
@@ -165,7 +171,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const controlManager = new AgentControlManager();
 
   // Wire pause checker into hook server for PreToolUse gate (via adapter delegation)
-  adapter.setPauseChecker((sessionId: string) => controlManager.isPaused(sessionId));
+  claudeCodeAdapter.setPauseChecker((sessionId: string) => controlManager.isPaused(sessionId));
 
   // ── Phase 2: Notifications ───────────────────────────────────────────────────
   const notificationService = new NotificationService(registry);
@@ -175,8 +181,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const seenSessionIds = new Set<string>();
 
   // ── Phase 2: Event Pipeline ──────────────────────────────────────────────────
-  // When adapter receives a hook event: store it, notify, and push to dashboard
-  const onAdapterEvent = adapter.onDidReceiveEvent((event: AgentEvent) => {
+  // Shared event handler used by both claudeCodeAdapter and connectWorkspace() per-workspace adapters
+  function handleEvent(event: AgentEvent): void {
     seenSessionIds.add(event.sessionId);
 
     // 1. Persist event
@@ -222,8 +228,31 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         state: topology,
       });
     }
-  });
+  }
+
+  // Wire the Claude Code adapter to the shared event handler
+  const onAdapterEvent = claudeCodeAdapter.onDidReceiveEvent(handleEvent);
   context.subscriptions.push(onAdapterEvent);
+
+  // Per-workspace adapter connect function — idempotent, routes by backendType
+  async function connectWorkspace(workspace: WorkspaceRecord): Promise<void> {
+    if (activeAdapters.has(workspace.id)) { return; } // idempotent
+    const config: WorkspaceConnectionConfig = {
+      backendType: workspace.backendType ?? 'claude-code',
+      host: workspace.connectionConfig?.host ?? 'localhost',
+      port: workspace.connectionConfig?.port,
+    };
+    try {
+      const adapter = adapterRegistry.create(config);
+      const sub = adapter.onDidReceiveEvent(handleEvent);
+      context.subscriptions.push(sub);
+      await adapter.connect(workspace.id, workspace.rootPath);
+      activeAdapters.set(workspace.id, adapter);
+      context.subscriptions.push(adapter);
+    } catch (err) {
+      console.error(`HarnessTune: Failed to connect workspace "${workspace.name}":`, err);
+    }
+  }
 
   // Push session state changes to dashboard and schematic
   const onSessionChange = controlManager.onDidChangeSession((session) => {
@@ -254,7 +283,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push({ dispose: () => clearInterval(flushInterval) });
 
   // Push all Phase 2 services to subscriptions for proper disposal
-  context.subscriptions.push(eventStore, adapter, controlManager, notificationService);
+  context.subscriptions.push(eventStore, claudeCodeAdapter, controlManager, notificationService);
 
   // ── Phase 2: Dashboard Command (real implementation) ─────────────────────────
   const dashboardCmd = vscode.commands.registerCommand(
@@ -562,18 +591,26 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
   context.subscriptions.push(openTerminalCmd);
 
-  // ── Phase 2: Auto-connect existing workspaces ─────────────────────────────────
+  // ── Phase 5: Configure Workspace stub (full implementation in Plan 02/03) ─────
+  const configureCmd = vscode.commands.registerCommand(
+    'harnesstune.configureWorkspace',
+    async () => {
+      vscode.window.showInformationMessage('HarnessTune: Configure Workspace — coming in Plan 02/03');
+    }
+  );
+  context.subscriptions.push(configureCmd);
+
+  // ── Phase 5: Auto-connect existing workspaces via AdapterRegistry ─────────────
   for (const workspace of registry.getAll()) {
-    adapter.connect(workspace.id, workspace.rootPath).catch(err => {
+    connectWorkspace(workspace).catch(err => {
       console.error(`HarnessTune: Failed to connect workspace "${workspace.name}":`, err);
     });
   }
 
   // Connect new workspaces as they're added
   const onWorkspaceChange = registry.onDidChange((workspaces) => {
-    // Reconnect logic: adapter.connect is idempotent
     for (const ws of workspaces) {
-      adapter.connect(ws.id, ws.rootPath).catch(() => {});
+      connectWorkspace(ws).catch(() => {});
     }
   });
   context.subscriptions.push(onWorkspaceChange);

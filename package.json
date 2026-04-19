@@ -63,6 +63,16 @@
         "command": "harnesstune.openTerminal",
         "title": "Open Terminal",
         "category": "HarnessTune"
+      },
+      {
+        "command": "harnesstune.createWorkspace",
+        "title": "Create Workspace",
+        "category": "HarnessTune"
+      },
+      {
+        "command": "harnesstune.configureWorkspace",
+        "title": "Configure Workspace",
+        "category": "HarnessTune"
       }
     ],
     "configuration": {
