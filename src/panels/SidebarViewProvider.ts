@@ -39,6 +39,9 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
         case 'workspace:remove':
           this.registry.remove(msg.workspaceId);
           break;
+        case 'workspace:configure':
+          vscode.commands.executeCommand('harnesstune.configureWorkspace', msg.workspaceId);
+          break;
         case 'workspace:connect':
           vscode.commands.executeCommand('harnesstune.connectWorkspace');
           break;

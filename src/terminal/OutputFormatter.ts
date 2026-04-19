@@ -31,7 +31,7 @@ export class OutputFormatter {
       case 'tool_result':
         return OutputFormatter.formatToolResult(event);
       case 'result':
-        return OutputFormatter.formatUsage(event);
+        return '';
       case 'system':
         return OutputFormatter.formatSystem(event);
       case 'error':
@@ -114,7 +114,12 @@ export class OutputFormatter {
   private static formatSystem(
     event: Extract<StreamJsonEvent, { type: 'system' }>,
   ): string {
-    return `${DIM_ITALIC}${event.message}${RESET}\r\n`;
+    // Actual CLI system events may have `message`, `subtype`, or other fields
+    if (event.message) {
+      return `${DIM_ITALIC}${event.message}${RESET}\r\n`;
+    }
+    // Skip system events without a displayable message (hook events, init, etc.)
+    return '';
   }
 
   private static formatError(

@@ -1,19 +1,10 @@
 import React from 'react';
-import { WorkspaceSelector } from './WorkspaceSelector';
-
-interface WorkspaceEntry {
-  id: string;
-  name: string;
-}
 
 interface ToolbarProps {
   scale: number;
   onFitToView: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
-  workspaceFilter: string | null;
-  workspaces: WorkspaceEntry[];
-  onWorkspaceChange: (workspaceId: string | null) => void;
 }
 
 export function Toolbar({
@@ -21,9 +12,6 @@ export function Toolbar({
   onFitToView,
   onZoomIn,
   onZoomOut,
-  workspaceFilter,
-  workspaces,
-  onWorkspaceChange,
 }: ToolbarProps): React.ReactElement {
   const zoomPercent = Math.round(scale * 100);
 
@@ -64,13 +52,7 @@ export function Toolbar({
           −
         </button>
       </div>
-      <div className="toolbar-right">
-        <WorkspaceSelector
-          workspaces={workspaces}
-          value={workspaceFilter}
-          onChange={onWorkspaceChange}
-        />
-      </div>
+      <div className="toolbar-right" />
     </div>
   );
 }

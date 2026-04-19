@@ -52,8 +52,10 @@ export interface StreamJsonUsageEvent {
 
 export interface StreamJsonSystemEvent {
   type: 'system';
-  message: string;
+  subtype?: string;
+  message?: string;
   session_id?: string;
+  [key: string]: unknown;
 }
 
 export interface StreamJsonErrorEvent {

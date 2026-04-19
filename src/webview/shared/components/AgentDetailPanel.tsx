@@ -1,11 +1,12 @@
 import React from 'react';
 import type { AgentSession, AgentEvent } from '../../../types/agent';
-import { ControlButtons } from '../../dashboard/components/ControlButtons';
 
 interface AgentDetailPanelProps {
   session: AgentSession | null;
   events: AgentEvent[];
   showControls?: boolean;  // default true; set false for read-only contexts (e.g., schematic)
+  /** Render prop for control buttons — avoids cross-bundle vscodeApi import */
+  renderControls?: (sessionId: string, controlState: string) => React.ReactNode;
 }
 
 function formatTimestamp(ms: number): string {
@@ -13,7 +14,7 @@ function formatTimestamp(ms: number): string {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
-export function AgentDetailPanel({ session, events, showControls = true }: AgentDetailPanelProps): React.ReactElement {
+export function AgentDetailPanel({ session, events, showControls = true, renderControls }: AgentDetailPanelProps): React.ReactElement {
   if (!session) {
     return (
       <div className="empty-state">
@@ -53,9 +54,7 @@ export function AgentDetailPanel({ session, events, showControls = true }: Agent
           aria-label={`${agentName} is ${session.controlState}`}
         />
         <span className="name">{agentName}</span>
-        {showControls && (
-          <ControlButtons sessionId={session.sessionId} controlState={session.controlState} size="large" />
-        )}
+        {showControls && renderControls && renderControls(session.sessionId, session.controlState)}
       </div>
 
       {/* Info grid */}

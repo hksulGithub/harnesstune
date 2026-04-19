@@ -1,6 +1,7 @@
 import type { WorkspaceRecord, WorkspaceStatus } from './workspace';
 import type { AgentEvent, AgentSession } from './agent';
 import type { TopologyState, TopologyNode } from './topology';
+import type { ChatMessage, SessionState } from '../session';
 
 /** Messages from extension host to webview */
 export type HostToWebviewMessage =
@@ -13,7 +14,12 @@ export type HostToWebviewMessage =
   | { type: 'dashboard:summary'; workspaceId: string; totalAgents: number; running: number; paused: number; errors: number; estimatedCost: number }
   | { type: 'schematic:topologyUpdate'; state: TopologyState }
   | { type: 'schematic:nodeUpdate'; node: TopologyNode }
-  | { type: 'schematic:nodeDetail'; session: AgentSession | null; events: AgentEvent[] };
+  | { type: 'schematic:nodeDetail'; session: AgentSession | null; events: AgentEvent[] }
+  | { type: 'workspace:setActive'; workspaceId: string }
+  | { type: 'chat:message'; message: ChatMessage }
+  | { type: 'chat:stateChange'; state: SessionState }
+  | { type: 'chat:history'; messages: ChatMessage[] }
+  | { type: 'chat:workspaceInfo'; workspaceId: string; workspaceName: string };
 
 /** Messages from webview to extension host */
 export type WebviewToHostMessage =
@@ -27,4 +33,7 @@ export type WebviewToHostMessage =
   | { type: 'agent:stop'; sessionId: string }
   | { type: 'dashboard:requestState'; workspaceId?: string }
   | { type: 'schematic:requestState'; workspaceId?: string }
-  | { type: 'schematic:selectNode'; sessionId: string };
+  | { type: 'schematic:selectNode'; sessionId: string }
+  | { type: 'chat:sendMessage'; text: string }
+  | { type: 'chat:interrupt' }
+  | { type: 'chat:requestHistory' };

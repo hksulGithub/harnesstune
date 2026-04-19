@@ -10,18 +10,33 @@ interface NodeData {
 /**
  * buildTopology converts a list of AgentEvents into a positioned topology graph.
  *
+ * Claude Code does NOT fire SessionStart/SubagentStart hooks. Root session nodes
+ * are inferred from the first event seen for each session_id (typically PreToolUse).
+ *
+ * Parent-child linking: Claude Code hook payloads do NOT include parent_tool_use_id.
+ * Instead, we detect when a session uses tool_name="Agent" (PreToolUse) and link
+ * the next new session_id that appears as its child.
+ *
  * Steps:
- *  A — Build node map from events (SessionStart, SubagentStart, SubagentStop, SessionEnd)
+ *  A — Build node map from events, track pending Agent tool uses for parent linking
  *  B — Build edges from parent-child relationships
  *  C — Compute layout with d3-hierarchy tree layout (nodeSize [160, 80])
  *  D — Return { nodes, edges }
  */
-export function buildTopology(events: AgentEvent[], workspaceFilter?: string): TopologyState {
+export function buildTopology(events: AgentEvent[], workspaceFilter?: string, knownSessionIds?: Set<string>): TopologyState {
   // Step A: Build node map from events
   const nodeMap = new Map<string, TopologyNode>();
-  // Track which tool use IDs belong to which session
-  // (for resolving parentToolUseId -> parentSessionId)
-  const toolUseToSession = new Map<string, string>();
+
+  // Pending Agent tool invocations: when a session fires PreToolUse with
+  // tool_name="Agent", we push { parentSessionId, toolUseId, timestamp } here.
+  // When a new session_id first appears, we pop the oldest pending entry
+  // from the same workspace and set it as the parent.
+  const pendingAgentSpawns: Array<{
+    parentSessionId: string;
+    toolUseId: string;
+    timestamp: number;
+    workspaceId: string;
+  }> = [];
 
   const sorted = [...events].sort((a, b) => a.timestamp - b.timestamp);
 
@@ -29,92 +44,68 @@ export function buildTopology(events: AgentEvent[], workspaceFilter?: string): T
     if (workspaceFilter && event.workspaceId !== workspaceFilter) {
       continue;
     }
+    if (knownSessionIds && !knownSessionIds.has(event.sessionId)) {
+      continue;
+    }
 
     const raw = event.raw as Record<string, unknown> | null ?? {};
 
-    if (event.eventType === 'SessionStart') {
-      // Dedup: skip if node already exists
-      if (nodeMap.has(event.sessionId)) { continue; }
-
-      const node: TopologyNode = {
-        sessionId: event.sessionId,
-        parentSessionId: null,
+    // Track Agent tool spawns: PreToolUse with tool_name="Agent" means
+    // this session is about to spawn a subagent
+    if (event.eventType === 'PreToolUse' && event.toolName === 'Agent') {
+      pendingAgentSpawns.push({
+        parentSessionId: event.sessionId,
+        toolUseId: event.id,
+        timestamp: event.timestamp,
         workspaceId: event.workspaceId,
-        agentRole: (raw['agentRole'] as string | undefined) ?? null,
-        model: event.model ?? null,
-        status: 'running',
-        opacity: 1.0,
-        x: 0,
-        y: 0,
-        startedAt: event.timestamp,
-        stoppedAt: null,
-      };
-      nodeMap.set(event.sessionId, node);
-
-    } else if (event.eventType === 'SubagentStart') {
-      // Dedup: skip if node already exists
-      if (nodeMap.has(event.sessionId)) { continue; }
-
-      // Resolve parentSessionId from parentToolUseId
-      let parentSessionId: string | null = null;
-      if (event.parentToolUseId) {
-        parentSessionId = toolUseToSession.get(event.parentToolUseId) ?? null;
-      }
-
-      // Fallback: use most recently created running node in same workspace
-      if (!parentSessionId) {
-        let latestStart = -1;
-        for (const [sid, n] of nodeMap.entries()) {
-          if (sid !== event.sessionId && n.workspaceId === event.workspaceId && n.status === 'running' && n.startedAt > latestStart) {
-            latestStart = n.startedAt;
-            parentSessionId = sid;
-          }
-        }
-      }
-
-      const node: TopologyNode = {
-        sessionId: event.sessionId,
-        parentSessionId,
-        workspaceId: event.workspaceId,
-        agentRole: (raw['agentRole'] as string | undefined) ?? null,
-        model: event.model ?? null,
-        status: 'running',
-        opacity: 1.0,
-        x: 0,
-        y: 0,
-        startedAt: event.timestamp,
-        stoppedAt: null,
-      };
-      nodeMap.set(event.sessionId, node);
-
-    } else if (event.eventType === 'SubagentStop') {
-      const node = nodeMap.get(event.sessionId);
-      if (node) {
-        node.status = 'stopped';
-        node.opacity = 0.5;
-        node.stoppedAt = event.timestamp;
-      }
-
-    } else if (event.eventType === 'SessionEnd' || event.eventType === 'Stop') {
-      const root = nodeMap.get(event.sessionId);
-      if (root) {
-        // Find all descendants of this root
-        const toStop = findDescendants(event.sessionId, nodeMap);
-        toStop.push(event.sessionId);
-        for (const sid of toStop) {
-          const n = nodeMap.get(sid);
-          if (n) {
-            n.status = 'stopped';
-            n.opacity = 0.5;
-            if (!n.stoppedAt) { n.stoppedAt = event.timestamp; }
-          }
-        }
-      }
+      });
     }
 
-    // Track tool use IDs for parentToolUseId resolution
-    if (event.toolName && event.id) {
-      toolUseToSession.set(event.id, event.sessionId);
+    if (event.eventType === 'SessionEnd' || event.eventType === 'Stop' || event.eventType === 'SubagentStop') {
+      // Skip stop events for sessions we never saw start — avoids stale ghost nodes
+      if (!nodeMap.has(event.sessionId)) {
+        continue;
+      }
+      // Mark this session and all descendants as stopped
+      const toStop = findDescendants(event.sessionId, nodeMap);
+      toStop.push(event.sessionId);
+      for (const sid of toStop) {
+        const n = nodeMap.get(sid);
+        if (n) {
+          n.status = 'stopped';
+          n.opacity = 0.5;
+          if (!n.stoppedAt) { n.stoppedAt = event.timestamp; }
+        }
+      }
+
+    } else {
+      // Any event (PreToolUse, PostToolUse, PostToolUseFailure, SessionStart, etc.)
+      // Auto-create node on first-seen event for this session
+      if (!nodeMap.has(event.sessionId)) {
+        // Try to match this new session to a pending Agent spawn
+        let parentSessionId: string | null = null;
+        const spawnIdx = pendingAgentSpawns.findIndex(
+          s => s.workspaceId === event.workspaceId && s.parentSessionId !== event.sessionId
+        );
+        if (spawnIdx !== -1) {
+          parentSessionId = pendingAgentSpawns[spawnIdx].parentSessionId;
+          pendingAgentSpawns.splice(spawnIdx, 1);
+        }
+
+        nodeMap.set(event.sessionId, {
+          sessionId: event.sessionId,
+          parentSessionId,
+          workspaceId: event.workspaceId,
+          agentRole: (raw['agentRole'] as string | undefined) ?? null,
+          model: event.model ?? null,
+          status: 'running',
+          opacity: 1.0,
+          x: 0,
+          y: 0,
+          startedAt: event.timestamp,
+          stoppedAt: null,
+        });
+      }
     }
   }
 
@@ -167,6 +158,7 @@ export function buildTopology(events: AgentEvent[], workspaceFilter?: string): T
   }
 
   const nodes = [...nodeMap.values()];
+
   return { nodes, edges };
 }
 

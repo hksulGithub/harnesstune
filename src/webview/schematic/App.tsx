@@ -57,8 +57,10 @@ export default function App(): React.ReactElement {
   useEffect(() => {
     function handleMessage(event: MessageEvent): void {
       const msg = event.data as HostToWebviewMessage;
+      console.log('[HT-DEBUG-WEBVIEW] Message received:', msg.type, 'nodes' in msg ? (msg as { state?: TopologyState }).state?.nodes?.length : '');
       switch (msg.type) {
         case 'schematic:topologyUpdate':
+          console.log('[HT-DEBUG-WEBVIEW] topologyUpdate: nodes=', msg.state.nodes.length, 'edges=', msg.state.edges.length);
           setTopologyState(msg.state);
           break;
         case 'schematic:nodeUpdate': {
@@ -79,6 +81,9 @@ export default function App(): React.ReactElement {
           setWorkspaces(ws);
           break;
         }
+        case 'workspace:setActive':
+          setWorkspaceFilter(msg.workspaceId);
+          break;
         default:
           break;
       }
@@ -142,9 +147,6 @@ export default function App(): React.ReactElement {
         onFitToView={handleFitToView}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
-        workspaceFilter={workspaceFilter}
-        workspaces={workspaces}
-        onWorkspaceChange={setWorkspaceFilter}
       />
       <div className="schematic-body">
         <GraphArea

@@ -75,6 +75,12 @@ export class AgentEventStore {
     } catch {
       // Column already exists — ignore
     }
+
+    // Migration: purge events mis-typed as SessionStart due to using wrong payload field
+    // (hook_event_name was the correct field, not event). One-time cleanup.
+    this.db.run(`DELETE FROM agent_events WHERE event_type = 'SessionStart' AND tool_name IS NOT NULL`);
+    // Also purge all remaining SessionStart events from before the fix (they lack correct type info)
+    this.db.run(`DELETE FROM agent_events WHERE event_type = 'SessionStart'`);
   }
 
   insertEvent(event: AgentEvent): void {
@@ -249,13 +255,16 @@ export class AgentEventStore {
   }
 
   getHierarchyEvents(workspaceId: string): AgentEvent[] {
+    // Return ALL event types — Claude Code doesn't fire SessionStart, so topology
+    // builder must infer session existence from first-seen event (PreToolUse, etc.)
+    // Limit to last 2 hours to avoid stale stopped sessions cluttering the schematic.
+    const cutoff = Date.now() - 2 * 60 * 60 * 1000;
     const stmt = this.db.prepare(
       `SELECT * FROM agent_events
-       WHERE workspace_id = ?
-         AND event_type IN ('SessionStart', 'SessionEnd', 'SubagentStart', 'SubagentStop')
+       WHERE workspace_id = ? AND timestamp > ?
        ORDER BY timestamp ASC`
     );
-    stmt.bind([workspaceId]);
+    stmt.bind([workspaceId, cutoff]);
     return this.collectRows(stmt);
   }
 }

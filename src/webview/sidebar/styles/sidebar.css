@@ -101,3 +101,38 @@ body {
 .connect-button:hover {
   background: var(--vscode-button-hoverBackground);
 }
+
+.connect-section {
+  padding: 8px 12px;
+  border-top: 1px solid var(--vscode-sideBar-border, rgba(255,255,255,0.1));
+}
+
+.context-menu {
+  position: fixed;
+  z-index: 1000;
+  background: var(--vscode-menu-background, var(--vscode-dropdown-background));
+  color: var(--vscode-menu-foreground, var(--vscode-dropdown-foreground));
+  border: 1px solid var(--vscode-menu-border, var(--vscode-dropdown-border));
+  border-radius: 4px;
+  padding: 4px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  min-width: 120px;
+}
+
+.context-menu button {
+  display: block;
+  width: 100%;
+  padding: 4px 12px;
+  border: none;
+  background: none;
+  color: inherit;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  text-align: left;
+  cursor: pointer;
+}
+
+.context-menu button:hover {
+  background: var(--vscode-menu-selectionBackground, var(--vscode-list-hoverBackground));
+  color: var(--vscode-menu-selectionForeground, inherit);
+}

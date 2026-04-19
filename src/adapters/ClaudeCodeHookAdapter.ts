@@ -8,9 +8,12 @@ import type { AgentBackendAdapter } from './AgentBackendAdapter';
 import { HookServer } from '../server/HookServer';
 
 interface HarnessHookEntry {
-  type: 'http';
-  url: string;
-  timeout: number;
+  matcher: '';
+  hooks: Array<{
+    type: 'http';
+    url: string;
+    timeout: number;
+  }>;
   _harnesstune: true;
 }
 
@@ -30,7 +33,7 @@ export class ClaudeCodeHookAdapter implements AgentBackendAdapter {
     'SessionStart', 'SessionEnd',
     'SubagentStart', 'SubagentStop',
     'PreToolUse', 'PostToolUse', 'PostToolUseFailure',
-    'Stop', 'StopFailure',
+    'Stop',
   ];
 
   constructor(storageUri: { fsPath: string }) {
@@ -95,9 +98,12 @@ export class ClaudeCodeHookAdapter implements AgentBackendAdapter {
         !(e && typeof e === 'object' && '_harnesstune' in (e as object))
       );
       const newEntry: HarnessHookEntry = {
-        type: 'http',
-        url: hookUrl,
-        timeout: 4,
+        matcher: '',
+        hooks: [{
+          type: 'http',
+          url: hookUrl,
+          timeout: 4,
+        }],
         _harnesstune: true,
       };
       hooks[eventName] = [...filtered, newEntry];
@@ -147,12 +153,17 @@ export class ClaudeCodeHookAdapter implements AgentBackendAdapter {
       };
     }
 
+    // Claude Code subagents share the parent's session_id but carry their own agent_id.
+    // Use agent_id as sessionId when present so topology creates separate nodes per subagent.
+    const agentId = p.agent_id as string | undefined;
+    const sessionId = agentId ?? (p.session_id as string) ?? '';
+
     return {
-      id: crypto.randomUUID(),
+      id: (p.tool_use_id as string | undefined) ?? crypto.randomUUID(),
       workspaceId,
-      sessionId: (p.session_id as string) ?? '',
-      agentId: (p.session_id as string) ?? '',
-      eventType: (p.event as AgentEventType) ?? 'SessionStart',
+      sessionId,
+      agentId: sessionId,
+      eventType: (p.hook_event_name as AgentEventType) ?? (p.event as AgentEventType) ?? 'SessionStart',
       timestamp,
       toolName: p.tool_name as string | undefined,
       toolInput: p.tool_input,

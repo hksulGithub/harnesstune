@@ -67,14 +67,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         return;
       }
       const selectedPath = uris[0].fsPath;
-
-      const name = await vscode.window.showInputBox({
-        prompt: 'Workspace name',
-        placeHolder: 'My Agent Workspace',
-      });
-      if (!name) {
-        return;
-      }
+      const name = path.basename(selectedPath);
 
       try {
         const record = await registry.add(name, selectedPath);
@@ -211,8 +204,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         return;
       }
 
-      // Step 7: Open dashboard
-      DashboardPanel.createOrShow(context.extensionUri);
       vscode.window.showInformationMessage(`HarnessTune: Workspace "${name}" created.`);
     }
   );
@@ -724,25 +715,31 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // ── Phase 5: Configure Workspace — backend type switching ─────────────────
   const configureCmd = vscode.commands.registerCommand(
     'harnesstune.configureWorkspace',
-    async () => {
-      // Step 1: Pick workspace
-      const workspaces = registry.getAll();
-      if (workspaces.length === 0) {
-        vscode.window.showInformationMessage('HarnessTune: No workspaces registered.');
-        return;
+    async (workspaceId?: string) => {
+      let workspace: WorkspaceRecord | undefined;
+
+      if (workspaceId) {
+        workspace = registry.getById(workspaceId);
+      } else {
+        // Step 1: Pick workspace via quickpick
+        const workspaces = registry.getAll();
+        if (workspaces.length === 0) {
+          vscode.window.showInformationMessage('HarnessTune: No workspaces registered.');
+          return;
+        }
+
+        const wsItems = workspaces.map(ws => ({
+          label: ws.name,
+          description: `${ws.backendType} — ${ws.rootPath}`,
+          workspaceId: ws.id,
+        }));
+        const selectedWs = await vscode.window.showQuickPick(wsItems, {
+          placeHolder: 'Select workspace to configure',
+        });
+        if (!selectedWs) { return; }
+
+        workspace = registry.getById(selectedWs.workspaceId);
       }
-
-      const wsItems = workspaces.map(ws => ({
-        label: ws.name,
-        description: `${ws.backendType} — ${ws.rootPath}`,
-        workspaceId: ws.id,
-      }));
-      const selectedWs = await vscode.window.showQuickPick(wsItems, {
-        placeHolder: 'Select workspace to configure',
-      });
-      if (!selectedWs) { return; }
-
-      const workspace = registry.getById(selectedWs.workspaceId);
       if (!workspace) { return; }
 
       // Step 2: Pick new backend type

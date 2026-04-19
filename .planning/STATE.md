@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-last_updated: "2026-04-19T03:48:34.496Z"
+status: Complete
+last_updated: "2026-04-19T12:00:00.000Z"
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 15
-  completed_plans: 14
-  percent: 93
+  completed_plans: 15
+  percent: 100
 ---
 
 # GSD State: HarnessTune
@@ -23,10 +23,10 @@ See: .planning/PROJECT.md (updated 2026-04-16)
 
 ## Current Position
 
-Phase: 05 (workspace-scaffolding-openclaw-adapter) — EXECUTING
-Plan: 3 of 3
-**Last Completed:** Phase 4 — Chat interface with webview panel, interrupt support, layout fixes
-**Next:** Phase 5 (Workspace Scaffolding + OpenClaw Adapter)
+Phase: 05 (workspace-scaffolding-openclaw-adapter) — COMPLETE
+Plan: 3 of 3 (all done)
+**Last Completed:** Phase 5 — Workspace scaffolding, OpenClaw adapter, configure/remove, context menu
+**Next:** Milestone v1.0 complete
 
 ## Progress
 
@@ -42,7 +42,7 @@ Plan: 3 of 3
 | 2 - Claude Code Adapter + Dashboard | Complete | All 4 plans done + human verification passed — hook server, adapter, event store, dashboard, controls, notifications |
 | 3 - Agent Schematic | Complete | 3 plans done + human verification passed |
 | 4 - Chat Interface + Terminal | Complete | 2 plans done — webview chat panel, interrupt, layout fixes |
-| 5 - Scaffolding + OpenClaw | Not Started | Templates, second adapter |
+| 5 - Scaffolding + OpenClaw | Complete | Templates, second adapter, configure/remove workspace, context menu |
 
 ## Decisions
 
@@ -100,4 +100,7 @@ Plan: 3 of 3
 - **2026-04-18**: Phase 4 Plan 02 Task 1 complete (TerminalManager + extension wiring). Human verification checkpoint (Task 2) pending — 9 checkpoints need testing with live extension.
 
 ---
-*Last updated: 2026-04-18 — Phase 4 awaiting human verification*
+- **2026-04-19**: Phase 5 execution complete. All 3 plans executed. Human verification passed: create workspace (scaffold), connect workspace (auto-name), configure workspace (context menu + backend picker), remove workspace (context menu), chat routing (claude-code). Bug fixes during verification: removed auto-open dashboard on create, auto-naming from folder basename, context menu rewrite (was destructive right-click), configureWorkspace accepts optional workspaceId. Milestone v1.0 complete.
+
+---
+*Last updated: 2026-04-19 — Milestone v1.0 complete, all 5 phases done*

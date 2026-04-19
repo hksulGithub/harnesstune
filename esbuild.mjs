@@ -55,12 +55,26 @@ const schematicConfig = {
   define: { 'process.env.NODE_ENV': '"development"' },
 };
 
+// Chat webview bundle (ESM, browser)
+const chatConfig = {
+  entryPoints: ['src/webview/chat/index.tsx'],
+  bundle: true,
+  outfile: 'dist/webview/chat.js',
+  format: 'esm',
+  platform: 'browser',
+  target: 'es2022',
+  sourcemap: true,
+  minify: false,
+  define: { 'process.env.NODE_ENV': '"development"' },
+};
+
 if (isWatch) {
   const extCtx = await esbuild.context(extensionConfig);
   const sidebarCtx = await esbuild.context(sidebarConfig);
   const dashboardCtx = await esbuild.context(dashboardConfig);
   const schematicCtx = await esbuild.context(schematicConfig);
-  await Promise.all([extCtx.watch(), sidebarCtx.watch(), dashboardCtx.watch(), schematicCtx.watch()]);
+  const chatCtx = await esbuild.context(chatConfig);
+  await Promise.all([extCtx.watch(), sidebarCtx.watch(), dashboardCtx.watch(), schematicCtx.watch(), chatCtx.watch()]);
   console.log('[esbuild] Watching for changes...');
 } else {
   await Promise.all([
@@ -68,6 +82,7 @@ if (isWatch) {
     esbuild.build(sidebarConfig),
     esbuild.build(dashboardConfig),
     esbuild.build(schematicConfig),
+    esbuild.build(chatConfig),
   ]);
   console.log('[esbuild] Build complete.');
 

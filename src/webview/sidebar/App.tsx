@@ -52,5 +52,17 @@ export function App() {
     );
   }
 
-  return <WorkspaceList workspaces={workspaces} />;
+  return (
+    <div>
+      <WorkspaceList workspaces={workspaces} />
+      <div className="connect-section">
+        <button
+          className="connect-button"
+          onClick={() => vscode.postMessage({ type: 'workspace:connect', name: '', rootPath: '' })}
+        >
+          + Connect Workspace
+        </button>
+      </div>
+    </div>
+  );
 }

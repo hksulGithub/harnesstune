@@ -27,6 +27,7 @@ function makeRegistry(errorCount = 0, runningAgentCount = 1): IWorkspaceRegistry
     lastUpdatedAt: new Date().toISOString(),
     runningAgentCount,
     errorCount,
+    backendType: 'claude-code' as const,
   };
 
   return {

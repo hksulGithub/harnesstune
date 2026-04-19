@@ -6,6 +6,7 @@ import { WorkspaceTabs } from './components/WorkspaceTabs';
 import { SummaryBar } from './components/SummaryBar';
 import { AgentCard } from './components/AgentCard';
 import { AgentDetailPanel } from './components/AgentDetailPanel';
+import { ControlButtons } from './components/ControlButtons';
 
 interface SummaryData {
   totalAgents: number;
@@ -88,6 +89,10 @@ export default function App(): React.ReactElement {
             });
             return next;
           });
+          break;
+
+        case 'workspace:setActive':
+          setActiveWorkspaceId(msg.workspaceId);
           break;
       }
     }
@@ -175,7 +180,13 @@ export default function App(): React.ReactElement {
             ))
           )}
         </div>
-        <AgentDetailPanel session={selectedSession} events={selectedEvents} />
+        <AgentDetailPanel
+          session={selectedSession}
+          events={selectedEvents}
+          renderControls={(sessionId, controlState) => (
+            <ControlButtons sessionId={sessionId} controlState={controlState} size="large" />
+          )}
+        />
       </div>
     </div>
   );
