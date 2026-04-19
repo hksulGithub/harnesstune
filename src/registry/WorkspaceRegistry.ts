@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { IWorkspaceRegistry, WorkspaceRecord, WorkspaceRegistryData } from '../types/workspace';
+import { IWorkspaceRegistry, WorkspaceRecord, WorkspaceRegistryData, BackendType } from '../types/workspace';
 
 export class WorkspaceRegistry implements IWorkspaceRegistry {
   private readonly registryUri: vscode.Uri;
@@ -22,7 +22,10 @@ export class WorkspaceRegistry implements IWorkspaceRegistry {
       if (data.version !== 1) {
         throw new Error(`Unsupported registry version: ${data.version}`);
       }
-      this.workspaces = data.workspaces;
+      this.workspaces = data.workspaces.map(ws => ({
+        ...ws,
+        backendType: ws.backendType ?? 'claude-code',
+      }));
     } catch (err: unknown) {
       // If file doesn't exist (FileNotFound), initialize with empty state
       if (
@@ -57,7 +60,7 @@ export class WorkspaceRegistry implements IWorkspaceRegistry {
    * Validates that rootPath is an absolute path.
    * Rejects duplicates by rootPath.
    */
-  public async add(name: string, rootPath: string): Promise<WorkspaceRecord> {
+  public async add(name: string, rootPath: string, backendType: BackendType = 'claude-code'): Promise<WorkspaceRecord> {
     // Validate absolute path: starts with '/' (macOS/Linux) or drive letter (Windows)
     const isAbsolute = /^\//.test(rootPath) || /^[a-zA-Z]:\\/.test(rootPath);
     if (!isAbsolute) {
@@ -80,6 +83,7 @@ export class WorkspaceRegistry implements IWorkspaceRegistry {
       lastUpdatedAt: now,
       runningAgentCount: 0,
       errorCount: 0,
+      backendType,
     };
 
     this.workspaces.push(record);
