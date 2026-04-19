@@ -5,3 +5,4 @@
  * as relay and agent packages begin consuming them.
  */
 export const SHARED_VERSION = '0.0.1';
+export * from './reports.js';
