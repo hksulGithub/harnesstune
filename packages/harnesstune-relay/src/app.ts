@@ -3,6 +3,8 @@ import { sanitizeMiddleware } from './middleware/sanitize.js';
 import { authMiddleware, type AuthVariables } from './middleware/auth.js';
 import { versionMiddleware } from './middleware/version.js';
 import { rateLimitMiddleware } from './middleware/rateLimit.js';
+import { publicChannelsRouter, channelsRouter } from './routes/channels.js';
+import { reportsRouter } from './routes/reports.js';
 
 export const RELAY_VERSION = '0.1.0';
 
@@ -11,6 +13,9 @@ const app = new Hono();
 
 // Health check — public, before all middleware
 app.get('/health', (c) => c.json({ status: 'ok', version: RELAY_VERSION }));
+
+// Public channel registration (no auth required — agent has no token yet)
+app.route('/api/channels', publicChannelsRouter);
 
 // Authenticated routes
 const api = new Hono<{ Variables: AuthVariables }>();
@@ -27,8 +32,9 @@ api.use('*', authMiddleware);
 api.use('*', versionMiddleware);
 api.use('*', rateLimitMiddleware);
 
-// Route handlers will be added in Plan 02
-// api.route('/channels', channelsRouter);
+// Route handlers
+api.route('/channels', channelsRouter);
+api.route('/channels/:channelId/reports', reportsRouter);
 
 app.route('/api', api);
 
