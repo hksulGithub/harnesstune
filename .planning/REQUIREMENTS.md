@@ -102,6 +102,7 @@
 - [ ] **RLAY-11**: `X-Agent-Version` header support — reject agents below minimum compatible version
 - [ ] **RLAY-12**: Header sanitization middleware — `Authorization` header never logged as plaintext
 - [ ] **RLAY-13**: One-command Vercel deployment (`vercel deploy` from repo)
+- [ ] **RLAY-14**: Per-token rate limiting — 60 requests/minute per Bearer token; returns `429 Too Many Requests` with `Retry-After` header
 
 ### Agent CLI Sidecar (ACLI)
 
@@ -110,7 +111,7 @@
 - [ ] **ACLI-03**: Structured report upload — reads report JSON from stdin or watched file path, POSTs to relay
 - [ ] **ACLI-04**: Message polling — short-poll relay on configurable interval (default 60s) with exponential backoff on errors
 - [ ] **ACLI-05**: Instruction routing — routes received messages to local agent system (Claude Code via `claude` CLI; stub acceptable for other backends)
-- [ ] **ACLI-06**: Status heartbeat — uploads heartbeat message every N minutes; extension dims workspace if heartbeat is stale
+- [ ] **ACLI-06**: Status heartbeat — uploads heartbeat every 5 minutes; extension marks workspace stale after 15 minutes without heartbeat
 - [ ] **ACLI-07**: Graceful shutdown — SIGTERM/SIGINT/SIGHUP handlers; uploads "disconnected" status before exit
 - [ ] **ACLI-08**: PID file management — prevents orphaned daemon processes; `stop` subcommand for clean shutdown
 - [ ] **ACLI-09**: Config file management — `.harnesstune/config.json` with relay URL, agent ID, token, poll interval
@@ -198,7 +199,7 @@
 | CCAD-01 through CCAD-06 | Phase 2 | Complete |
 | NOTF-01 through NOTF-03 | Phase 2 | Complete |
 | PRWK-01 through PRWK-05 | Phase 6 | Planned |
-| RLAY-01 through RLAY-13 | Phase 7 | Planned |
+| RLAY-01 through RLAY-14 | Phase 7 | Planned |
 | ACLI-01 through ACLI-11 | Phase 8 | Planned |
 | BRFG-01 through BRFG-05 | Phase 8–9 | Planned |
 | RLPH-01 through RLPH-05 | Phase 9–10 | Planned |
@@ -208,7 +209,7 @@
 
 **Coverage:**
 - v1.0 requirements: 40 total (all complete)
-- v2.0 requirements: 56 total
+- v2.0 requirements: 57 total
 - Unmapped: 0 (phase assignments are provisional — roadmap will finalize)
 
 ---

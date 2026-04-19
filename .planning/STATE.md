@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Remote Agent Management
-status: Defining Requirements
-last_updated: "2026-04-19T14:00:00.000Z"
+status: Ready for Phase 6
+last_updated: "2026-04-19T16:00:00.000Z"
 progress:
   total_phases: 0
   completed_phases: 0
@@ -23,10 +23,10 @@ See: .planning/PROJECT.md (updated 2026-04-19)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 6 (Pre-Work — Type Consolidation + Monorepo)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-19 — Milestone v2.0 started
+Status: Requirements and roadmap defined, ready for plan-phase
+Last activity: 2026-04-19 — Requirements (57 REQ-IDs) and roadmap (Phases 6–10) finalized
 
 ## Progress
 
@@ -103,4 +103,6 @@ Last activity: 2026-04-19 — Milestone v2.0 started
 - **2026-04-19**: Phase 5 execution complete. All 3 plans executed. Human verification passed: create workspace (scaffold), connect workspace (auto-name), configure workspace (context menu + backend picker), remove workspace (context menu), chat routing (claude-code). Bug fixes during verification: removed auto-open dashboard on create, auto-naming from folder basename, context menu rewrite (was destructive right-click), configureWorkspace accepts optional workspaceId. Milestone v1.0 complete.
 
 ---
-*Last updated: 2026-04-19 — Milestone v1.0 complete, all 5 phases done*
+- **2026-04-19**: v2.0 milestone initialized. Research complete (4 parallel agents). Requirements defined (57 v2.0 REQ-IDs across 8 categories). Roadmap created (5 phases: 6–10). User feedback incorporated: RLAY-14 (rate limiting), ACLI-06 heartbeat specifics (5-min heartbeat, 15-min stale), Phase 6 package manager lock, Phase 10 research flag downgraded to skip, poll interval reframed as configurable default. Ready for `/gsd-plan-phase 6`.
+
+*Last updated: 2026-04-19 — v2.0 requirements and roadmap defined, ready for Phase 6*
