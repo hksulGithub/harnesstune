@@ -18,7 +18,7 @@ All five phases below constitute Milestone 1. Completion delivers a functional, 
 - [x] **Phase 1: Foundation — Extension Scaffold, Registry, Sidebar** - Extension loads, workspaces can be added/removed, sidebar renders with status indicators
 - [x] **Phase 2: Claude Code Adapter + Dashboard** - First end-to-end data pipeline from Claude Code hooks through to live dashboard display with agent controls
 - [x] **Phase 3: Agent Schematic (Live Topology)** - Interactive D3/React Flow graph showing real-time agent hierarchy reconstructed from hook events
-- [ ] **Phase 4: Chat Interface + Terminal** - Embedded terminal per workspace routing to the configured LLM backend
+- [x] **Phase 4: Chat Interface + Terminal** - Embedded terminal per workspace routing to the configured LLM backend
 - [ ] **Phase 5: Workspace Scaffolding + OpenClaw Adapter** - Template-based workspace creation and a second adapter proving the adapter pattern generalizes
 
 ---
@@ -159,7 +159,7 @@ Plans:
 
 Plans:
 - [x] 04-01-PLAN.md — Pseudoterminal class, stream-JSON parser, output formatter
-- [~] 04-02-PLAN.md — TerminalManager, extension wiring, openTerminal command, human verification (Task 1 done, awaiting human verification)
+- [x] 04-02-PLAN.md — ChatManager, ChatPanel, extension wiring, openTerminal command, interrupt support
 
 ---
 
@@ -188,9 +188,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 01-PLAN-extension-scaffold.md — Extension scaffold, esbuild build, shared type contracts
-- [ ] 02-PLAN-workspace-registry.md — Workspace registry, file watchers, secrets storage
-- [ ] 03-PLAN-sidebar-statusbar.md — React sidebar WebviewView, status badges, status bar
+- [ ] 05-01-PLAN.md — Type contracts, AdapterFactory/Registry, WorkspaceRecord migration, extension.ts refactor
+- [ ] 05-02-PLAN.md — ScaffoldService, bundled templates, createWorkspace command
+- [ ] 05-03-PLAN.md — OpenClawAdapter, OpenClawLogSession, ChatManager routing
 
 ---
 
@@ -212,8 +212,8 @@ Plans:
 | 1. Foundation — Extension Scaffold, Registry, Sidebar | 3/3 | Complete | 2026-04-16 |
 | 2. Claude Code Adapter + Dashboard | 4/4 | Complete | 2026-04-16 |
 | 3. Agent Schematic (Live Topology) | 3/3 | Complete | 2026-04-18 |
-| 4. Chat Interface + Terminal | 1/2 | Awaiting verification | - |
-| 5. Workspace Scaffolding + OpenClaw Adapter | 0/? | Not started | - |
+| 4. Chat Interface + Terminal | 2/2 | Complete | 2026-04-18 |
+| 5. Workspace Scaffolding + OpenClaw Adapter | 0/3 | Not started | - |
 
 ---
 
@@ -289,4 +289,4 @@ These decisions are locked. Plan-phase should not re-litigate them.
 ---
 
 *Roadmap created: 2026-04-16*
-*Last updated: 2026-04-18 — Phase 4 planned*
+*Last updated: 2026-04-19 — Phase 5 planned*
