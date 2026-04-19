@@ -280,8 +280,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — Type consolidation (BackendType canonical + mode discriminant + registry v2 migration)
-- [ ] 06-02-PLAN.md — Monorepo structure (pnpm workspaces + TS project references + package scaffolds)
+- [x] 06-01-PLAN.md — Type consolidation (BackendType canonical + mode discriminant + registry v2 migration)
+- [x] 06-02-PLAN.md — Monorepo structure (pnpm workspaces + TS project references + package scaffolds)
 
 ---
 
