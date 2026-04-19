@@ -109,19 +109,19 @@
 - [ ] **ACLI-01**: `npx harnesstune-agent` zero-install entry point — Node.js 20+ as only prerequisite
 - [ ] **ACLI-02**: Interactive registration flow — prompts for relay URL, registers with relay, stores token in `.harnesstune/config.json`
 - [ ] **ACLI-03**: Structured report upload — reads report JSON from stdin or watched file path, POSTs to relay
-- [ ] **ACLI-04**: Message polling — short-poll relay on configurable interval (default 60s) with exponential backoff on errors
-- [ ] **ACLI-05**: Instruction routing — routes received messages to local agent system (Claude Code via `claude` CLI; stub acceptable for other backends)
-- [ ] **ACLI-06**: Status heartbeat — uploads heartbeat every 5 minutes; extension marks workspace stale after 15 minutes without heartbeat
-- [ ] **ACLI-07**: Graceful shutdown — SIGTERM/SIGINT/SIGHUP handlers; uploads "disconnected" status before exit
+- [x] **ACLI-04**: Message polling — short-poll relay on configurable interval (default 60s) with exponential backoff on errors
+- [x] **ACLI-05**: Instruction routing — routes received messages to local agent system (Claude Code via `claude` CLI; stub acceptable for other backends)
+- [x] **ACLI-06**: Status heartbeat — uploads heartbeat every 5 minutes; extension marks workspace stale after 15 minutes without heartbeat
+- [x] **ACLI-07**: Graceful shutdown — SIGTERM/SIGINT/SIGHUP handlers; uploads "disconnected" status before exit
 - [ ] **ACLI-08**: PID file management — prevents orphaned daemon processes; `stop` subcommand for clean shutdown
 - [ ] **ACLI-09**: Config file management — `.harnesstune/config.json` with relay URL, agent ID, token, poll interval
 - [ ] **ACLI-10**: `--dry-run` flag — validates setup without uploading data to relay
-- [ ] **ACLI-11**: Bounded local retry queue — caps at 48 reports, disk-persisted, retries on relay recovery
+- [x] **ACLI-11**: Bounded local retry queue — caps at 48 reports, disk-persisted, retries on relay recovery
 
 ### Daily Briefing Reports (BRFG)
 
 - [ ] **BRFG-01**: Structured briefing format — goals, current progress, blockers, next steps, metrics snapshot fields
-- [ ] **BRFG-02**: Configurable report schedule — cron expression or simple interval in CLI config (default: daily)
+- [x] **BRFG-02**: Configurable report schedule — cron expression or simple interval in CLI config (default: daily)
 - [ ] **BRFG-03**: Each report has ISO 8601 timestamp and UUID report ID for ordering and deduplication
 - [ ] **BRFG-04**: Metrics snapshot includes tokens used, tasks completed, and errors encountered (numeric, graphable)
 - [ ] **BRFG-05**: Reports render in extension as a chronological timeline per workspace (see TMLN category)

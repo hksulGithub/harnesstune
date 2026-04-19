@@ -292,7 +292,7 @@ Plans:
 
 **Depends on:** Phase 7 (relay live and callable)
 
-**Requirements:** ACLI-01, ACLI-02, ACLI-03, ACLI-04, ACLI-05, ACLI-06, ACLI-07, ACLI-08, ACLI-09, ACLI-10, ACLI-11, BRFG-01, BRFG-02, BRFG-03, BRFG-04, BRFG-05
+**Requirements:** ACLI-01, ACLI-02, ACLI-03, ACLI-04, ACLI-05, ACLI-06, ACLI-07, ACLI-08, ACLI-09, ACLI-10, ACLI-11, BRFG-01, BRFG-02, BRFG-03, BRFG-04
 
 **Key Deliverables:**
 - `packages/harnesstune-agent` npm package; `bin` entry point for `npx harnesstune-agent`; Node.js 20+ as only prerequisite
@@ -320,9 +320,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — Shared report types, agent config module, HTTP client
-- [ ] 08-02-PLAN.md — CLI entry point, register, stop, report commands
-- [ ] 08-03-PLAN.md — Start command (sidecar loop, heartbeat, polling, retry queue)
+- [x] 08-01-PLAN.md — Shared report types, agent config module, HTTP client
+- [x] 08-02-PLAN.md — CLI entry point, register, stop, report commands
+- [x] 08-03-PLAN.md — Start command (sidecar loop, heartbeat, polling, retry queue)
 ---
 
 ### Phase 9: Extension Types + RemoteAdapter + Remote Workspace Management
@@ -493,7 +493,7 @@ Plans:
 | BRFG-02 | Phase 8 | Planned |
 | BRFG-03 | Phase 8 | Planned |
 | BRFG-04 | Phase 8 | Planned |
-| BRFG-05 | Phase 8 | Planned |
+| BRFG-05 | Phase 10 | Planned |
 | RLPH-01 | Phase 9 | Planned |
 | RLPH-02 | Phase 9 | Planned |
 | RLPH-03 | Phase 9 | Planned |
@@ -526,7 +526,7 @@ Plans:
 
 **v2.0 Coverage: 57/57 requirements mapped. No orphans.**
 
-Note: BRFG-05 (reports render in extension as chronological timeline) maps to Phase 8 because the briefing report schema and upload mechanism are defined in Phase 8. The rendering implementation lives in Phase 10 (TMLN-01 through TMLN-08), which is the consumer of the report data BRFG-05 references. RLPH-01 through RLPH-05 map to Phase 9 because the ralph loop TypeScript types are defined alongside RemoteAdapter types; rendering of ralph loop cards happens in Phase 10 (TMLN-03, TMLN-04).
+Note: BRFG-05 (reports render in extension as chronological timeline) maps to Phase 10 — it is a rendering concern (TMLN-01 through TMLN-08), not a CLI concern. The briefing report schema and upload mechanism are defined in Phase 8, but the timeline UI that renders them belongs to Phase 10. RLPH-01 through RLPH-05 map to Phase 9 because the ralph loop TypeScript types are defined alongside RemoteAdapter types; rendering of ralph loop cards happens in Phase 10 (TMLN-03, TMLN-04).
 
 ---
 
