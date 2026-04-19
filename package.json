@@ -126,7 +126,8 @@
     }
   },
   "scripts": {
-    "build": "node esbuild.mjs",
+    "build:packages": "tsc --build packages/shared packages/harnesstune-relay packages/harnesstune-agent",
+    "build": "pnpm run build:packages && node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
     "package": "vsce package",
     "test": "jest --passWithNoTests"
