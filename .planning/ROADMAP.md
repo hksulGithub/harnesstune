@@ -235,7 +235,11 @@ Plans:
 
 **Research Flag:** Standard patterns — skip research-phase. TypeScript project references, discriminated union migration, and monorepo restructuring are HIGH confidence and well-documented.
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — Type consolidation (BackendType canonical + mode discriminant + registry v2 migration)
+- [ ] 06-02-PLAN.md — Monorepo structure (pnpm workspaces + TS project references + package scaffolds)
 
 ---
 
@@ -273,7 +277,11 @@ Plans:
 
 **Research Flag:** Standard patterns — skip research-phase. Turso + Hono + Vercel integration is officially documented with integration guides. All security patterns (timingSafeEqual, header sanitization) sourced from official Node.js and Hono documentation.
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — Type consolidation (BackendType canonical + mode discriminant + registry v2 migration)
+- [ ] 06-02-PLAN.md — Monorepo structure (pnpm workspaces + TS project references + package scaffolds)
 
 ---
 
@@ -308,7 +316,11 @@ Plans:
 
 **Research Flag:** Standard patterns — skip research-phase. Commander, node-cron, sidecar daemon pattern with PID file and signal handlers are established and well-documented.
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — Type consolidation (BackendType canonical + mode discriminant + registry v2 migration)
+- [ ] 06-02-PLAN.md — Monorepo structure (pnpm workspaces + TS project references + package scaffolds)
 
 ---
 
@@ -340,7 +352,11 @@ Plans:
 
 **Research Flag:** Standard patterns — skip research-phase. Adapter interface pattern and sidebar extension are established in v1.0 codebase; RemoteAdapter and registry extension are additive changes only.
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — Type consolidation (BackendType canonical + mode discriminant + registry v2 migration)
+- [ ] 06-02-PLAN.md — Monorepo structure (pnpm workspaces + TS project references + package scaffolds)
 
 ---
 
@@ -371,7 +387,11 @@ Plans:
 
 **Research Flag:** Standard patterns — skip research-phase. Convergence chart uses same pattern as Phase 3 schematic: d3-hierarchy runs in extension host, outputs coordinates, React renders SVG in webview. No D3 loaded in webview, no CSP concerns.
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — Type consolidation (BackendType canonical + mode discriminant + registry v2 migration)
+- [ ] 06-02-PLAN.md — Monorepo structure (pnpm workspaces + TS project references + package scaffolds)
 
 ---
 
