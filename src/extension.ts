@@ -1,17 +1,19 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { WorkspaceRegistry } from './registry';
 import { FileWatcherManager } from './watchers';
 import { SecretStore } from './secrets';
-import { SidebarViewProvider, DashboardPanel, SchematicPanel } from './panels';
+import { SidebarViewProvider, DashboardPanel, SchematicPanel, ChatPanel, ChatManager } from './panels';
 import { buildTopology } from './topology';
 import { StatusBarManager } from './statusbar';
 import { WorkspaceRecord } from './types';
 import { ClaudeCodeHookAdapter, AdapterRegistry } from './adapters';
-import type { WorkspaceConnectionConfig, AgentBackendAdapter } from './adapters';
+import type { WorkspaceConnectionConfig, AgentBackendAdapter, BackendType } from './adapters';
 import { AgentEventStore } from './database';
 import { AgentControlManager } from './controls';
 import { NotificationService } from './notifications';
-import { TerminalManager } from './terminal';
+import { ScaffoldService } from './scaffold';
+// TerminalManager replaced by ChatManager (webview-based chat panels)
 import type { AgentEvent } from './types';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -118,6 +120,104 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   );
 
+  // ── Phase 5: Create Workspace from template ─────────────────────────────────
+  const createWorkspaceCmd = vscode.commands.registerCommand(
+    'harnesstune.createWorkspace',
+    async () => {
+      const scaffoldService = new ScaffoldService(context.extensionUri);
+      let templates: Awaited<ReturnType<ScaffoldService['listTemplates']>>;
+      try {
+        templates = await scaffoldService.listTemplates();
+      } catch (err) {
+        vscode.window.showErrorMessage('HarnessTune: Failed to load templates.');
+        return;
+      }
+      if (templates.length === 0) {
+        vscode.window.showErrorMessage('HarnessTune: No templates found.');
+        return;
+      }
+
+      // Step 1: Pick template
+      const templateItems = templates.map(t => ({
+        label: t.manifest.name,
+        description: t.manifest.description,
+        templateName: t.name,
+        manifest: t.manifest,
+      }));
+      const selectedTemplate = await vscode.window.showQuickPick(templateItems, {
+        placeHolder: 'Select a workspace template',
+      });
+      if (!selectedTemplate) { return; }
+
+      // Step 2: Collect variables
+      const vars: Record<string, string> = {};
+      for (const varName of selectedTemplate.manifest.variables) {
+        const defaultValue = varName === 'MODEL' ? 'claude-opus-4-5' : '';
+        const value = await vscode.window.showInputBox({
+          prompt: `Enter value for ${varName}`,
+          placeHolder: defaultValue || varName.toLowerCase().replace(/_/g, ' '),
+          value: defaultValue,
+          ignoreFocusOut: true,
+        });
+        if (value === undefined) { return; } // user cancelled
+        vars[varName] = value;
+      }
+
+      // Step 3: Pick target directory
+      const folderUris = await vscode.window.showOpenDialog({
+        canSelectFolders: true,
+        canSelectFiles: false,
+        canSelectMany: false,
+        openLabel: 'Select Workspace Folder',
+      });
+      if (!folderUris || folderUris.length === 0) { return; }
+      const targetDir = folderUris[0].fsPath;
+
+      // Step 4: Conflict check
+      for (const relPath of selectedTemplate.manifest.files) {
+        const destUri = vscode.Uri.joinPath(vscode.Uri.file(targetDir), relPath);
+        try {
+          await vscode.workspace.fs.stat(destUri);
+          // File exists -- warn
+          const overwrite = await vscode.window.showWarningMessage(
+            `File "${relPath}" already exists in target directory. Overwrite?`,
+            'Overwrite', 'Cancel'
+          );
+          if (overwrite !== 'Overwrite') { return; }
+          break; // one warning is enough
+        } catch {
+          // File doesn't exist -- good
+        }
+      }
+
+      // Step 5: Scaffold
+      try {
+        await scaffoldService.scaffold(selectedTemplate.templateName, selectedTemplate.manifest, targetDir, vars);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        vscode.window.showErrorMessage(`HarnessTune: Scaffold failed — ${msg}`);
+        return;
+      }
+
+      // Step 6: Register + connect
+      const name = vars['AGENT_NAME'] || path.basename(targetDir);
+      try {
+        const record = await registry.add(name, targetDir, selectedTemplate.manifest.backendType);
+        watcherManager.watchWorkspace(record);
+        await connectWorkspace(record);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        vscode.window.showErrorMessage(`HarnessTune: Failed to register workspace — ${msg}`);
+        return;
+      }
+
+      // Step 7: Open dashboard
+      DashboardPanel.createOrShow(context.extensionUri);
+      vscode.window.showInformationMessage(`HarnessTune: Workspace "${name}" created.`);
+    }
+  );
+  context.subscriptions.push(createWorkspaceCmd);
+
   const openCmd = vscode.commands.registerCommand(
     'harnesstune.openWorkspace',
     (workspaceId?: string) => {
@@ -126,11 +226,26 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         return;
       }
       const ws = registry.getById(workspaceId);
-      if (ws) {
-        vscode.window.showInformationMessage(`HarnessTune: Opening workspace "${ws.name}"`);
-      } else {
+      if (!ws) {
         vscode.window.showWarningMessage(`HarnessTune: Workspace not found`);
+        return;
       }
+
+      // Broadcast active workspace to all open panels
+      const setActiveMsg = { type: 'workspace:setActive' as const, workspaceId: ws.id };
+      if (DashboardPanel.currentPanel) {
+        DashboardPanel.currentPanel.postMessage(setActiveMsg);
+      }
+      if (SchematicPanel.currentPanel) {
+        SchematicPanel.currentPanel.postMessage(setActiveMsg);
+      }
+
+      // Show or create the terminal for this workspace
+      const config = vscode.workspace.getConfiguration('harnesstune');
+      const skipPermissions = config.get<boolean>('dangerouslySkipPermissions', false);
+      chatManager.openChat(ws.id, ws.name, ws.rootPath, {
+        dangerouslySkipPermissions: skipPermissions,
+      });
     }
   );
 
@@ -502,9 +617,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(pauseCmd, resumeCmd, stopCmd);
 
-  // ── Phase 4: Terminal Manager ──────────────────────────────────────────────
-  const terminalManager = new TerminalManager((event: AgentEvent) => {
-    // Feed terminal stream-JSON events into the same pipeline as hook events
+  // ── Phase 4: Chat Manager (webview-based, replaces TerminalManager) ────────
+  const chatManager = new ChatManager(context.extensionUri, (event: AgentEvent) => {
+    // Feed chat session stream-JSON events into the same pipeline as hook events
     seenSessionIds.add(event.sessionId);
 
     // 1. Persist
@@ -544,7 +659,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       });
     }
   });
-  context.subscriptions.push(terminalManager);
+  context.subscriptions.push(chatManager);
+
+  // No serializer for chat — it requires an active session, so it opens fresh via workspace click.
+
+  // Interrupt chat session (bound to Escape when chat panel is focused)
+  const interruptChatCmd = vscode.commands.registerCommand(
+    'harnesstune.interruptChat',
+    () => {
+      const panel = chatManager.getPanel();
+      if (panel) {
+        panel.postMessage({ type: 'chat:triggerInterrupt' as any });
+      }
+      // Also send interrupt directly via the webview message channel
+      chatManager.interruptActive();
+    }
+  );
+  context.subscriptions.push(interruptChatCmd);
 
   const openTerminalCmd = vscode.commands.registerCommand(
     'harnesstune.openTerminal',
@@ -584,7 +715,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const config = vscode.workspace.getConfiguration('harnesstune');
       const skipPermissions = config.get<boolean>('dangerouslySkipPermissions', false);
 
-      terminalManager.openTerminal(ws.id, ws.name, ws.rootPath, {
+      chatManager.showChat(ws.id, ws.name, ws.rootPath, {
         dangerouslySkipPermissions: skipPermissions,
       });
     }
@@ -616,6 +747,26 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(onWorkspaceChange);
 
   // Note: hookServer is started internally by adapter.connect() on first workspace connection.
+
+  // Auto-open chat for the first workspace so the panel isn't empty on reload
+  const allWorkspaces = registry.getAll();
+  if (allWorkspaces.length > 0) {
+    const firstWs = allWorkspaces[0];
+    const config = vscode.workspace.getConfiguration('harnesstune');
+    const skipPermissions = config.get<boolean>('dangerouslySkipPermissions', false);
+    chatManager.showChat(firstWs.id, firstWs.name, firstWs.rootPath, {
+      dangerouslySkipPermissions: skipPermissions,
+    });
+  }
+
+  // Close the Welcome tab so we get a clean 2-column layout (Dashboard + Chat)
+  for (const group of vscode.window.tabGroups.all) {
+    for (const tab of group.tabs) {
+      if (tab.label === 'Welcome') {
+        vscode.window.tabGroups.close(tab);
+      }
+    }
+  }
 
   console.log('HarnessTune extension activated.');
 }
