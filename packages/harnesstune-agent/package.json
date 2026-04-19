@@ -10,8 +10,16 @@
   },
   "scripts": {
     "build": "tsc --build",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "dev": "node --watch dist/cli.js"
   },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "dist"
+  ],
   "dependencies": {
     "@harnesstune/shared": "workspace:*"
   },
