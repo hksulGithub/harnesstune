@@ -1,32 +1,32 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: Complete
-last_updated: "2026-04-19T12:00:00.000Z"
+milestone: v2.0
+milestone_name: Remote Agent Management
+status: Defining Requirements
+last_updated: "2026-04-19T14:00:00.000Z"
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 15
-  completed_plans: 15
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # GSD State: HarnessTune
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-16)
+See: .planning/PROJECT.md (updated 2026-04-19)
 
 **Core value:** Engineers running multiple agent systems can see and control all their agents from one place inside VSCode.
-**Current focus:** Phase 05 — workspace-scaffolding-openclaw-adapter
+**Current focus:** Defining requirements for v2.0 Remote Agent Management
 
 ## Current Position
 
-Phase: 05 (workspace-scaffolding-openclaw-adapter) — COMPLETE
-Plan: 3 of 3 (all done)
-**Last Completed:** Phase 5 — Workspace scaffolding, OpenClaw adapter, configure/remove, context menu
-**Next:** Milestone v1.0 complete
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-19 — Milestone v2.0 started
 
 ## Progress
 

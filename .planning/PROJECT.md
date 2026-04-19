@@ -8,31 +8,54 @@ A VSCode extension purpose-built for agent harness engineering — monitoring, m
 
 Engineers running multiple agent systems can see the health, topology, and status of every agent across every workspace — and interact with any of them — from one place.
 
+## Current Milestone: v2.0 Remote Agent Management
+
+**Goal:** Turn HarnessTune from a local agent monitor into a remote command center using a relay/mailbox pattern — manage agents across multiple machines from one VSCode window.
+
+**Target features:**
+- Relay API (Vercel + Turso) — authenticated mailbox for agents and command center
+- Agent CLI (`npx harnesstune-agent`) — sidecar on remote machines that uploads reports and polls for messages
+- RemoteAdapter in extension — remote workspaces appear alongside local ones in sidebar
+- Daily briefing reports — structured snapshots of agent goals, progress, blockers, metrics
+- Ralph loop progress reports — iteration-over-iteration improvement tracking with charts
+- Async chat/feedback — bidirectional messaging through relay
+- Remote workspace management — add/view/configure/remove remote workspaces
+- Token-based auth — per-agent API tokens stored in SecretStore
+
 ## Requirements
 
-### Validated
+### Validated (v1.0)
 
-(None yet — ship to validate)
+- [x] Extension scaffold, workspace registry, file watchers, secrets store
+- [x] Sidebar with workspace list, status indicators, context menu
+- [x] Claude Code adapter via hooks (PreToolUse/PostToolUse event pipeline)
+- [x] Dashboard with agent cards, detail panel, pause/resume/stop controls
+- [x] Agent schematic (SVG topology graph with live status, zoom/pan, fit-to-view)
+- [x] Chat interface (webview-based, Claude Code backend, interrupt support)
+- [x] Workspace scaffolding (templates: claude-code-basic, multi-agent, openclaw-basic)
+- [x] OpenClaw adapter (JSONL file tailing, chokidar watcher)
+- [x] Configure workspace (backend type switching via context menu)
+- [x] Status bar with aggregate workspace health
 
 ### Active
 
-- [ ] Main dashboard showing aggregate health across all workspaces
-- [ ] Workspace model: each workspace = one multi-agent system with isolated config/logs/state
-- [ ] Per-workspace mini dashboard with historical stats (uptime, tokens, tasks, errors, cost)
-- [ ] Interactive agent schematic (mermaid-style) with click-to-inspect (role, status, config, instructions, recent actions)
-- [ ] Chat interface via embedded terminal (pass-through PTY to Claude Code, OpenCode, etc.)
-- [ ] Sidebar with workspace list and status indicators
-- [ ] Dual workspace creation: "Connect" (point at existing agent directory) and "Create" (scaffold from templates)
-- [ ] Claude Code adapter as first backend integration (CLI / Agent SDK)
-- [ ] Adapter pattern for pluggable agent backend integrations
+- [ ] Relay API — REST mailbox with Turso (SQLite) backend, Vercel serverless hosting
+- [ ] Agent CLI — Node.js sidecar for remote machines, report upload + message polling
+- [ ] RemoteAdapter — extension adapter connecting to relay for remote workspaces
+- [ ] Daily briefing reports — structured agent state snapshots on configurable schedule
+- [ ] Ralph loop progress reports — iteration tracking with baseline/current/delta metrics
+- [ ] Async chat/feedback — bidirectional messaging through relay
+- [ ] Remote workspace management — add, view, configure, remove remote workspaces
+- [ ] Token-based authentication — per-agent API tokens, SecretStore integration
 
 ### Out of Scope
 
-- Standalone desktop app — VSCode extension for v1, standalone possible in v2
-- Cloud/SaaS component — local-first in v1
-- Building agent frameworks — integrates with existing ones
-- Full IDE replacement — leverages VSCode as the host
-- Real-time collaborative editing — single-user for v1
+- Real-time streaming — async/polling for v2, live terminal streaming is v3
+- Agent orchestration — v2 is observe + communicate, automated coordination is future
+- Multi-user / team features — single user for now, team features (shared relay, permissions, audit log) are v3+
+- Mobile app — VSCode only, mobile companion for reading reports is future
+- End-to-end encryption — relay sees plaintext, E2E encryption is v3 feature flag
+- Building agent frameworks — integrates with existing ones only
 
 ## Context
 
@@ -40,6 +63,9 @@ Engineers running multiple agent systems can see the health, topology, and statu
 - **Ecosystem problem:** AI agent architectures are fragmenting across Claude Code, OpenClaw, Paperclip, and custom frameworks. No unified monitoring/management solution exists.
 - **Target user:** Initially internal dogfooding, then open-source for community adoption
 - **Agent backends (priority order):** Claude Code (P0), OpenClaw (P1), Paperclip (P1), Custom/generic adapter (P2)
+- **v2.0 architecture:** Relay/mailbox pattern — agents and command center both make outbound HTTPS to a shared REST relay. No inbound ports, no NAT traversal, no tunnels.
+- **v2.0 stack:** Relay on Vercel (serverless) + Turso (SQLite edge DB, 9GB free tier). Self-hostable for air-gapped networks.
+- **v2.0 API design:** Generic channel-based document store — relay is a dumb mailbox, all report structure lives client-side
 
 ## Constraints
 
@@ -62,5 +88,22 @@ Engineers running multiple agent systems can see the health, topology, and statu
 | Claude Code as first adapter | Most relevant to internal dogfooding, best-documented API | — Pending |
 | Agent schematic shows both stats AND config | Engineers need operational data and architectural context in one view | — Pending |
 
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd-complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
 ---
-*Last updated: 2026-04-16 after initial project definition*
+*Last updated: 2026-04-19 after milestone v2.0 started*
