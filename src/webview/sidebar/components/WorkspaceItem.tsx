@@ -43,6 +43,11 @@ export function WorkspaceItem({ workspace }: WorkspaceItemProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [menuPos]);
 
+  // Determine subtitle: relay hostname for remote, rootPath for local
+  const subtitle = workspace.mode === 'remote'
+    ? (workspace.relayUrl ? (() => { try { return new URL(workspace.relayUrl!).hostname; } catch { return 'Remote'; } })() : 'Remote')
+    : workspace.rootPath;
+
   return (
     <div
       className="workspace-item"
@@ -54,8 +59,18 @@ export function WorkspaceItem({ workspace }: WorkspaceItemProps) {
     >
       <StatusBadge status={workspace.status} />
       <div className="workspace-info">
-        <div className="workspace-name">{workspace.name}</div>
-        <div className="workspace-path">{workspace.rootPath}</div>
+        <div className="workspace-name">
+          {workspace.name}
+          {workspace.mode === 'remote' && (
+            <span className="remote-badge" title="Remote workspace">{'\u2601'}</span>
+          )}
+        </div>
+        <div className="workspace-path">{subtitle}</div>
+        {workspace.mode === 'remote' && workspace.status === 'stale' && (
+          <div className="workspace-stale-hint">
+            Last seen: {workspace.lastUpdatedAt ? new Date(workspace.lastUpdatedAt).toLocaleString() : 'unknown'}
+          </div>
+        )}
       </div>
       <div className="workspace-badges">
         {workspace.runningAgentCount > 0 && (
@@ -75,6 +90,11 @@ export function WorkspaceItem({ workspace }: WorkspaceItemProps) {
           className="context-menu"
           style={{ left: menuPos.x, top: menuPos.y }}
         >
+          {workspace.mode === 'remote' && (
+            <button onClick={() => { setMenuPos(null); vscode.postMessage({ type: 'workspace:messageAgent', workspaceId: workspace.id }); }}>
+              Message Agent
+            </button>
+          )}
           <button onClick={() => { setMenuPos(null); vscode.postMessage({ type: 'workspace:configure', workspaceId: workspace.id }); }}>
             Configure
           </button>

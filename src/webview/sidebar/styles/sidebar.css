@@ -136,3 +136,32 @@ body {
   background: var(--vscode-menu-selectionBackground, var(--vscode-list-hoverBackground));
   color: var(--vscode-menu-selectionForeground, inherit);
 }
+
+.remote-badge {
+  margin-left: 4px;
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+
+.workspace-stale-hint {
+  font-size: 0.75em;
+  color: var(--vscode-disabledForeground);
+  margin-top: 2px;
+}
+
+.connect-button-remote {
+  margin-top: 4px;
+  opacity: 0.85;
+}
+
+.status-stale {
+  color: var(--vscode-notificationsWarningIcon-foreground, #cca700);
+}
+
+.status-relay-unreachable {
+  color: var(--vscode-notificationsErrorIcon-foreground, #f48771);
+}
+
+.status-auth-error {
+  color: var(--vscode-notificationsErrorIcon-foreground, #f48771);
+}

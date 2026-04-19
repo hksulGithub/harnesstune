@@ -46,7 +46,13 @@ export function App() {
           className="connect-button"
           onClick={() => vscode.postMessage({ type: 'workspace:connect', name: '', rootPath: '' })}
         >
-          Connect Workspace
+          Connect Local Workspace
+        </button>
+        <button
+          className="connect-button connect-button-remote"
+          onClick={() => vscode.postMessage({ type: 'workspace:addRemote', relayUrl: '', token: '' })}
+        >
+          Add Remote Workspace
         </button>
       </div>
     );
@@ -60,7 +66,13 @@ export function App() {
           className="connect-button"
           onClick={() => vscode.postMessage({ type: 'workspace:connect', name: '', rootPath: '' })}
         >
-          + Connect Workspace
+          + Connect Local Workspace
+        </button>
+        <button
+          className="connect-button connect-button-remote"
+          onClick={() => vscode.postMessage({ type: 'workspace:addRemote', relayUrl: '', token: '' })}
+        >
+          + Add Remote Workspace
         </button>
       </div>
     </div>
