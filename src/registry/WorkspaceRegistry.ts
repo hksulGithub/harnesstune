@@ -19,13 +19,23 @@ export class WorkspaceRegistry implements IWorkspaceRegistry {
       const raw = await vscode.workspace.fs.readFile(this.registryUri);
       const text = Buffer.from(raw).toString('utf-8');
       const data: WorkspaceRegistryData = JSON.parse(text);
-      if (data.version !== 1) {
-        throw new Error(`Unsupported registry version: ${data.version}`);
+      if (data.version === 1) {
+        // v1 → v2 migration: add mode: 'local' to all existing records
+        this.workspaces = data.workspaces.map(ws => ({
+          ...ws,
+          backendType: ws.backendType ?? 'claude-code',
+          mode: 'local' as const,
+        }));
+        // Persist migrated data as v2
+        await this.persist();
+      } else if (data.version === 2) {
+        this.workspaces = data.workspaces.map(ws => ({
+          ...ws,
+          backendType: ws.backendType ?? 'claude-code',
+        }));
+      } else {
+        throw new Error(`Unsupported registry version: ${(data as { version: number }).version}`);
       }
-      this.workspaces = data.workspaces.map(ws => ({
-        ...ws,
-        backendType: ws.backendType ?? 'claude-code',
-      }));
     } catch (err: unknown) {
       // If file doesn't exist (FileNotFound), initialize with empty state
       if (
@@ -84,6 +94,7 @@ export class WorkspaceRegistry implements IWorkspaceRegistry {
       runningAgentCount: 0,
       errorCount: 0,
       backendType,
+      mode: 'local',
     };
 
     this.workspaces.push(record);
@@ -112,7 +123,7 @@ export class WorkspaceRegistry implements IWorkspaceRegistry {
    */
   public async update(
     id: string,
-    changes: Partial<Pick<WorkspaceRecord, 'status' | 'runningAgentCount' | 'errorCount' | 'backendType'>>
+    changes: Partial<Pick<WorkspaceRecord, 'status' | 'runningAgentCount' | 'errorCount' | 'backendType' | 'mode'>>
   ): Promise<void> {
     const record = this.workspaces.find(ws => ws.id === id);
     if (!record) {
@@ -129,7 +140,7 @@ export class WorkspaceRegistry implements IWorkspaceRegistry {
     await vscode.workspace.fs.createDirectory(this.context.globalStorageUri);
 
     const data: WorkspaceRegistryData = {
-      version: 1,
+      version: 2,
       workspaces: this.workspaces,
     };
     const json = JSON.stringify(data, null, 2);

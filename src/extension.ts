@@ -746,6 +746,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const backendTypes: Array<{ label: string; description: string; value: BackendType }> = [
         { label: 'Claude Code', description: 'Interactive Claude Code agent via hooks', value: 'claude-code' },
         { label: 'OpenClaw', description: 'OpenClaw agent via JSONL file tailing', value: 'openclaw' },
+        { label: 'Remote', description: 'Remote agent via relay server', value: 'remote' },
       ];
       const selectedBackend = await vscode.window.showQuickPick(backendTypes, {
         placeHolder: `Current backend: ${workspace.backendType}. Select new backend type:`,
