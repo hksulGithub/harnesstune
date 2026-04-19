@@ -81,9 +81,9 @@
 
 ### Pre-Work: Type Consolidation (PRWK)
 
-- [ ] **PRWK-01**: `BackendType` consolidated to a single canonical definition with `'remote'` added
-- [ ] **PRWK-02**: `WorkspaceRecord` gains `mode: 'local' | 'remote'` discriminant for TypeScript narrowing
-- [ ] **PRWK-03**: Workspace registry migrated to version 2 schema (backward-compatible with v1 data)
+- [x] **PRWK-01**: `BackendType` consolidated to a single canonical definition with `'remote'` added
+- [x] **PRWK-02**: `WorkspaceRecord` gains `mode: 'local' | 'remote'` discriminant for TypeScript narrowing
+- [x] **PRWK-03**: Workspace registry migrated to version 2 schema (backward-compatible with v1 data)
 - [ ] **PRWK-04**: Monorepo structure created: `packages/harnesstune-relay`, `packages/harnesstune-agent`, root extension
 - [ ] **PRWK-05**: TypeScript project references configured for cross-package type sharing
 
@@ -198,7 +198,11 @@
 | CHAT-01 through CHAT-04 | Phase 4 | Complete |
 | CCAD-01 through CCAD-06 | Phase 2 | Complete |
 | NOTF-01 through NOTF-03 | Phase 2 | Complete |
-| PRWK-01 through PRWK-05 | Phase 6 | Planned |
+| PRWK-01 | Phase 6 | Complete |
+| PRWK-02 | Phase 6 | Complete |
+| PRWK-03 | Phase 6 | Complete |
+| PRWK-04 | Phase 6 | Planned |
+| PRWK-05 | Phase 6 | Planned |
 | RLAY-01 through RLAY-14 | Phase 7 | Planned |
 | ACLI-01 through ACLI-11 | Phase 8 | Planned |
 | BRFG-01 through BRFG-05 | Phase 8–9 | Planned |

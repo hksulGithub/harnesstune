@@ -235,10 +235,10 @@ Plans:
 
 **Research Flag:** Standard patterns — skip research-phase. TypeScript project references, discriminated union migration, and monorepo restructuring are HIGH confidence and well-documented.
 
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 06-01-PLAN.md — Type consolidation (BackendType canonical + mode discriminant + registry v2 migration)
+- [x] 06-01-PLAN.md — Type consolidation (BackendType canonical + mode discriminant + registry v2 migration)
 - [ ] 06-02-PLAN.md — Monorepo structure (pnpm workspaces + TS project references + package scaffolds)
 
 ---

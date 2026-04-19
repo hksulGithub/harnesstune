@@ -2,14 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: Requirements and roadmap defined, ready for plan-phase
-last_updated: "2026-04-19T06:21:47.502Z"
-last_activity: 2026-04-19 — Requirements (57 REQ-IDs) and roadmap (Phases 6–10) finalized
+status: executing
+last_updated: "2026-04-19T06:47:38Z"
+last_activity: 2026-04-19 -- Phase 06 Plan 01 executed (type consolidation + registry v2)
 progress:
   total_phases: 10
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 2
+  completed_plans: 1
+  percent: 50
 ---
 
 # GSD State: HarnessTune
@@ -19,18 +20,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-19)
 
 **Core value:** Engineers running multiple agent systems can see and control all their agents from one place inside VSCode.
-**Current focus:** Defining requirements for v2.0 Remote Agent Management
+**Current focus:** Phase 06 — Type Consolidation + Monorepo
 
 ## Current Position
 
-Phase: 6 (Pre-Work — Type Consolidation + Monorepo)
-Plan: —
-Status: Requirements and roadmap defined, ready for plan-phase
-Last activity: 2026-04-19 — Requirements (57 REQ-IDs) and roadmap (Phases 6–10) finalized
+Phase: 06-pre-work-type-consolidation-monorepo — EXECUTING
+Plan: 2 of 2
+Status: Plan 01 complete, Plan 02 next
+Last activity: 2026-04-19 -- Phase 06 Plan 01 executed (type consolidation + registry v2)
 
 ## Progress
 
-[████████████] 100% (Phases 1-4 complete, Phase 5 not started)
+[████████████] M1 complete | M2: Phase 6 Plan 01/02 done
 
 ## Current Milestone
 
@@ -62,6 +63,8 @@ Last activity: 2026-04-19 — Requirements (57 REQ-IDs) and roadmap (Phases 6–
 - [Phase 05]: Unit tests focus on substitute() pure function; vscode.workspace.fs methods tested via build
 - [Phase 05]: configureWorkspace disconnects old adapter before registry update to prevent stale connections
 - [Phase 05]: Used chokidar v4 for JSONL file watching; ChatManager routes by backendType for multi-backend support
+- [Phase 06-01]: assertNeverBackendType as standalone function in types/workspace.ts for reuse across codebase
+- [Phase 06-01]: v1 registry migration auto-persists on first load to avoid repeated migration checks
 
 ## Performance Metrics
 
@@ -75,6 +78,7 @@ Last activity: 2026-04-19 — Requirements (57 REQ-IDs) and roadmap (Phases 6–
 | Phase 04 P02 | 1 min | 1 task (of 2) | 4 files |
 | Phase 05 P02 | 4 min | 3 tasks | 14 files |
 | Phase 05 P03 | 4min | 2 tasks | 9 files |
+| Phase 06 P01 | 2 min | 2 tasks | 6 files |
 
 ## Session Log
 
@@ -105,4 +109,6 @@ Last activity: 2026-04-19 — Requirements (57 REQ-IDs) and roadmap (Phases 6–
 ---
 - **2026-04-19**: v2.0 milestone initialized. Research complete (4 parallel agents). Requirements defined (57 v2.0 REQ-IDs across 8 categories). Roadmap created (5 phases: 6–10). User feedback incorporated: RLAY-14 (rate limiting), ACLI-06 heartbeat specifics (5-min heartbeat, 15-min stale), Phase 6 package manager lock, Phase 10 research flag downgraded to skip, poll interval reframed as configurable default. Ready for `/gsd-plan-phase 6`.
 
-*Last updated: 2026-04-19 — v2.0 requirements and roadmap defined, ready for Phase 6*
+- **2026-04-19**: Phase 6 Plan 01 executed (type consolidation + registry v2). 2 tasks, 6 files. BackendType consolidated with 'remote', WorkspaceMode discriminant added, registry v1-to-v2 migration, exhaustive switch in AdapterRegistry. Ready for Plan 02 (monorepo).
+
+*Last updated: 2026-04-19 — Phase 6 Plan 01 complete, ready for Plan 02*
