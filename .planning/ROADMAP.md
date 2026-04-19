@@ -188,8 +188,8 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Type contracts, AdapterFactory/Registry, WorkspaceRecord migration, extension.ts refactor
-- [ ] 05-02-PLAN.md — ScaffoldService, bundled templates, createWorkspace command
+- [x] 05-01-PLAN.md — Type contracts, AdapterFactory/Registry, WorkspaceRecord migration, extension.ts refactor
+- [x] 05-02-PLAN.md — ScaffoldService, bundled templates, createWorkspace command
 - [ ] 05-03-PLAN.md — OpenClawAdapter, OpenClawLogSession, ChatManager routing
 
 ---

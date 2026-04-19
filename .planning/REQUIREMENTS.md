@@ -15,7 +15,7 @@
 ### Workspace Management (WKSP)
 
 - [x] **WKSP-01**: User can create a new workspace by connecting to an existing agent directory
-- [ ] **WKSP-02**: User can create a new workspace from a scaffold template
+- [x] **WKSP-02**: User can create a new workspace from a scaffold template
 - [x] **WKSP-03**: User can remove a workspace from the registry
 - [x] **WKSP-04**: Workspace registry persists absolute paths and survives VSCode restarts
 - [x] **WKSP-05**: File watcher pipeline monitors agent directories using RelativePattern with absolute base paths
@@ -56,7 +56,7 @@
 
 - [x] **CHAT-01**: Embedded terminal per workspace using VSCode native Pseudoterminal API
 - [x] **CHAT-02**: Terminal routes to the workspace's configured LLM backend (Claude Code first)
-- [ ] **CHAT-03**: Terminal panel retains context when hidden (retainContextWhenHidden: true)
+- [x] **CHAT-03**: Terminal panel retains context when hidden (retainContextWhenHidden: true)
 - [x] **CHAT-04**: User can send instructions and receive responses in the terminal
 
 ### Claude Code Adapter (CCAD)
@@ -126,7 +126,7 @@
 | FOUN-03 | Phase 1 | Complete |
 | FOUN-04 | Phase 1 | Complete |
 | WKSP-01 | Phase 1 | Complete |
-| WKSP-02 | Phase 5 | Pending |
+| WKSP-02 | Phase 5 | Complete |
 | WKSP-03 | Phase 1 | Complete |
 | WKSP-04 | Phase 1 | Complete |
 | WKSP-05 | Phase 1 | Complete |
@@ -161,7 +161,7 @@
 | SCHM-06 | Phase 3 | Complete |
 | CHAT-01 | Phase 4 | Complete |
 | CHAT-02 | Phase 4 | Complete |
-| CHAT-03 | Phase 4 | Pending |
+| CHAT-03 | Phase 4 | Complete |
 | CHAT-04 | Phase 4 | Complete |
 
 **Coverage:**

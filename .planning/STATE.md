@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Phase 4 Plan 02 Task 1 done — awaiting human verification
-last_updated: "2026-04-18T07:11:56.509Z"
+status: Ready to execute
+last_updated: "2026-04-19T03:41:08.461Z"
 progress:
   total_phases: 5
-  completed_phases: 2
-  total_plans: 12
-  completed_plans: 10
-  percent: 83
+  completed_phases: 3
+  total_plans: 15
+  completed_plans: 13
+  percent: 87
 ---
 
 # GSD State: HarnessTune
@@ -19,18 +19,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-16)
 
 **Core value:** Engineers running multiple agent systems can see and control all their agents from one place inside VSCode.
-**Current focus:** Phase 04 — chat-interface-terminal
+**Current focus:** Phase 05 — workspace-scaffolding-openclaw-adapter
 
 ## Current Position
 
-Phase: 04 (chat-interface-terminal) — AWAITING HUMAN VERIFICATION
-Plan: 2 of 2 (Task 1 done, Task 2 human checkpoint pending)
-**Last Completed:** Plan 04-02 Task 1 (TerminalManager + extension wiring)
-**Blocked on:** Human verification of terminal system (9 checkpoints)
+Phase: 05 (workspace-scaffolding-openclaw-adapter) — EXECUTING
+Plan: 2 of 3
+**Last Completed:** Phase 4 — Chat interface with webview panel, interrupt support, layout fixes
+**Next:** Phase 5 (Workspace Scaffolding + OpenClaw Adapter)
 
 ## Progress
 
-[██████████░] 92% (Plan 04-02 Task 1 done, human verification pending)
+[████████████] 100% (Phases 1-4 complete, Phase 5 not started)
 
 ## Current Milestone
 
@@ -40,8 +40,8 @@ Plan: 2 of 2 (Task 1 done, Task 2 human checkpoint pending)
 |-------|--------|-------|
 | 1 - Foundation | Complete | All 3 plans done — scaffold, types, registry, watchers, secrets, sidebar, status bar |
 | 2 - Claude Code Adapter + Dashboard | Complete | All 4 plans done + human verification passed — hook server, adapter, event store, dashboard, controls, notifications |
-| 3 - Agent Schematic | Awaiting Verification | 3 plans coded, human verification pending |
-| 4 - Chat Interface + Terminal | Awaiting Verification | 2 plans coded, human verification pending |
+| 3 - Agent Schematic | Complete | 3 plans done + human verification passed |
+| 4 - Chat Interface + Terminal | Complete | 2 plans done — webview chat panel, interrupt, layout fixes |
 | 5 - Scaffolding + OpenClaw | Not Started | Templates, second adapter |
 
 ## Decisions
@@ -59,6 +59,8 @@ Plan: 2 of 2 (Task 1 done, Task 2 human checkpoint pending)
 - [Phase 03-agent-schematic-live-topology]: fitToViewCounter integer trigger avoids useImperativeHandle for fit-to-view signal between App and GraphArea
 - [Phase 03-agent-schematic-live-topology]: SVG title child element for viewport rect tooltip — React types reject title attribute on SVGRectElement
 - [Phase 04]: OutputFormatter is stateless static class; normalizeStreamEvent maps stream-JSON to AgentEvent pipeline; non-error tool_results suppressed in terminal
+- [Phase 05]: Unit tests focus on substitute() pure function; vscode.workspace.fs methods tested via build
+- [Phase 05]: configureWorkspace disconnects old adapter before registry update to prevent stale connections
 
 ## Performance Metrics
 
@@ -70,6 +72,7 @@ Plan: 2 of 2 (Task 1 done, Task 2 human checkpoint pending)
 | Phase 03-agent-schematic-live-topology P02 | 6 | 2 tasks | 13 files |
 | Phase 04 P01 | 2 min | 2 tasks | 5 files |
 | Phase 04 P02 | 1 min | 1 task (of 2) | 4 files |
+| Phase 05 P02 | 4 min | 3 tasks | 14 files |
 
 ## Session Log
 
