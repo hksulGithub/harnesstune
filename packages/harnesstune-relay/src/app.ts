@@ -12,6 +12,12 @@ export const RELAY_VERSION = '0.1.0';
 // Public app — no auth required
 const app = new Hono();
 
+// Global error handler — surface errors instead of crashing
+app.onError((err, c) => {
+  console.error('Hono error:', err);
+  return c.json({ error: 'Internal Server Error' }, 500);
+});
+
 // Health check — public, before all middleware
 app.get('/health', (c) => c.json({ status: 'ok', version: RELAY_VERSION }));
 
