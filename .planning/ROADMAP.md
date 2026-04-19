@@ -281,7 +281,7 @@ Plans:
 
 Plans:
 - [x] 07-01-PLAN.md — Drizzle schema, Turso client, Hono app, middleware chain (auth, sanitize, version, rateLimit), health endpoint
-- [ ] 07-02-PLAN.md — Channel registration, report endpoints (upload, paginated list, full-body fetch), message endpoints (post, poll, delete)
+- [x] 07-02-PLAN.md — Channel registration, report endpoints (upload, paginated list, full-body fetch), message endpoints (post, poll, delete)
 - [ ] 07-03-PLAN.md — Vercel entry point, deployment config, schema push, live deployment verification
 
 ---
