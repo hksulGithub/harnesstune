@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: Executing Phase 9
-last_updated: "2026-04-19T16:12:31.105Z"
+last_updated: "2026-04-19T16:20:40.770Z"
 last_activity: 2026-04-19 -- Phase 9 execution started
 progress:
   total_phases: 10
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 10
-  completed_plans: 9
-  percent: 90
+  completed_plans: 10
+  percent: 100
 ---
 
 # GSD State: HarnessTune
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-04-19)
 
 ## Current Position
 
-Phase: 9 — EXECUTING
-Plan: 1 of ?
-Next: Phase 09 (Extension ↔ Relay Integration)
-Last activity: 2026-04-19 -- Phase 9 execution started
+Phase: 9 — EXECUTING (checkpoint: Task 3 human-verify pending)
+Plan: 2 of ? (paused at checkpoint)
+Next: Human verification of remote workspace sidebar UI
+Last activity: 2026-04-19 -- Phase 09 Plan 02 Tasks 1-2 complete, awaiting Task 3 human-verify checkpoint
 
 ## Progress
 
@@ -88,6 +88,7 @@ Last activity: 2026-04-19 -- Phase 9 execution started
 | Phase 06 P02 | 1 min | 2 tasks | 13 files |
 | Phase 08 P03 | 2min | 2 tasks | 2 files |
 | Phase 09 P01 | 25min | 2 tasks | 13 files |
+| Phase 09 P02 | 90min | 2 tasks (of 4) | 9 files |
 
 ## Session Log
 
@@ -132,4 +133,12 @@ Last activity: 2026-04-19 -- Phase 9 execution started
 
 - **2026-04-19**: Phase 9 discuss-phase complete. 2 areas discussed (RemoteAdapter Polling, Add Remote Workspace Flow). 8 decisions captured in 09-CONTEXT.md. Key decisions: 30s polling with exponential backoff, synthetic 'remote_report' AgentEvent, 3-step QuickInput flow, per-workspace SecretStore tokens, mixed sidebar with cloud badge. Ready for `/gsd-plan-phase 9`.
 
-*Last updated: 2026-04-19 — Phase 09 discuss-phase complete, ready for `/gsd-plan-phase 9`*
+- **2026-04-19**: Phase 9 Plan 02 Tasks 1-2 complete. RemoteAdapter wired into extension.ts with full lifecycle (connect, token fetch, status sync, cursor persist, disconnect on remove). addRemoteWorkspace command: 2-step QuickInput (relay URL + token), auto health-check + discoverChannelId, token stored in SecretStore. Sidebar UI: cloud badge, relay hostname subtitle, stale hint, Message Agent context menu, Add Remote Workspace button, CSS classes. Paused at Task 3 human-verify checkpoint.
+
+- **[09-02]**: 3-step QuickInput flow: relay URL then token (password), auto health-check + discoverChannelId — no manual channelId prompt
+- **[09-02]**: sentinel rootPath 'remote://{channelId}' avoids empty-string conflicts for remote workspaces in registry
+- **[09-02]**: per-workspace token key 'harnesstune.relay.{workspaceId}' scoped to SecretStore
+- **[09-02]**: openWorkspace deferred for remote mode with informational message (Phase 10)
+- **[09-02]**: configureRemoteWorkspace Rename sub-command uses registry.update({name}) requiring 'name' added to update() Pick type
+
+*Last updated: 2026-04-19 — Phase 09 Plan 02 paused at Task 3 human-verify checkpoint*
