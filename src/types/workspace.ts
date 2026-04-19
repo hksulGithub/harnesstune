@@ -43,6 +43,6 @@ export interface IWorkspaceRegistry {
   getById(id: string): WorkspaceRecord | undefined;
   add(name: string, rootPath: string, backendType?: BackendType): Promise<WorkspaceRecord>;
   remove(id: string): Promise<void>;
-  update(id: string, changes: Partial<Pick<WorkspaceRecord, 'status' | 'runningAgentCount' | 'errorCount'>>): Promise<void>;
+  update(id: string, changes: Partial<Pick<WorkspaceRecord, 'status' | 'runningAgentCount' | 'errorCount' | 'backendType'>>): Promise<void>;
   onDidChange: import('vscode').Event<WorkspaceRecord[]>;
 }

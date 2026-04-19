@@ -722,11 +722,81 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
   context.subscriptions.push(openTerminalCmd);
 
-  // ── Phase 5: Configure Workspace stub (full implementation in Plan 02/03) ─────
+  // ── Phase 5: Configure Workspace — backend type switching ─────────────────
   const configureCmd = vscode.commands.registerCommand(
     'harnesstune.configureWorkspace',
     async () => {
-      vscode.window.showInformationMessage('HarnessTune: Configure Workspace — coming in Plan 02/03');
+      // Step 1: Pick workspace
+      const workspaces = registry.getAll();
+      if (workspaces.length === 0) {
+        vscode.window.showInformationMessage('HarnessTune: No workspaces registered.');
+        return;
+      }
+
+      const wsItems = workspaces.map(ws => ({
+        label: ws.name,
+        description: `${ws.backendType} — ${ws.rootPath}`,
+        workspaceId: ws.id,
+      }));
+      const selectedWs = await vscode.window.showQuickPick(wsItems, {
+        placeHolder: 'Select workspace to configure',
+      });
+      if (!selectedWs) { return; }
+
+      const workspace = registry.getById(selectedWs.workspaceId);
+      if (!workspace) { return; }
+
+      // Step 2: Pick new backend type
+      const backendTypes: Array<{ label: string; description: string; value: BackendType }> = [
+        { label: 'Claude Code', description: 'Interactive Claude Code agent via hooks', value: 'claude-code' },
+        { label: 'OpenClaw', description: 'OpenClaw agent via JSONL file tailing', value: 'openclaw' },
+      ];
+      const selectedBackend = await vscode.window.showQuickPick(backendTypes, {
+        placeHolder: `Current backend: ${workspace.backendType}. Select new backend type:`,
+      });
+      if (!selectedBackend) { return; }
+
+      if (selectedBackend.value === workspace.backendType) {
+        vscode.window.showInformationMessage(`HarnessTune: Workspace "${workspace.name}" is already using ${workspace.backendType}.`);
+        return;
+      }
+
+      // Step 3: Disconnect old adapter
+      const oldAdapter = activeAdapters.get(workspace.id);
+      if (oldAdapter) {
+        try {
+          await oldAdapter.disconnect(workspace.id);
+          oldAdapter.dispose();
+        } catch (err) {
+          console.error('HarnessTune: Error disconnecting old adapter:', err);
+        }
+        activeAdapters.delete(workspace.id);
+      }
+
+      // Step 4: Update registry with new backendType
+      try {
+        await registry.update(workspace.id, { backendType: selectedBackend.value });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        vscode.window.showErrorMessage(`HarnessTune: Failed to update workspace — ${msg}`);
+        return;
+      }
+
+      // Step 5: Reconnect with new adapter via connectWorkspace
+      const updatedWorkspace = registry.getById(workspace.id);
+      if (updatedWorkspace) {
+        try {
+          await connectWorkspace(updatedWorkspace);
+        } catch (err) {
+          console.error('HarnessTune: Error connecting new adapter:', err);
+          vscode.window.showErrorMessage(`HarnessTune: Backend changed but failed to connect new adapter.`);
+          return;
+        }
+      }
+
+      vscode.window.showInformationMessage(
+        `HarnessTune: Workspace "${workspace.name}" switched to ${selectedBackend.value}.`
+      );
     }
   );
   context.subscriptions.push(configureCmd);
