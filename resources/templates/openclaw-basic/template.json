@@ -1,0 +1,7 @@
+{
+  "name": "OpenClaw Agent",
+  "description": "Single OpenClaw agent workspace -- events streamed from ~/.harnesstune/openclaw/",
+  "backendType": "openclaw",
+  "variables": ["AGENT_NAME", "AGENT_ROLE"],
+  "files": ["CLAUDE.md"]
+}

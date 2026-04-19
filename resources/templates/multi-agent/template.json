@@ -1,0 +1,7 @@
+{
+  "name": "Multi-Agent Workspace",
+  "description": "Multi-agent workspace with roles directory",
+  "backendType": "claude-code",
+  "variables": ["AGENT_NAME", "AGENT_ROLE", "MODEL"],
+  "files": ["CLAUDE.md", "roles/README.md"]
+}

@@ -73,6 +73,18 @@
         "command": "harnesstune.configureWorkspace",
         "title": "Configure Workspace",
         "category": "HarnessTune"
+      },
+      {
+        "command": "harnesstune.interruptChat",
+        "title": "Interrupt Chat Session",
+        "category": "HarnessTune"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "harnesstune.interruptChat",
+        "key": "escape",
+        "when": "activeWebviewPanelId == 'harnesstune.chat'"
       }
     ],
     "configuration": {

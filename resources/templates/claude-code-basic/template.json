@@ -1,0 +1,7 @@
+{
+  "name": "Claude Code Agent",
+  "description": "Single Claude Code agent workspace",
+  "backendType": "claude-code",
+  "variables": ["AGENT_NAME", "AGENT_ROLE", "MODEL"],
+  "files": ["CLAUDE.md", "harnesstune.json"]
+}

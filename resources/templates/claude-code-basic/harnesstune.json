@@ -1,0 +1,7 @@
+{
+  "agentName": "{{AGENT_NAME}}",
+  "agentRole": "{{AGENT_ROLE}}",
+  "model": "{{MODEL}}",
+  "backendType": "claude-code",
+  "created": "{{CREATED_DATE}}"
+}
