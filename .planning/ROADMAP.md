@@ -317,12 +317,12 @@ Plans:
 
 **Research Flag:** Standard patterns — skip research-phase. Commander, node-cron, sidecar daemon pattern with PID file and signal handlers are established and well-documented.
 
-**Plans:** 2 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — Type consolidation (BackendType canonical + mode discriminant + registry v2 migration)
-- [ ] 06-02-PLAN.md — Monorepo structure (pnpm workspaces + TS project references + package scaffolds)
-
+- [ ] 08-01-PLAN.md — Shared report types, agent config module, HTTP client
+- [ ] 08-02-PLAN.md — CLI entry point, register, stop, report commands
+- [ ] 08-03-PLAN.md — Start command (sidecar loop, heartbeat, polling, retry queue)
 ---
 
 ### Phase 9: Extension Types + RemoteAdapter + Remote Workspace Management
