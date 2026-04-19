@@ -2,7 +2,10 @@
 export type WorkspaceStatus = 'running' | 'idle' | 'warning' | 'error' | 'unknown';
 
 /** Backend adapter type for a workspace */
-export type BackendType = 'claude-code' | 'openclaw';
+export type BackendType = 'claude-code' | 'openclaw' | 'remote';
+
+/** Whether the workspace is local or remote */
+export type WorkspaceMode = 'local' | 'remote';
 
 /** A workspace record stored in the registry JSON file */
 export interface WorkspaceRecord {
@@ -24,6 +27,8 @@ export interface WorkspaceRecord {
   errorCount: number;
   /** Backend adapter type for this workspace */
   backendType: BackendType;
+  /** Whether this workspace is local or remote */
+  mode: WorkspaceMode;
   /** Optional connection config (host/port); authToken stored separately in SecretStore */
   connectionConfig?: {
     host?: string;
@@ -33,7 +38,7 @@ export interface WorkspaceRecord {
 
 /** Shape of the registry JSON file stored at globalStorageUri */
 export interface WorkspaceRegistryData {
-  version: 1;
+  version: 1 | 2;
   workspaces: WorkspaceRecord[];
 }
 
@@ -43,6 +48,11 @@ export interface IWorkspaceRegistry {
   getById(id: string): WorkspaceRecord | undefined;
   add(name: string, rootPath: string, backendType?: BackendType): Promise<WorkspaceRecord>;
   remove(id: string): Promise<void>;
-  update(id: string, changes: Partial<Pick<WorkspaceRecord, 'status' | 'runningAgentCount' | 'errorCount' | 'backendType'>>): Promise<void>;
+  update(id: string, changes: Partial<Pick<WorkspaceRecord, 'status' | 'runningAgentCount' | 'errorCount' | 'backendType' | 'mode'>>): Promise<void>;
   onDidChange: import('vscode').Event<WorkspaceRecord[]>;
+}
+
+/** Compile-time exhaustiveness check — pass a `never` value to trigger TS error */
+export function assertNeverBackendType(x: never): never {
+  throw new Error(`Unexpected BackendType: ${x}`);
 }
