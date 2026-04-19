@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-last_updated: "2026-04-19T03:41:08.461Z"
+last_updated: "2026-04-19T03:48:34.496Z"
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 15
-  completed_plans: 13
-  percent: 87
+  completed_plans: 14
+  percent: 93
 ---
 
 # GSD State: HarnessTune
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-04-16)
 ## Current Position
 
 Phase: 05 (workspace-scaffolding-openclaw-adapter) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 **Last Completed:** Phase 4 — Chat interface with webview panel, interrupt support, layout fixes
 **Next:** Phase 5 (Workspace Scaffolding + OpenClaw Adapter)
 
@@ -61,6 +61,7 @@ Plan: 2 of 3
 - [Phase 04]: OutputFormatter is stateless static class; normalizeStreamEvent maps stream-JSON to AgentEvent pipeline; non-error tool_results suppressed in terminal
 - [Phase 05]: Unit tests focus on substitute() pure function; vscode.workspace.fs methods tested via build
 - [Phase 05]: configureWorkspace disconnects old adapter before registry update to prevent stale connections
+- [Phase 05]: Used chokidar v4 for JSONL file watching; ChatManager routes by backendType for multi-backend support
 
 ## Performance Metrics
 
@@ -73,6 +74,7 @@ Plan: 2 of 3
 | Phase 04 P01 | 2 min | 2 tasks | 5 files |
 | Phase 04 P02 | 1 min | 1 task (of 2) | 4 files |
 | Phase 05 P02 | 4 min | 3 tasks | 14 files |
+| Phase 05 P03 | 4min | 2 tasks | 9 files |
 
 ## Session Log
 
