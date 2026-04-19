@@ -5,6 +5,7 @@ import { versionMiddleware } from './middleware/version.js';
 import { rateLimitMiddleware } from './middleware/rateLimit.js';
 import { publicChannelsRouter, channelsRouter } from './routes/channels.js';
 import { reportsRouter } from './routes/reports.js';
+import { messagesRouter } from './routes/messages.js';
 
 export const RELAY_VERSION = '0.1.0';
 
@@ -35,6 +36,7 @@ api.use('*', rateLimitMiddleware);
 // Route handlers
 api.route('/channels', channelsRouter);
 api.route('/channels/:channelId/reports', reportsRouter);
+api.route('/channels/:channelId/messages', messagesRouter);
 
 app.route('/api', api);
 
