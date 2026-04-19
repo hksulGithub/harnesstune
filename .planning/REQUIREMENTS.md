@@ -128,10 +128,10 @@
 
 ### Ralph Loop Progress Reports (RLPH)
 
-- [ ] **RLPH-01**: Iteration report format — iteration number, baseline metrics, current metrics, delta, what changed, cumulative improvement
-- [ ] **RLPH-02**: Loop ID (UUID) ties all iteration reports for a single loop together
-- [ ] **RLPH-03**: Generic named-metric design — `{ "metric_name": number }` map; different loops measure different things
-- [ ] **RLPH-04**: Delta computed client-side (extension) or pre-computed by CLI — both approaches supported
+- [x] **RLPH-01**: Iteration report format — iteration number, baseline metrics, current metrics, delta, what changed, cumulative improvement
+- [x] **RLPH-02**: Loop ID (UUID) ties all iteration reports for a single loop together
+- [x] **RLPH-03**: Generic named-metric design — `{ "metric_name": number }` map; different loops measure different things
+- [x] **RLPH-04**: Delta computed client-side (extension) or pre-computed by CLI — both approaches supported
 - [ ] **RLPH-05**: Reports render in extension with dedicated ralph loop card component (see TMLN category)
 
 ### Async Chat / Feedback (ACHAT)
@@ -146,13 +146,13 @@
 
 - [ ] **RWKS-01**: "Add Remote Workspace" command — QuickInput flow: relay URL → agent token → test connection → save to registry
 - [ ] **RWKS-02**: Remote workspaces appear in sidebar alongside local ones — same list, not a separate section, with small "remote" icon
-- [ ] **RWKS-03**: Status indicators for remote workspaces — running/idle/error/stale derived from latest report data
+- [x] **RWKS-03**: Status indicators for remote workspaces — running/idle/error/stale derived from latest report data
 - [ ] **RWKS-04**: Click remote workspace → opens report timeline panel
 - [ ] **RWKS-05**: Right-click → "Message Agent" opens async chat for that workspace
 - [ ] **RWKS-06**: Right-click → "Configure" allows updating relay URL, poll interval, token via QuickInput
 - [ ] **RWKS-07**: Right-click → "Remove" disconnects remote workspace from registry (does not delete relay data)
-- [ ] **RWKS-08**: Connection error handling — distinguishes relay unreachable (network badge), token invalid (401 + re-configure prompt), stale data (dim + timestamp)
-- [ ] **RWKS-09**: Agent tokens stored in VSCode SecretStore via QuickInput (password mode) — never in settings.json
+- [x] **RWKS-08**: Connection error handling — distinguishes relay unreachable (network badge), token invalid (401 + re-configure prompt), stale data (dim + timestamp)
+- [x] **RWKS-09**: Agent tokens stored in VSCode SecretStore via QuickInput (password mode) — never in settings.json
 
 ### Report Timeline UI (TMLN)
 

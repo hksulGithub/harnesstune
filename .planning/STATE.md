@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: Ready to execute
-last_updated: "2026-04-19T14:34:48.525Z"
-last_activity: 2026-04-19
+status: Executing Phase 9
+last_updated: "2026-04-19T16:12:31.105Z"
+last_activity: 2026-04-19 -- Phase 9 execution started
 progress:
   total_phases: 10
   completed_phases: 3
-  total_plans: 8
-  completed_plans: 8
-  percent: 100
+  total_plans: 10
+  completed_plans: 9
+  percent: 90
 ---
 
 # GSD State: HarnessTune
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-19)
 
 **Core value:** Engineers running multiple agent systems can see and control all their agents from one place inside VSCode.
-**Current focus:** Phase 08 — agent-cli-daily-briefing-reports
+**Current focus:** Phase 9
 
 ## Current Position
 
-Phase: 08 (agent-cli-daily-briefing-reports) — EXECUTING
-Plan: 2 of 3
-Next: Phase 08 (Agent CLI + Daily Briefing Reports)
-Last activity: 2026-04-19
+Phase: 9 — EXECUTING
+Plan: 1 of ?
+Next: Phase 09 (Extension ↔ Relay Integration)
+Last activity: 2026-04-19 -- Phase 9 execution started
 
 ## Progress
 
@@ -67,6 +67,10 @@ Last activity: 2026-04-19
 - [Phase 06-01]: v1 registry migration auto-persists on first load to avoid repeated migration checks
 - [Phase 06-02]: Root package included as workspace member via '.' in pnpm-workspace.yaml
 - [Phase 06-02]: build:packages script chains tsc --build in dependency order before esbuild
+- [Phase 09-01]: res.json() returns unknown in strict TS — relay response bodies cast via 'as Promise<Type>' pattern in RelayClient
+- [Phase 09-01]: @harnesstune/shared added as workspace:* dep to root package.json — was missing despite pnpm monorepo config
+- [Phase 09-01]: Sentinel rootPath 'remote://{channelId}' used for remote workspaces to bypass absolute path validation in registry
+- [Phase 09-01]: RemoteReport AgentEvent: eventType='RemoteReport', raw = { type: 'remote_report', report: ReportEnvelope } — uniform event pipeline for local + remote
 
 ## Performance Metrics
 
@@ -83,6 +87,7 @@ Last activity: 2026-04-19
 | Phase 06 P01 | 2 min | 2 tasks | 6 files |
 | Phase 06 P02 | 1 min | 2 tasks | 13 files |
 | Phase 08 P03 | 2min | 2 tasks | 2 files |
+| Phase 09 P01 | 25min | 2 tasks | 13 files |
 
 ## Session Log
 
@@ -123,4 +128,8 @@ Last activity: 2026-04-19
 
 - **2026-04-19**: Phase 8 discuss-phase complete. 3 areas discussed (CLI Architecture & UX, Heartbeat & Lifecycle, Report Schemas). 12 decisions captured in 08-CONTEXT.md. MCP-as-delegate deferred to backlog. Ready for `/gsd-plan-phase 8`.
 
-*Last updated: 2026-04-19 — Phase 8 discuss-phase complete, ready for plan-phase*
+- **2026-04-19**: Phase 8 execution complete. All 3 plans executed (3 waves, sequential). Shared report types (BriefingReportBody, RalphReportBody, HeartbeatReportBody, ReportEnvelope) in @harnesstune/shared. Agent CLI with 4 subcommands: register (readline + flags), start (foreground sidecar with 5-min heartbeat, message polling with jitter, claude CLI routing, retry queue), stop (PID-based SIGTERM), report (file/stdin upload with envelope metadata). RetryQueue: disk-persisted, 48-entry cap, 5s rate-limited replay. --dry-run validates without uploading. Build passes. Ready for Phase 9.
+
+- **2026-04-19**: Phase 9 discuss-phase complete. 2 areas discussed (RemoteAdapter Polling, Add Remote Workspace Flow). 8 decisions captured in 09-CONTEXT.md. Key decisions: 30s polling with exponential backoff, synthetic 'remote_report' AgentEvent, 3-step QuickInput flow, per-workspace SecretStore tokens, mixed sidebar with cloud badge. Ready for `/gsd-plan-phase 9`.
+
+*Last updated: 2026-04-19 — Phase 09 discuss-phase complete, ready for `/gsd-plan-phase 9`*

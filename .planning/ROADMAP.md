@@ -353,10 +353,10 @@ Plans:
 
 **Research Flag:** Standard patterns — skip research-phase. Adapter interface pattern and sidebar extension are established in v1.0 codebase; RemoteAdapter and registry extension are additive changes only.
 
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 09-01-PLAN.md — Extension-side report types, RelayClient, RemoteAdapter, SecretStore + Registry extensions
+- [x] 09-01-PLAN.md — Extension-side report types, RelayClient, RemoteAdapter, SecretStore + Registry extensions
 - [ ] 09-02-PLAN.md — AddRemoteWorkspace command, extension.ts wiring, sidebar UI updates, human verification
 
 ---
@@ -408,7 +408,7 @@ Plans:
 | 6. Pre-Work — Type Consolidation + Monorepo | 0/? | Not started | - |
 | 7. Relay API | 0/? | Not started | - |
 | 8. Agent CLI + Daily Briefing Reports | 0/? | Not started | - |
-| 9. Extension Types + RemoteAdapter + Remote Workspace Management | 0/? | Not started | - |
+| 9. Extension Types + RemoteAdapter + Remote Workspace Management | 1/2 | In Progress|  |
 | 10. Report Timeline UI + Async Chat | 0/? | Not started | - |
 
 ---
