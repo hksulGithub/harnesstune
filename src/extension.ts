@@ -7,7 +7,7 @@ import { SidebarViewProvider, DashboardPanel, SchematicPanel, ChatPanel, ChatMan
 import { buildTopology } from './topology';
 import { StatusBarManager } from './statusbar';
 import { WorkspaceRecord } from './types';
-import { ClaudeCodeHookAdapter, AdapterRegistry } from './adapters';
+import { ClaudeCodeHookAdapter, AdapterRegistry, OpenClawAdapter } from './adapters';
 import type { WorkspaceConnectionConfig, AgentBackendAdapter, BackendType } from './adapters';
 import { AgentEventStore } from './database';
 import { AgentControlManager } from './controls';
@@ -245,7 +245,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const skipPermissions = config.get<boolean>('dangerouslySkipPermissions', false);
       chatManager.openChat(ws.id, ws.name, ws.rootPath, {
         dangerouslySkipPermissions: skipPermissions,
-      });
+      }, ws.backendType);
     }
   );
 
@@ -273,8 +273,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const adapterRegistry = new AdapterRegistry();
   const claudeCodeAdapter = new ClaudeCodeHookAdapter(context.globalStorageUri);
   adapterRegistry.register('claude-code', { createAdapter: () => claudeCodeAdapter });
-  // OpenClaw factory registered in Plan 03; placeholder until then:
-  // adapterRegistry.register('openclaw', { createAdapter: () => new OpenClawAdapter() });
+  adapterRegistry.register('openclaw', { createAdapter: () => new OpenClawAdapter() });
 
   const activeAdapters = new Map<string, AgentBackendAdapter>();
 
@@ -717,7 +716,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
       chatManager.showChat(ws.id, ws.name, ws.rootPath, {
         dangerouslySkipPermissions: skipPermissions,
-      });
+      }, ws.backendType);
     }
   );
   context.subscriptions.push(openTerminalCmd);
@@ -826,7 +825,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const skipPermissions = config.get<boolean>('dangerouslySkipPermissions', false);
     chatManager.showChat(firstWs.id, firstWs.name, firstWs.rootPath, {
       dangerouslySkipPermissions: skipPermissions,
-    });
+    }, firstWs.backendType);
   }
 
   // Close the Welcome tab so we get a clean 2-column layout (Dashboard + Chat)
