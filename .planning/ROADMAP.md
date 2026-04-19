@@ -32,7 +32,7 @@ Five phases (Phase 6 through Phase 10) constitute Milestone 2. Completion delive
 ## Phases (Milestone 2)
 
 - [x] **Phase 6: Pre-Work — Type Consolidation + Monorepo** - Foundation cleanup that all v2.0 code depends on: single canonical BackendType, local/remote discriminant on WorkspaceRecord, registry v2 migration, monorepo structure
-- [ ] **Phase 7: Relay API** - Live Vercel + Turso relay deployed — the shared mailbox all other v2.0 components talk to
+- [x] **Phase 7: Relay API** - Live Vercel + Turso relay deployed — the shared mailbox all other v2.0 components talk to
 - [ ] **Phase 8: Agent CLI + Daily Briefing Reports** - `npx harnesstune-agent` sidecar on remote machines: registers with relay, uploads structured briefing reports, polls for messages
 - [ ] **Phase 9: Extension Types + RemoteAdapter + Remote Workspace Management** - Type-safe bridge from relay data into extension: RemoteAdapter polling loop, ralph loop report types, sidebar add-remote flow with full connection management
 - [ ] **Phase 10: Report Timeline UI + Async Chat** - ReportPanel WebviewPanel: chronological feed of briefings, ralph loop cards, convergence chart, interleaved chat, message composer
