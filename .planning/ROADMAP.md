@@ -277,11 +277,12 @@ Plans:
 
 **Research Flag:** Standard patterns — skip research-phase. Turso + Hono + Vercel integration is officially documented with integration guides. All security patterns (timingSafeEqual, header sanitization) sourced from official Node.js and Hono documentation.
 
-**Plans:** 2 plans
+**Plans:** 3 plans
 
 Plans:
-- [x] 06-01-PLAN.md — Type consolidation (BackendType canonical + mode discriminant + registry v2 migration)
-- [x] 06-02-PLAN.md — Monorepo structure (pnpm workspaces + TS project references + package scaffolds)
+- [ ] 07-01-PLAN.md — Drizzle schema, Turso client, Hono app, middleware chain (auth, sanitize, version, rateLimit), health endpoint
+- [ ] 07-02-PLAN.md — Channel registration, report endpoints (upload, paginated list, full-body fetch), message endpoints (post, poll, delete)
+- [ ] 07-03-PLAN.md — Vercel entry point, deployment config, schema push, live deployment verification
 
 ---
 
