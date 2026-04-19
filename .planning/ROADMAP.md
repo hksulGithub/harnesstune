@@ -356,8 +356,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — Type consolidation (BackendType canonical + mode discriminant + registry v2 migration)
-- [ ] 06-02-PLAN.md — Monorepo structure (pnpm workspaces + TS project references + package scaffolds)
+- [ ] 09-01-PLAN.md — Extension-side report types, RelayClient, RemoteAdapter, SecretStore + Registry extensions
+- [ ] 09-02-PLAN.md — AddRemoteWorkspace command, extension.ts wiring, sidebar UI updates, human verification
 
 ---
 
