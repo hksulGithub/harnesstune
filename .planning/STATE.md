@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-19T06:47:38Z"
-last_activity: 2026-04-19 -- Phase 06 Plan 01 executed (type consolidation + registry v2)
+last_updated: "2026-04-19T06:52:09Z"
+last_activity: 2026-04-19 -- Phase 06 Plan 02 executed (pnpm monorepo + TS project references)
 progress:
   total_phases: 10
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
-  percent: 50
+  completed_plans: 2
+  percent: 100
 ---
 
 # GSD State: HarnessTune
@@ -24,14 +24,14 @@ See: .planning/PROJECT.md (updated 2026-04-19)
 
 ## Current Position
 
-Phase: 06-pre-work-type-consolidation-monorepo — EXECUTING
+Phase: 06-pre-work-type-consolidation-monorepo — COMPLETE
 Plan: 2 of 2
-Status: Plan 01 complete, Plan 02 next
-Last activity: 2026-04-19 -- Phase 06 Plan 01 executed (type consolidation + registry v2)
+Status: All plans complete
+Last activity: 2026-04-19 -- Phase 06 Plan 02 executed (pnpm monorepo + TS project references)
 
 ## Progress
 
-[████████████] M1 complete | M2: Phase 6 Plan 01/02 done
+[████████████] M1 complete | M2: Phase 6 complete (2/2 plans)
 
 ## Current Milestone
 
@@ -65,6 +65,8 @@ Last activity: 2026-04-19 -- Phase 06 Plan 01 executed (type consolidation + reg
 - [Phase 05]: Used chokidar v4 for JSONL file watching; ChatManager routes by backendType for multi-backend support
 - [Phase 06-01]: assertNeverBackendType as standalone function in types/workspace.ts for reuse across codebase
 - [Phase 06-01]: v1 registry migration auto-persists on first load to avoid repeated migration checks
+- [Phase 06-02]: Root package included as workspace member via '.' in pnpm-workspace.yaml
+- [Phase 06-02]: build:packages script chains tsc --build in dependency order before esbuild
 
 ## Performance Metrics
 
@@ -79,6 +81,7 @@ Last activity: 2026-04-19 -- Phase 06 Plan 01 executed (type consolidation + reg
 | Phase 05 P02 | 4 min | 3 tasks | 14 files |
 | Phase 05 P03 | 4min | 2 tasks | 9 files |
 | Phase 06 P01 | 2 min | 2 tasks | 6 files |
+| Phase 06 P02 | 1 min | 2 tasks | 13 files |
 
 ## Session Log
 
@@ -111,4 +114,6 @@ Last activity: 2026-04-19 -- Phase 06 Plan 01 executed (type consolidation + reg
 
 - **2026-04-19**: Phase 6 Plan 01 executed (type consolidation + registry v2). 2 tasks, 6 files. BackendType consolidated with 'remote', WorkspaceMode discriminant added, registry v1-to-v2 migration, exhaustive switch in AdapterRegistry. Ready for Plan 02 (monorepo).
 
-*Last updated: 2026-04-19 — Phase 6 Plan 01 complete, ready for Plan 02*
+- **2026-04-19**: Phase 6 Plan 02 executed (pnpm monorepo + TS project references). 2 tasks, 13 files. pnpm workspaces with 4 members, TypeScript project references, full build verified. Phase 6 complete. Ready for Phase 7.
+
+*Last updated: 2026-04-19 — Phase 6 complete, ready for Phase 7*

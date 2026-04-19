@@ -31,7 +31,7 @@ Five phases (Phase 6 through Phase 10) constitute Milestone 2. Completion delive
 
 ## Phases (Milestone 2)
 
-- [ ] **Phase 6: Pre-Work — Type Consolidation + Monorepo** - Foundation cleanup that all v2.0 code depends on: single canonical BackendType, local/remote discriminant on WorkspaceRecord, registry v2 migration, monorepo structure
+- [x] **Phase 6: Pre-Work — Type Consolidation + Monorepo** - Foundation cleanup that all v2.0 code depends on: single canonical BackendType, local/remote discriminant on WorkspaceRecord, registry v2 migration, monorepo structure
 - [ ] **Phase 7: Relay API** - Live Vercel + Turso relay deployed — the shared mailbox all other v2.0 components talk to
 - [ ] **Phase 8: Agent CLI + Daily Briefing Reports** - `npx harnesstune-agent` sidecar on remote machines: registers with relay, uploads structured briefing reports, polls for messages
 - [ ] **Phase 9: Extension Types + RemoteAdapter + Remote Workspace Management** - Type-safe bridge from relay data into extension: RemoteAdapter polling loop, ralph loop report types, sidebar add-remote flow with full connection management
@@ -235,11 +235,11 @@ Plans:
 
 **Research Flag:** Standard patterns — skip research-phase. TypeScript project references, discriminated union migration, and monorepo restructuring are HIGH confidence and well-documented.
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans executed
 
 Plans:
 - [x] 06-01-PLAN.md — Type consolidation (BackendType canonical + mode discriminant + registry v2 migration)
-- [ ] 06-02-PLAN.md — Monorepo structure (pnpm workspaces + TS project references + package scaffolds)
+- [x] 06-02-PLAN.md — Monorepo structure (pnpm workspaces + TS project references + package scaffolds)
 
 ---
 
@@ -458,11 +458,11 @@ Plans:
 | CHAT-03 | Phase 4 | Complete |
 | CHAT-04 | Phase 4 | Complete |
 | WKSP-02 | Phase 5 | Complete |
-| PRWK-01 | Phase 6 | Planned |
-| PRWK-02 | Phase 6 | Planned |
-| PRWK-03 | Phase 6 | Planned |
-| PRWK-04 | Phase 6 | Planned |
-| PRWK-05 | Phase 6 | Planned |
+| PRWK-01 | Phase 6 | Complete |
+| PRWK-02 | Phase 6 | Complete |
+| PRWK-03 | Phase 6 | Complete |
+| PRWK-04 | Phase 6 | Complete |
+| PRWK-05 | Phase 6 | Complete |
 | RLAY-01 | Phase 7 | Planned |
 | RLAY-02 | Phase 7 | Planned |
 | RLAY-03 | Phase 7 | Planned |
