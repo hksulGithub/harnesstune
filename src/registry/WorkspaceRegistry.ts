@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { IWorkspaceRegistry, WorkspaceRecord, WorkspaceRegistryData, BackendType } from '../types/workspace';
+import { IWorkspaceRegistry, WorkspaceRecord, WorkspaceRegistryData, BackendType, WorkspaceMode } from '../types/workspace';
 
 export class WorkspaceRegistry implements IWorkspaceRegistry {
   private readonly registryUri: vscode.Uri;
@@ -67,34 +67,54 @@ export class WorkspaceRegistry implements IWorkspaceRegistry {
 
   /**
    * Add a new workspace to the registry.
-   * Validates that rootPath is an absolute path.
-   * Rejects duplicates by rootPath.
+   * Validates that rootPath is an absolute path (skipped for remote workspaces).
+   * Rejects duplicates by rootPath (skipped for remote workspaces).
    */
-  public async add(name: string, rootPath: string, backendType: BackendType = 'claude-code'): Promise<WorkspaceRecord> {
-    // Validate absolute path: starts with '/' (macOS/Linux) or drive letter (Windows)
-    const isAbsolute = /^\//.test(rootPath) || /^[a-zA-Z]:\\/.test(rootPath);
-    if (!isAbsolute) {
-      throw new Error(`rootPath must be an absolute path, got: ${rootPath}`);
-    }
+  public async add(
+    name: string,
+    rootPath: string,
+    backendType: BackendType = 'claude-code',
+    options?: { mode?: WorkspaceMode; relayUrl?: string; channelId?: string; pollInterval?: number }
+  ): Promise<WorkspaceRecord> {
+    const isRemote = options?.mode === 'remote';
 
-    // Check for duplicate rootPath
-    const existing = this.workspaces.find(ws => ws.rootPath === rootPath);
-    if (existing) {
-      throw new Error(`Workspace at path "${rootPath}" is already registered as "${existing.name}"`);
+    if (!isRemote) {
+      // Validate absolute path: starts with '/' (macOS/Linux) or drive letter (Windows)
+      const isAbsolute = /^\//.test(rootPath) || /^[a-zA-Z]:\\/.test(rootPath);
+      if (!isAbsolute) {
+        throw new Error(`rootPath must be an absolute path, got: ${rootPath}`);
+      }
+
+      // Check for duplicate rootPath (local workspaces only)
+      const existing = this.workspaces.find(ws => ws.rootPath === rootPath);
+      if (existing) {
+        throw new Error(`Workspace at path "${rootPath}" is already registered as "${existing.name}"`);
+      }
     }
 
     const now = new Date().toISOString();
+
+    // For remote workspaces, derive a sentinel rootPath from channelId
+    const resolvedRootPath = isRemote
+      ? 'remote://' + (options?.channelId ?? name)
+      : rootPath;
+
     const record: WorkspaceRecord = {
       id: crypto.randomUUID(),
       name,
-      rootPath,
+      rootPath: resolvedRootPath,
       status: 'unknown',
       addedAt: now,
       lastUpdatedAt: now,
       runningAgentCount: 0,
       errorCount: 0,
-      backendType,
-      mode: 'local',
+      backendType: isRemote ? 'remote' : backendType,
+      mode: options?.mode ?? 'local',
+      ...(isRemote && {
+        relayUrl: options?.relayUrl,
+        channelId: options?.channelId,
+        pollInterval: options?.pollInterval,
+      }),
     };
 
     this.workspaces.push(record);
@@ -123,7 +143,7 @@ export class WorkspaceRegistry implements IWorkspaceRegistry {
    */
   public async update(
     id: string,
-    changes: Partial<Pick<WorkspaceRecord, 'status' | 'runningAgentCount' | 'errorCount' | 'backendType' | 'mode'>>
+    changes: Partial<Pick<WorkspaceRecord, 'status' | 'runningAgentCount' | 'errorCount' | 'backendType' | 'mode' | 'relayUrl' | 'pollInterval' | 'lastCursor'>>
   ): Promise<void> {
     const record = this.workspaces.find(ws => ws.id === id);
     if (!record) {

@@ -4,3 +4,4 @@ export * from './status';
 export * from './agent';
 export * from './topology';
 export * from './openclaw';
+export * from './reports';

@@ -1,5 +1,5 @@
 /** Status of an agent workspace */
-export type WorkspaceStatus = 'running' | 'idle' | 'warning' | 'error' | 'unknown';
+export type WorkspaceStatus = 'running' | 'idle' | 'warning' | 'error' | 'stale' | 'relay_unreachable' | 'auth_error' | 'unknown';
 
 /** Backend adapter type for a workspace */
 export type BackendType = 'claude-code' | 'openclaw' | 'remote';
@@ -34,6 +34,14 @@ export interface WorkspaceRecord {
     host?: string;
     port?: number;
   };
+  /** Relay URL for remote workspaces (e.g., 'https://harnesstune-relay.vercel.app/api') */
+  relayUrl?: string;
+  /** Channel ID on the relay for this workspace */
+  channelId?: string;
+  /** Polling interval in milliseconds (default 30000) */
+  pollInterval?: number;
+  /** ISO 8601 cursor for incremental report fetching */
+  lastCursor?: string;
 }
 
 /** Shape of the registry JSON file stored at globalStorageUri */
@@ -46,9 +54,9 @@ export interface WorkspaceRegistryData {
 export interface IWorkspaceRegistry {
   getAll(): WorkspaceRecord[];
   getById(id: string): WorkspaceRecord | undefined;
-  add(name: string, rootPath: string, backendType?: BackendType): Promise<WorkspaceRecord>;
+  add(name: string, rootPath: string, backendType?: BackendType, options?: { mode?: WorkspaceMode; relayUrl?: string; channelId?: string; pollInterval?: number }): Promise<WorkspaceRecord>;
   remove(id: string): Promise<void>;
-  update(id: string, changes: Partial<Pick<WorkspaceRecord, 'status' | 'runningAgentCount' | 'errorCount' | 'backendType' | 'mode'>>): Promise<void>;
+  update(id: string, changes: Partial<Pick<WorkspaceRecord, 'status' | 'runningAgentCount' | 'errorCount' | 'backendType' | 'mode' | 'relayUrl' | 'pollInterval' | 'lastCursor'>>): Promise<void>;
   onDidChange: import('vscode').Event<WorkspaceRecord[]>;
 }
 

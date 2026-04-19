@@ -2,6 +2,7 @@ import type { WorkspaceRecord, WorkspaceStatus } from './workspace';
 import type { AgentEvent, AgentSession } from './agent';
 import type { TopologyState, TopologyNode } from './topology';
 import type { ChatMessage, SessionState } from '../session';
+import type { ReportEnvelope } from '@harnesstune/shared';
 
 /** Messages from extension host to webview */
 export type HostToWebviewMessage =
@@ -19,7 +20,10 @@ export type HostToWebviewMessage =
   | { type: 'chat:message'; message: ChatMessage }
   | { type: 'chat:stateChange'; state: SessionState }
   | { type: 'chat:history'; messages: ChatMessage[] }
-  | { type: 'chat:workspaceInfo'; workspaceId: string; workspaceName: string };
+  | { type: 'chat:workspaceInfo'; workspaceId: string; workspaceName: string }
+  | { type: 'reports:list'; workspaceId: string; reports: ReportEnvelope[] }
+  | { type: 'reports:detail'; workspaceId: string; report: ReportEnvelope }
+  | { type: 'reports:messageSent'; workspaceId: string; success: boolean };
 
 /** Messages from webview to extension host */
 export type WebviewToHostMessage =
@@ -36,4 +40,8 @@ export type WebviewToHostMessage =
   | { type: 'schematic:selectNode'; sessionId: string }
   | { type: 'chat:sendMessage'; text: string }
   | { type: 'chat:interrupt' }
-  | { type: 'chat:requestHistory' };
+  | { type: 'chat:requestHistory' }
+  | { type: 'workspace:addRemote'; relayUrl: string; token: string }
+  | { type: 'reports:request'; workspaceId: string; since?: string }
+  | { type: 'reports:sendMessage'; workspaceId: string; text: string }
+  | { type: 'workspace:messageAgent'; workspaceId: string };
