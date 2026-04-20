@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: Executing Phase 9
-last_updated: "2026-04-19T16:20:40.770Z"
-last_activity: 2026-04-19 -- Phase 9 execution started
+status: Phase 10 complete — v2.0 milestone done
+last_updated: "2026-04-21T00:00:00.000Z"
+last_activity: 2026-04-21 -- Phase 10 execution complete
 progress:
   total_phases: 10
-  completed_phases: 4
-  total_plans: 10
-  completed_plans: 10
+  completed_phases: 5
+  total_plans: 14
+  completed_plans: 14
   percent: 100
 ---
 
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-19)
 
 **Core value:** Engineers running multiple agent systems can see and control all their agents from one place inside VSCode.
-**Current focus:** Phase 9
+**Current focus:** Phase 10
 
 ## Current Position
 
-Phase: 9 — EXECUTING (checkpoint: Task 3 human-verify pending)
-Plan: 2 of ? (paused at checkpoint)
-Next: Human verification of remote workspace sidebar UI
-Last activity: 2026-04-19 -- Phase 09 Plan 02 Tasks 1-2 complete, awaiting Task 3 human-verify checkpoint
+Phase: 10 — COMPLETE
+Plan: 2 of 2
+Next: v2.0 milestone complete
+Last activity: 2026-04-21 -- Phase 10 execution complete
 
 ## Progress
 
@@ -142,3 +142,5 @@ Last activity: 2026-04-19 -- Phase 09 Plan 02 Tasks 1-2 complete, awaiting Task 
 - **[09-02]**: configureRemoteWorkspace Rename sub-command uses registry.update({name}) requiring 'name' added to update() Pick type
 
 *Last updated: 2026-04-19 — Phase 09 Plan 02 paused at Task 3 human-verify checkpoint*
+
+- **2026-04-21**: Phase 10 execution complete. 2 plans across 2 waves. Plan 01: ReportPanel singleton, TimelineItem types, RelayClient timeline/message endpoints, RemoteAdapter timeline merging + chat routing, esbuild reports entrypoint. Plan 02: 11 React components (PanelHeader, FilterTabs, TimelineFeed, BriefingReportCard, RalphLoopReportCard, RalphLoopChart pure SVG, ChatBubble, MessageComposer, LoadMoreButton, EmptyState, App.tsx), 587-line CSS stylesheet with VSCode theme vars. Fixed plan typo: progressSummary→progress to match BriefingReportBody. v2.0 milestone complete.
