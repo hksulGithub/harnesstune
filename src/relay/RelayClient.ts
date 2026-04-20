@@ -65,7 +65,7 @@ export class RelayClient {
 
   /** Post a message to the agent. */
   async postMessage(text: string): Promise<void> {
-    const payload: RelayMessagePayload = { text, sentAt: new Date().toISOString() };
+    const payload = { direction: 'to_agent', body: { text, sentAt: new Date().toISOString() } };
     const res = await this.doFetch(`/channels/${this.channelId}/messages`, {
       method: 'POST',
       body: JSON.stringify(payload),

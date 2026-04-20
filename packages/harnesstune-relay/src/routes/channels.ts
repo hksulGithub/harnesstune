@@ -39,6 +39,12 @@ publicChannelsRouter.post('/', async (c) => {
 // Authenticated routes
 export const channelsRouter = new Hono<{ Variables: AuthVariables }>();
 
+// GET /channels/me — token introspection: return the channelId bound to this token
+channelsRouter.get('/me', async (c) => {
+  const channelId = c.get('channelId');
+  return c.json({ channelId });
+});
+
 // GET /channels/:channelId — channel metadata
 channelsRouter.get('/:channelId', async (c) => {
   const channelId = c.req.param('channelId');

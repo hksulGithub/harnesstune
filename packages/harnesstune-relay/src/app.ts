@@ -18,8 +18,9 @@ app.onError((err, c) => {
   return c.json({ error: 'Internal Server Error' }, 500);
 });
 
-// Health check — public, before all middleware
+// Health check — public, before all middleware (both root and /api prefix)
 app.get('/health', (c) => c.json({ status: 'ok', version: RELAY_VERSION }));
+app.get('/api/health', (c) => c.json({ status: 'ok', version: RELAY_VERSION }));
 
 // Public channel registration (no auth required — agent has no token yet)
 app.route('/api/channels', publicChannelsRouter);
