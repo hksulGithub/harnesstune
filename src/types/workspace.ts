@@ -42,6 +42,8 @@ export interface WorkspaceRecord {
   pollInterval?: number;
   /** ISO 8601 cursor for incremental report fetching */
   lastCursor?: string;
+  /** ISO 8601 cursor for incremental message fetching */
+  lastMessageCursor?: string;
 }
 
 /** Shape of the registry JSON file stored at globalStorageUri */
@@ -56,7 +58,7 @@ export interface IWorkspaceRegistry {
   getById(id: string): WorkspaceRecord | undefined;
   add(name: string, rootPath: string, backendType?: BackendType, options?: { mode?: WorkspaceMode; relayUrl?: string; channelId?: string; pollInterval?: number }): Promise<WorkspaceRecord>;
   remove(id: string): Promise<void>;
-  update(id: string, changes: Partial<Pick<WorkspaceRecord, 'name' | 'status' | 'runningAgentCount' | 'errorCount' | 'backendType' | 'mode' | 'relayUrl' | 'pollInterval' | 'lastCursor'>>): Promise<void>;
+  update(id: string, changes: Partial<Pick<WorkspaceRecord, 'name' | 'status' | 'runningAgentCount' | 'errorCount' | 'backendType' | 'mode' | 'relayUrl' | 'pollInterval' | 'lastCursor' | 'lastMessageCursor'>>): Promise<void>;
   onDidChange: import('vscode').Event<WorkspaceRecord[]>;
 }
 

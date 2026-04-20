@@ -93,6 +93,11 @@
         "command": "harnesstune.configureRemoteWorkspace",
         "title": "Configure Remote Workspace",
         "category": "HarnessTune"
+      },
+      {
+        "command": "harnesstune.openReports",
+        "title": "Open Reports",
+        "category": "HarnessTune"
       }
     ],
     "keybindings": [

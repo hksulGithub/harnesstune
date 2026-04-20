@@ -36,3 +36,17 @@ export interface ReportEnvelope {
   /** UUID v4 unique identifier for this report */
   reportId: string;
 }
+
+/** A message from the relay messages API */
+export interface RelayMessage {
+  id: string;
+  channelId: string;
+  direction: 'to_agent' | 'from_agent';
+  body: { text: string; sentAt: string; inReplyToReportId?: string };
+  createdAt: string;
+}
+
+/** Unified timeline item — report or chat message */
+export type TimelineItem =
+  | { kind: 'report'; data: ReportEnvelope; at: string }
+  | { kind: 'message'; data: RelayMessage; at: string };

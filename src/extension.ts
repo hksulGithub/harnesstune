@@ -3,7 +3,7 @@ import * as path from 'path';
 import { WorkspaceRegistry } from './registry';
 import { FileWatcherManager } from './watchers';
 import { SecretStore } from './secrets';
-import { SidebarViewProvider, DashboardPanel, SchematicPanel, ChatPanel, ChatManager } from './panels';
+import { SidebarViewProvider, DashboardPanel, SchematicPanel, ChatPanel, ChatManager, ReportPanel } from './panels';
 import { buildTopology } from './topology';
 import { StatusBarManager } from './statusbar';
 import { WorkspaceRecord } from './types';
@@ -237,9 +237,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         return;
       }
 
-      // Remote workspaces don't have a chat panel yet — deferred to Phase 10
+      // Remote workspaces open the Report Timeline panel
       if (ws.mode === 'remote') {
-        vscode.window.showInformationMessage(`Remote workspace "${ws.name}" — Report timeline coming in Phase 10.`);
+        vscode.commands.executeCommand('harnesstune.openReports', ws.id);
         return;
       }
 
@@ -378,7 +378,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           token,
           workspace.channelId!,
           workspace.pollInterval ?? 30_000,
-          workspace.lastCursor,
+          { reportCursor: workspace.lastCursor, messageCursor: workspace.lastMessageCursor },
         );
         const sub = adapter.onDidReceiveEvent(handleEvent);
         context.subscriptions.push(sub);
@@ -387,10 +387,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         const statusSub = adapter.onStatusChange(async ({ status, lastHeartbeatAt: _lh }) => {
           const wsStatus = status as WorkspaceStatus;
           await registry.update(workspace.id, { status: wsStatus });
-          // Persist cursor on each poll cycle
-          const cursor = adapter.getCursor();
-          if (cursor) {
-            await registry.update(workspace.id, { lastCursor: cursor });
+          // Persist cursors on each poll cycle
+          const cursors = adapter.getCursors();
+          if (cursors.reportCursor) {
+            await registry.update(workspace.id, { lastCursor: cursors.reportCursor, lastMessageCursor: cursors.messageCursor });
           }
         });
         context.subscriptions.push(statusSub);
@@ -668,6 +668,66 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
 
   context.subscriptions.push(pauseCmd, resumeCmd, stopCmd);
+
+  // ── Phase 10: Report Timeline Panel ──────────────────────────────────────────
+  const openReportsCmd = vscode.commands.registerCommand(
+    'harnesstune.openReports',
+    async (workspaceId?: string) => {
+      // Find workspace — if no workspaceId, pick first remote workspace
+      const ws = workspaceId
+        ? registry.getAll().find(w => w.id === workspaceId)
+        : registry.getAll().find(w => w.mode === 'remote');
+      if (!ws) {
+        vscode.window.showWarningMessage('HarnessTune: No remote workspace found.');
+        return;
+      }
+
+      const panel = ReportPanel.createOrShow(context.extensionUri, ws.id, ws.name);
+
+      // Get adapter and send initial data
+      const adapter = activeAdapters.get(ws.id);
+      if (adapter && 'getTimelineItems' in adapter) {
+        const remote = adapter as RemoteAdapter;
+        const { items, loopIterations } = await remote.getTimelineItems();
+        const initial = items.slice(0, 20);
+        panel.postMessage({ type: 'timeline:update', workspaceId: ws.id, items: initial, hasMore: items.length > 20 });
+        panel.postMessage({ type: 'timeline:loopIterations', workspaceId: ws.id, loopIterations });
+        panel.postMessage({ type: 'chat:workspaceInfo', workspaceId: ws.id, workspaceName: ws.name });
+        // Send connection status
+        const status = ws.status === 'error' ? 'error' : (ws.status === 'stale' ? 'stale' : 'connected');
+        panel.postMessage({ type: 'timeline:connectionStatus', workspaceId: ws.id, status: status as 'connected' | 'stale' | 'error' });
+      }
+
+      // Handle webview messages
+      panel.onDidReceiveMessage(async (msg) => {
+        if (msg.type === 'timeline:sendMessage') {
+          const remote = activeAdapters.get(ws.id) as RemoteAdapter | undefined;
+          const client = remote?.getClient();
+          if (client) {
+            try {
+              await client.postMessage(msg.text, msg.inReplyToReportId);
+              panel.postMessage({ type: 'reports:messageSent', workspaceId: ws.id, success: true });
+            } catch {
+              panel.postMessage({ type: 'reports:messageSent', workspaceId: ws.id, success: false });
+            }
+          }
+        }
+        if (msg.type === 'timeline:loadMore') {
+          // Load more handled via getTimelineItems with cursor — deferred to component wiring
+        }
+      });
+    },
+  );
+  context.subscriptions.push(openReportsCmd);
+
+  // ── Phase 10: Report Panel Serializer ────────────────────────────────────────
+  context.subscriptions.push(
+    vscode.window.registerWebviewPanelSerializer(ReportPanel.viewType, {
+      async deserializeWebviewPanel(panel: vscode.WebviewPanel) {
+        ReportPanel.revive(panel, context.extensionUri);
+      },
+    })
+  );
 
   // ── Phase 4: Chat Manager (webview-based, replaces TerminalManager) ────────
   const chatManager = new ChatManager(context.extensionUri, (event: AgentEvent) => {

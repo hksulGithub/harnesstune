@@ -1,4 +1,4 @@
-import type { ReportEnvelope } from '@harnesstune/shared';
+import type { ReportEnvelope, RelayMessage } from '@harnesstune/shared';
 
 export interface RelayClientConfig {
   relayUrl: string;   // e.g. 'https://harnesstune-relay.vercel.app/api'
@@ -63,9 +63,23 @@ export class RelayClient {
     return res.json() as Promise<ReportEnvelope>;
   }
 
+  /** Fetch messages since cursor. Returns array of RelayMessage. */
+  async getMessages(since?: string, limit = 50): Promise<RelayMessage[]> {
+    const params = new URLSearchParams();
+    if (since) { params.set('since', since); }
+    params.set('limit', String(limit));
+    const url = `/channels/${this.channelId}/messages${params.toString() ? '?' + params.toString() : ''}`;
+    const res = await this.doFetch(url, { timeout: 5000 });
+    if (!res.ok) { throw new RelayError(res.status, await res.text()); }
+    const data = await res.json() as { messages?: RelayMessage[] } | RelayMessage[];
+    return (data as { messages?: RelayMessage[] }).messages ?? (data as RelayMessage[]);
+  }
+
   /** Post a message to the agent. */
-  async postMessage(text: string): Promise<void> {
-    const payload = { direction: 'to_agent', body: { text, sentAt: new Date().toISOString() } };
+  async postMessage(text: string, inReplyToReportId?: string): Promise<void> {
+    const body: Record<string, unknown> = { text, sentAt: new Date().toISOString() };
+    if (inReplyToReportId) { body.inReplyToReportId = inReplyToReportId; }
+    const payload = { direction: 'to_agent', body };
     const res = await this.doFetch(`/channels/${this.channelId}/messages`, {
       method: 'POST',
       body: JSON.stringify(payload),

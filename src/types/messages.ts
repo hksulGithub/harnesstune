@@ -2,7 +2,7 @@ import type { WorkspaceRecord, WorkspaceStatus } from './workspace';
 import type { AgentEvent, AgentSession } from './agent';
 import type { TopologyState, TopologyNode } from './topology';
 import type { ChatMessage, SessionState } from '../session';
-import type { ReportEnvelope } from '@harnesstune/shared';
+import type { ReportEnvelope, TimelineItem, RalphReportBody } from '@harnesstune/shared';
 
 /** Messages from extension host to webview */
 export type HostToWebviewMessage =
@@ -23,7 +23,11 @@ export type HostToWebviewMessage =
   | { type: 'chat:workspaceInfo'; workspaceId: string; workspaceName: string }
   | { type: 'reports:list'; workspaceId: string; reports: ReportEnvelope[] }
   | { type: 'reports:detail'; workspaceId: string; report: ReportEnvelope }
-  | { type: 'reports:messageSent'; workspaceId: string; success: boolean };
+  | { type: 'reports:messageSent'; workspaceId: string; success: boolean }
+  | { type: 'timeline:update'; workspaceId: string; items: TimelineItem[]; hasMore: boolean }
+  | { type: 'timeline:loopIterations'; workspaceId: string; loopIterations: Record<string, RalphReportBody[]> }
+  | { type: 'timeline:append'; workspaceId: string; items: TimelineItem[] }
+  | { type: 'timeline:connectionStatus'; workspaceId: string; status: 'connected' | 'stale' | 'error' };
 
 /** Messages from webview to extension host */
 export type WebviewToHostMessage =
@@ -45,4 +49,7 @@ export type WebviewToHostMessage =
   | { type: 'workspace:addRemote'; relayUrl: string; token: string }
   | { type: 'reports:request'; workspaceId: string; since?: string }
   | { type: 'reports:sendMessage'; workspaceId: string; text: string }
-  | { type: 'workspace:messageAgent'; workspaceId: string };
+  | { type: 'workspace:messageAgent'; workspaceId: string }
+  | { type: 'timeline:requestInitial'; workspaceId: string }
+  | { type: 'timeline:loadMore'; workspaceId: string; before: string }
+  | { type: 'timeline:sendMessage'; workspaceId: string; text: string; inReplyToReportId?: string };

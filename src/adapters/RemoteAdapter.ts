@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as crypto from 'crypto';
 import type { AgentBackendAdapter } from './AgentBackendAdapter';
 import type { AgentEvent } from '../types/agent';
+import type { TimelineItem, RalphReportBody } from '@harnesstune/shared';
 import { RelayClient, RelayError } from '../relay';
 
 const DEFAULT_POLL_INTERVAL = 30_000; // 30 seconds
@@ -17,7 +18,8 @@ export class RemoteAdapter implements AgentBackendAdapter {
 
   private client: RelayClient | undefined;
   private pollTimer: ReturnType<typeof setInterval> | undefined;
-  private cursor: string | undefined;
+  private reportCursor: string | undefined;
+  private messageCursor: string | undefined;
   private currentInterval: number = DEFAULT_POLL_INTERVAL;
   private baseInterval: number = DEFAULT_POLL_INTERVAL;
   private consecutiveErrors = 0;
@@ -32,11 +34,12 @@ export class RemoteAdapter implements AgentBackendAdapter {
     private readonly token: string,
     private readonly channelId: string,
     private readonly pollInterval: number = DEFAULT_POLL_INTERVAL,
-    initialCursor?: string,
+    initialCursors?: { reportCursor?: string; messageCursor?: string },
   ) {
     this.baseInterval = pollInterval;
     this.currentInterval = pollInterval;
-    this.cursor = initialCursor;
+    this.reportCursor = initialCursors?.reportCursor;
+    this.messageCursor = initialCursors?.messageCursor;
   }
 
   async connect(workspaceId: string, _workspaceRootPath: string): Promise<void> {
@@ -56,9 +59,9 @@ export class RemoteAdapter implements AgentBackendAdapter {
     this._onStatusChange.dispose();
   }
 
-  /** Get current cursor for persistence */
-  getCursor(): string | undefined {
-    return this.cursor;
+  /** Get current cursors for persistence */
+  getCursors(): { reportCursor?: string; messageCursor?: string } {
+    return { reportCursor: this.reportCursor, messageCursor: this.messageCursor };
   }
 
   /** Get RelayClient for direct use (e.g., posting messages) */
@@ -87,7 +90,7 @@ export class RemoteAdapter implements AgentBackendAdapter {
   private async poll(): Promise<void> {
     if (!this.client) { return; }
     try {
-      const reports = await this.client.getReports(this.cursor);
+      const reports = await this.client.getReports(this.reportCursor);
 
       // Success -- reset backoff
       if (this.consecutiveErrors > 0) {
@@ -99,8 +102,8 @@ export class RemoteAdapter implements AgentBackendAdapter {
 
       for (const report of reports) {
         // Update cursor to latest report timestamp
-        if (!this.cursor || report.generatedAt > this.cursor) {
-          this.cursor = report.generatedAt;
+        if (!this.reportCursor || report.generatedAt > this.reportCursor) {
+          this.reportCursor = report.generatedAt;
         }
 
         // Track heartbeat freshness
@@ -146,5 +149,46 @@ export class RemoteAdapter implements AgentBackendAdapter {
 
       console.error(`HarnessTune RemoteAdapter: poll error (attempt ${this.consecutiveErrors}, next in ${this.currentInterval}ms):`, err instanceof Error ? err.message : err);
     }
+  }
+
+  /** Get timeline items (reports + messages, heartbeats filtered) */
+  async getTimelineItems(): Promise<{ items: TimelineItem[]; loopIterations: Record<string, RalphReportBody[]> }> {
+    if (!this.client) { return { items: [], loopIterations: {} }; }
+
+    const [reports, messages] = await Promise.all([
+      this.client.getReports(this.reportCursor),
+      this.client.getMessages(this.messageCursor),
+    ]);
+
+    const items: TimelineItem[] = [];
+    const loopMap: Record<string, RalphReportBody[]> = {};
+
+    for (const report of reports) {
+      if (!this.reportCursor || report.generatedAt > this.reportCursor) {
+        this.reportCursor = report.generatedAt;
+      }
+      // Track heartbeats for stale detection but don't include in timeline
+      if (report.type === 'heartbeat') {
+        this.lastHeartbeatAt = Date.now();
+        continue;
+      }
+      items.push({ kind: 'report', data: report, at: report.generatedAt });
+      // Collect ralph iterations by loopId
+      if (report.type === 'ralph') {
+        const body = report.body as RalphReportBody;
+        if (!loopMap[body.loopId]) { loopMap[body.loopId] = []; }
+        loopMap[body.loopId].push(body);
+      }
+    }
+
+    for (const msg of messages) {
+      if (!this.messageCursor || msg.createdAt > this.messageCursor) {
+        this.messageCursor = msg.createdAt;
+      }
+      items.push({ kind: 'message', data: msg, at: msg.createdAt });
+    }
+
+    items.sort((a, b) => b.at.localeCompare(a.at)); // newest first
+    return { items, loopIterations: loopMap };
   }
 }
