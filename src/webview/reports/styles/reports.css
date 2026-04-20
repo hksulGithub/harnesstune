@@ -1,0 +1,587 @@
+/* ── Reset ─────────────────────────────────────────── */
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--vscode-editor-background);
+  color: var(--vscode-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size, 13px);
+  line-height: 1.4;
+}
+
+/* ── Root layout ───────────────────────────────────── */
+.report-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* ── PanelHeader ───────────────────────────────────── */
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 35px;
+  padding: 0 16px;
+  background: var(--vscode-sideBar-background);
+  border-bottom: 1px solid var(--vscode-widget-border);
+  flex-shrink: 0;
+}
+
+.panel-header__name {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panel-header__status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 9px;
+}
+
+.panel-header__status--connected {
+  color: var(--vscode-charts-green);
+  background: rgba(0, 200, 0, 0.12);
+}
+
+.panel-header__status--stale {
+  color: var(--vscode-charts-yellow);
+  background: rgba(200, 200, 0, 0.12);
+}
+
+.panel-header__status--error {
+  color: var(--vscode-errorForeground);
+  background: rgba(200, 0, 0, 0.12);
+}
+
+/* ── FilterTabs ────────────────────────────────────── */
+.filter-tabs {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  background: var(--vscode-sideBar-background);
+  border-bottom: 1px solid var(--vscode-widget-border);
+  flex-shrink: 0;
+  gap: 0;
+}
+
+.filter-tabs__tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 12px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--vscode-tab-inactiveForeground);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.filter-tabs__tab:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.filter-tabs__tab--active {
+  color: var(--vscode-tab-activeForeground);
+  border-bottom-color: var(--vscode-focusBorder);
+}
+
+.filter-tabs__tab:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.filter-tabs__badge {
+  font-size: 11px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+}
+
+/* ── Timeline feed ─────────────────────────────────── */
+.timeline-feed-container {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.timeline-feed-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.timeline-feed-container::-webkit-scrollbar-thumb {
+  background: var(--vscode-scrollbarSlider-background);
+  border-radius: 3px;
+}
+
+.timeline-feed-container::-webkit-scrollbar-thumb:hover {
+  background: var(--vscode-scrollbarSlider-hoverBackground);
+}
+
+.timeline-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+}
+
+/* ── Loading dots ──────────────────────────────────── */
+.timeline-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 32px;
+  flex: 1;
+}
+
+.timeline-loading__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--vscode-descriptionForeground);
+  animation: timeline-dot-pulse 1.2s ease-in-out infinite;
+}
+
+.timeline-loading__dot:nth-child(2) { animation-delay: 0.2s; }
+.timeline-loading__dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes timeline-dot-pulse {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
+}
+
+/* ── Report cards (shared) ─────────────────────────── */
+.report-card {
+  border: 1px solid var(--vscode-widget-border);
+  border-radius: 4px;
+  background: transparent;
+}
+
+.report-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.report-card__icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.report-card__title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.report-card__timestamp {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  white-space: nowrap;
+}
+
+.report-card__section {
+  border: none;
+}
+
+.report-card__section > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.report-card__section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.report-card__section > summary::before {
+  content: '\25B6';
+  font-size: 8px;
+  transition: transform 0.15s;
+}
+
+.report-card__section[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.report-card__section > summary:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.report-card__section-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.report-card__section-preview {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-card__section-content {
+  padding: 4px 12px 8px 24px;
+  font-size: 13px;
+}
+
+.report-card__section-content ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.report-card__section-content li {
+  margin-bottom: 2px;
+}
+
+.report-card__footer {
+  padding: 6px 12px;
+  border-top: 1px solid var(--vscode-widget-border);
+}
+
+.report-card__reply-btn {
+  background: none;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--vscode-textLink-foreground);
+  padding: 2px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.report-card__reply-btn:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+/* ── Briefing card specifics ───────────────────────── */
+.briefing-card__blockers {
+  margin: 0 12px 8px;
+  padding: 8px 12px;
+  background: var(--vscode-inputValidation-warningBackground);
+  border: 1px solid var(--vscode-inputValidation-warningBorder);
+  border-left: 3px solid var(--vscode-errorForeground);
+  border-radius: 4px;
+}
+
+.briefing-card__blockers-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vscode-errorForeground);
+  margin-bottom: 4px;
+}
+
+.briefing-card__blockers-list {
+  margin: 0;
+  padding-left: 16px;
+  list-style: disc;
+}
+
+.briefing-card__blockers-list li {
+  margin-bottom: 2px;
+}
+
+.briefing-card__metrics-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+}
+
+.briefing-card__metric-key {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.briefing-card__metric-value {
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--vscode-editor-font-family);
+}
+
+/* ── Ralph card specifics ──────────────────────────── */
+.ralph-card__title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ralph-card__title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ralph-card__loop-id {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  padding-left: 22px;
+}
+
+.ralph-card__summary {
+  padding: 8px 12px;
+}
+
+.ralph-card__summary-row {
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.ralph-card__summary-label {
+  font-size: 11px;
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.ralph-card__metrics-table-wrap {
+  padding: 0 12px 8px;
+}
+
+.ralph-card__metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ralph-card__metrics-table thead th {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--vscode-descriptionForeground);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--vscode-widget-border);
+}
+
+.ralph-card__metrics-table tbody td {
+  font-size: 13px;
+  font-family: var(--vscode-editor-font-family);
+  padding: 4px 8px;
+}
+
+.delta-positive { color: var(--vscode-terminal-ansiGreen); }
+.delta-negative { color: var(--vscode-terminal-ansiRed); }
+.delta-zero { color: var(--vscode-descriptionForeground); }
+
+/* ── Ralph convergence chart ───────────────────────── */
+.ralph-chart {
+  padding: 8px 12px;
+}
+
+.ralph-chart__svg {
+  width: 100%;
+  height: 160px;
+}
+
+.ralph-chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.ralph-chart__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.ralph-chart__legend-swatch {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+/* ── Chat bubbles ──────────────────────────────────── */
+.chat-bubble {
+  max-width: 80%;
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+
+.chat-bubble--user {
+  align-self: flex-end;
+  background: var(--vscode-textBlockQuote-background);
+  border: 1px solid var(--vscode-widget-border);
+}
+
+.chat-bubble--agent {
+  align-self: flex-start;
+  background: transparent;
+}
+
+.chat-bubble__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+
+.chat-bubble__sender {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.chat-bubble__time {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  margin-left: auto;
+}
+
+.chat-bubble__body {
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.chat-fade-in {
+  animation: chat-fade-in 0.2s ease-out;
+}
+
+@keyframes chat-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Message composer ──────────────────────────────── */
+.message-composer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-editor-background);
+}
+
+.message-composer__reply-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 12px;
+  background: var(--vscode-textBlockQuote-background);
+  border-left: 2px solid var(--vscode-textLink-foreground);
+  border-radius: 2px;
+  margin: 8px 12px 0;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.message-composer__reply-dismiss {
+  background: none;
+  border: none;
+  font-size: 11px;
+  padding: 2px;
+  cursor: pointer;
+  color: var(--vscode-descriptionForeground);
+}
+
+.message-composer__reply-dismiss:hover {
+  color: var(--vscode-foreground);
+}
+
+.message-composer__row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 8px 12px 10px;
+}
+
+.message-composer__input {
+  flex: 1;
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 4px;
+  padding: 8px 10px;
+  font: inherit;
+  color: var(--vscode-input-foreground);
+  resize: none;
+  min-height: 36px;
+  max-height: 120px;
+}
+
+.message-composer__input:focus {
+  border-color: var(--vscode-focusBorder);
+  outline: none;
+}
+
+.message-composer__send {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.message-composer__send:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.message-composer__send:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ── Load more ─────────────────────────────────────── */
+.load-more-btn {
+  align-self: center;
+  margin: 8px auto;
+  display: block;
+  padding: 4px 16px;
+  background: transparent;
+  border: 1px solid var(--vscode-widget-border);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+}
+
+.load-more-btn:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.load-more-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ── Empty state ───────────────────────────────────── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 32px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.empty-state__heading {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.empty-state__body {
+  font-size: 13px;
+  text-align: center;
+}
