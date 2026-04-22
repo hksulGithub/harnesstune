@@ -84,47 +84,47 @@
 - [x] **PRWK-01**: `BackendType` consolidated to a single canonical definition with `'remote'` added
 - [x] **PRWK-02**: `WorkspaceRecord` gains `mode: 'local' | 'remote'` discriminant for TypeScript narrowing
 - [x] **PRWK-03**: Workspace registry migrated to version 2 schema (backward-compatible with v1 data)
-- [ ] **PRWK-04**: Monorepo structure created: `packages/harnesstune-relay`, `packages/harnesstune-agent`, root extension
-- [ ] **PRWK-05**: TypeScript project references configured for cross-package type sharing
+- [x] **PRWK-04**: Monorepo structure created: `packages/harnesstune-relay`, `packages/harnesstune-agent`, root extension
+- [x] **PRWK-05**: TypeScript project references configured for cross-package type sharing
 
 ### Relay API (RLAY)
 
-- [ ] **RLAY-01**: REST API deployed on Vercel with Turso (SQLite) persistence — acts as a dumb document store / mailbox
-- [ ] **RLAY-02**: Generic channel-based data model (channels, tokens, reports, messages tables) — relay is schema-agnostic
-- [ ] **RLAY-03**: Token-based auth — per-agent Bearer tokens, stored as SHA-256 hash in Turso, compared with `crypto.timingSafeEqual`
-- [ ] **RLAY-04**: `POST /channels/:id/reports` — agents upload structured report JSON
-- [ ] **RLAY-05**: `GET /channels/:id/reports` — command center reads reports with `?since=` cursor pagination
-- [ ] **RLAY-06**: `POST /channels/:id/messages` — command center posts feedback / instructions to agent
-- [ ] **RLAY-07**: `GET /channels/:id/messages` — agents poll for new messages with `?since=` cursor
-- [ ] **RLAY-08**: Agent registration endpoint returns token once — token shown only at registration time
-- [ ] **RLAY-09**: `GET /health` endpoint returns 200 + relay version for connection verification
-- [ ] **RLAY-10**: Paginated report list API (metadata-only on list, full body on `/reports/:id`) to stay under 4.5MB Vercel payload limit
-- [ ] **RLAY-11**: `X-Agent-Version` header support — reject agents below minimum compatible version
-- [ ] **RLAY-12**: Header sanitization middleware — `Authorization` header never logged as plaintext
-- [ ] **RLAY-13**: One-command Vercel deployment (`vercel deploy` from repo)
-- [ ] **RLAY-14**: Per-token rate limiting — 60 requests/minute per Bearer token; returns `429 Too Many Requests` with `Retry-After` header
+- [x] **RLAY-01**: REST API deployed on Vercel with Turso (SQLite) persistence — acts as a dumb document store / mailbox
+- [x] **RLAY-02**: Generic channel-based data model (channels, tokens, reports, messages tables) — relay is schema-agnostic
+- [x] **RLAY-03**: Token-based auth — per-agent Bearer tokens, stored as SHA-256 hash in Turso, compared with `crypto.timingSafeEqual`
+- [x] **RLAY-04**: `POST /channels/:id/reports` — agents upload structured report JSON
+- [x] **RLAY-05**: `GET /channels/:id/reports` — command center reads reports with `?since=` cursor pagination
+- [x] **RLAY-06**: `POST /channels/:id/messages` — command center posts feedback / instructions to agent
+- [x] **RLAY-07**: `GET /channels/:id/messages` — agents poll for new messages with `?since=` cursor
+- [x] **RLAY-08**: Agent registration endpoint returns token once — token shown only at registration time
+- [x] **RLAY-09**: `GET /health` endpoint returns 200 + relay version for connection verification
+- [x] **RLAY-10**: Paginated report list API (metadata-only on list, full body on `/reports/:id`) to stay under 4.5MB Vercel payload limit
+- [x] **RLAY-11**: `X-Agent-Version` header support — reject agents below minimum compatible version
+- [x] **RLAY-12**: Header sanitization middleware — `Authorization` header never logged as plaintext
+- [x] **RLAY-13**: One-command Vercel deployment (`vercel deploy` from repo)
+- [x] **RLAY-14**: Per-token rate limiting — 60 requests/minute per Bearer token; returns `429 Too Many Requests` with `Retry-After` header
 
 ### Agent CLI Sidecar (ACLI)
 
-- [ ] **ACLI-01**: `npx harnesstune-agent` zero-install entry point — Node.js 20+ as only prerequisite
-- [ ] **ACLI-02**: Interactive registration flow — prompts for relay URL, registers with relay, stores token in `.harnesstune/config.json`
-- [ ] **ACLI-03**: Structured report upload — reads report JSON from stdin or watched file path, POSTs to relay
+- [x] **ACLI-01**: `npx harnesstune-agent` zero-install entry point — Node.js 20+ as only prerequisite
+- [x] **ACLI-02**: Interactive registration flow — prompts for relay URL, registers with relay, stores token in `.harnesstune/config.json`
+- [x] **ACLI-03**: Structured report upload — reads report JSON from stdin or watched file path, POSTs to relay
 - [x] **ACLI-04**: Message polling — short-poll relay on configurable interval (default 60s) with exponential backoff on errors
 - [x] **ACLI-05**: Instruction routing — routes received messages to local agent system (Claude Code via `claude` CLI; stub acceptable for other backends)
 - [x] **ACLI-06**: Status heartbeat — uploads heartbeat every 5 minutes; extension marks workspace stale after 15 minutes without heartbeat
 - [x] **ACLI-07**: Graceful shutdown — SIGTERM/SIGINT/SIGHUP handlers; uploads "disconnected" status before exit
-- [ ] **ACLI-08**: PID file management — prevents orphaned daemon processes; `stop` subcommand for clean shutdown
-- [ ] **ACLI-09**: Config file management — `.harnesstune/config.json` with relay URL, agent ID, token, poll interval
-- [ ] **ACLI-10**: `--dry-run` flag — validates setup without uploading data to relay
+- [x] **ACLI-08**: PID file management — prevents orphaned daemon processes; `stop` subcommand for clean shutdown
+- [x] **ACLI-09**: Config file management — `.harnesstune/config.json` with relay URL, agent ID, token, poll interval
+- [x] **ACLI-10**: `--dry-run` flag — validates setup without uploading data to relay
 - [x] **ACLI-11**: Bounded local retry queue — caps at 48 reports, disk-persisted, retries on relay recovery
 
 ### Daily Briefing Reports (BRFG)
 
-- [ ] **BRFG-01**: Structured briefing format — goals, current progress, blockers, next steps, metrics snapshot fields
+- [x] **BRFG-01**: Structured briefing format — goals, current progress, blockers, next steps, metrics snapshot fields
 - [x] **BRFG-02**: Configurable report schedule — cron expression or simple interval in CLI config (default: daily)
-- [ ] **BRFG-03**: Each report has ISO 8601 timestamp and UUID report ID for ordering and deduplication
-- [ ] **BRFG-04**: Metrics snapshot includes tokens used, tasks completed, and errors encountered (numeric, graphable)
-- [ ] **BRFG-05**: Reports render in extension as a chronological timeline per workspace (see TMLN category)
+- [x] **BRFG-03**: Each report has ISO 8601 timestamp and UUID report ID for ordering and deduplication
+- [x] **BRFG-04**: Metrics snapshot includes tokens used, tasks completed, and errors encountered (numeric, graphable)
+- [x] **BRFG-05**: Reports render in extension as a chronological timeline per workspace (see TMLN category)
 
 ### Ralph Loop Progress Reports (RLPH)
 
@@ -132,58 +132,133 @@
 - [x] **RLPH-02**: Loop ID (UUID) ties all iteration reports for a single loop together
 - [x] **RLPH-03**: Generic named-metric design — `{ "metric_name": number }` map; different loops measure different things
 - [x] **RLPH-04**: Delta computed client-side (extension) or pre-computed by CLI — both approaches supported
-- [ ] **RLPH-05**: Reports render in extension with dedicated ralph loop card component (see TMLN category)
+- [x] **RLPH-05**: Reports render in extension with dedicated ralph loop card component (see TMLN category)
 
 ### Async Chat / Feedback (ACHAT)
 
-- [ ] **ACHAT-01**: Engineer can post a message to any remote agent from the extension via relay
-- [ ] **ACHAT-02**: Agent responses (posted via CLI) are visible in the extension conversation thread
-- [ ] **ACHAT-03**: Messages are scoped per workspace — channel ID = workspace ID, relay enforces isolation via token
-- [ ] **ACHAT-04**: Messages carry timestamp and read status (`delivered_at` when agent polls, `replied_at` when agent responds)
-- [ ] **ACHAT-05**: Conversation history — GET returns last 50 messages; extension renders as threaded list
+- [x] **ACHAT-01**: Engineer can post a message to any remote agent from the extension via relay
+- [x] **ACHAT-02**: Agent responses (posted via CLI) are visible in the extension conversation thread
+- [x] **ACHAT-03**: Messages are scoped per workspace — channel ID = workspace ID, relay enforces isolation via token
+- [x] **ACHAT-04**: Messages carry timestamp and read status (`delivered_at` when agent polls, `replied_at` when agent responds)
+- [x] **ACHAT-05**: Conversation history — GET returns last 50 messages; extension renders as threaded list
 
 ### Remote Workspace Management (RWKS)
 
-- [ ] **RWKS-01**: "Add Remote Workspace" command — QuickInput flow: relay URL → agent token → test connection → save to registry
-- [ ] **RWKS-02**: Remote workspaces appear in sidebar alongside local ones — same list, not a separate section, with small "remote" icon
+- [x] **RWKS-01**: "Add Remote Workspace" command — QuickInput flow: relay URL → agent token → test connection → save to registry
+- [x] **RWKS-02**: Remote workspaces appear in sidebar alongside local ones — same list, not a separate section, with small "remote" icon
 - [x] **RWKS-03**: Status indicators for remote workspaces — running/idle/error/stale derived from latest report data
-- [ ] **RWKS-04**: Click remote workspace → opens report timeline panel
-- [ ] **RWKS-05**: Right-click → "Message Agent" opens async chat for that workspace
-- [ ] **RWKS-06**: Right-click → "Configure" allows updating relay URL, poll interval, token via QuickInput
-- [ ] **RWKS-07**: Right-click → "Remove" disconnects remote workspace from registry (does not delete relay data)
+- [x] **RWKS-04**: Click remote workspace → opens report timeline panel
+- [x] **RWKS-05**: Right-click → "Message Agent" opens async chat for that workspace
+- [x] **RWKS-06**: Right-click → "Configure" allows updating relay URL, poll interval, token via QuickInput
+- [x] **RWKS-07**: Right-click → "Remove" disconnects remote workspace from registry (does not delete relay data)
 - [x] **RWKS-08**: Connection error handling — distinguishes relay unreachable (network badge), token invalid (401 + re-configure prompt), stale data (dim + timestamp)
 - [x] **RWKS-09**: Agent tokens stored in VSCode SecretStore via QuickInput (password mode) — never in settings.json
 
 ### Report Timeline UI (TMLN)
 
-- [ ] **TMLN-01**: `ReportPanel` WebviewPanel with chronological feed per workspace (newest first)
-- [ ] **TMLN-02**: Briefing report card renders goals/progress/blockers/next steps/metrics with collapsible sections
-- [ ] **TMLN-03**: Ralph loop report card renders iteration/baseline/current/delta/what-changed with +/- color coding
-- [ ] **TMLN-04**: Convergence chart — D3 line chart in webview: x-axis = iteration, y-axis = metric value, one line per metric
-- [ ] **TMLN-05**: Report type filtering — tabs or dropdown to filter briefings / ralph reports / all
-- [ ] **TMLN-06**: Interleaved chat messages — chat bubbles and report cards in the same chronological feed
-- [ ] **TMLN-07**: "Reply" button on report cards — opens message compose area pre-filled with `in_reply_to_report_id`
-- [ ] **TMLN-08**: Paginated load — last 20 reports on open, "Load more" button for history
+- [x] **TMLN-01**: `ReportPanel` WebviewPanel with chronological feed per workspace (newest first)
+- [x] **TMLN-02**: Briefing report card renders goals/progress/blockers/next steps/metrics with collapsible sections
+- [x] **TMLN-03**: Ralph loop report card renders iteration/baseline/current/delta/what-changed with +/- color coding
+- [x] **TMLN-04**: Convergence chart — D3 line chart in webview: x-axis = iteration, y-axis = metric value, one line per metric
+- [x] **TMLN-05**: Report type filtering — tabs or dropdown to filter briefings / ralph reports / all
+- [x] **TMLN-06**: Interleaved chat messages — chat bubbles and report cards in the same chronological feed
+- [x] **TMLN-07**: "Reply" button on report cards — opens message compose area pre-filled with `in_reply_to_report_id`
+- [x] **TMLN-08**: Paginated load — last 20 reports on open, "Load more" button for history
 
 ---
 
-## Out of Scope (v2.0)
+---
+
+## v3.0 Requirements — Multi-Platform Agent Fleet Management
+
+### Multi-Agent Workspace Model (MAWM)
+
+- [ ] **MAWM-01**: Workspace represents a platform instance on a specific machine (e.g., "Paperclip on Mac Mini"), not a single agent
+- [ ] **MAWM-02**: Each workspace contains multiple agents — an agent = one cron job, scheduled task, or heartbeat-driven process
+- [ ] **MAWM-03**: `WorkspaceRecord` extended with `agents: AgentIdentity[]` — each agent has `id`, `name`, `schedule` (cron expression or description), `platform`, `lastRunAt`, `status`
+- [ ] **MAWM-04**: Relay channel model extended — one channel per workspace, reports tagged with `agentId` field for per-agent attribution
+- [ ] **MAWM-05**: Agent discovery: collector auto-discovers agents (cron entries, Paperclip API, Claude Desktop `scheduled-tasks.json`) and registers them
+
+### Collector Daemon (COLL)
+
+- [ ] **COLL-01**: Single `harnesstune-collector` process per remote machine replaces per-agent sidecar — manages all platforms on that machine
+- [ ] **COLL-02**: `npx harnesstune-collector setup` — guided onboarding: relay URL, token, platform auto-detection (detects installed platforms)
+- [ ] **COLL-03**: Platform plugin architecture — collector loads platform-specific modules (Paperclip, Claude Desktop, Claude Code, OpenClaw)
+- [ ] **COLL-04**: Collector runs as persistent daemon with heartbeat — reports machine-level health to relay
+- [ ] **COLL-05**: Per-agent run reporting — after each cron/scheduled task run completes, collector uploads a structured run report to relay with `agentId`, `startedAt`, `finishedAt`, `status` (success/fail/timeout), `durationMs`, `logs` (truncated), `errorSummary`, `tokenUsage`, `costCents`
+- [ ] **COLL-06**: Historical batch sync — on first connect, collector backfills recent run history (last 7 days) from each platform's local data
+
+### Paperclip Adapter (PCLP)
+
+- [ ] **PCLP-01**: Collector plugin polls Paperclip REST API using Board API Key (Bearer token auth)
+- [ ] **PCLP-02**: Agent discovery via `GET /companies/:companyId/agents` — maps Paperclip agents to HarnessTune agent identities
+- [ ] **PCLP-03**: Run history via `GET /agents/:id/task-sessions` and `heartbeat_runs` data — maps to standardized run reports
+- [ ] **PCLP-04**: Cost data via `GET /companies/:companyId/costs/by-agent?from=&to=` — per-agent token and cost breakdowns
+- [ ] **PCLP-05**: Activity/audit via `GET /companies/:companyId/activity?agentId=` — maps to timeline events
+- [ ] **PCLP-06**: Setup: collector prompts for Paperclip server URL + Board API Key during `setup`
+
+### Claude Desktop Adapter (CDSK)
+
+- [ ] **CDSK-01**: Collector plugin reads `scheduled-tasks.json` from `~/Library/Application Support/Claude/local-agent-mode-sessions/<orgId>/<userId>/`
+- [ ] **CDSK-02**: Agent discovery from `scheduled-tasks.json` entries — maps `id`, `cronExpression`, `enabled`, `model` to HarnessTune agent identity
+- [ ] **CDSK-03**: Run history from `local_*.json` session files — correlates sessions to scheduled tasks by matching `initialMessage` against `SKILL.md` prompt + timestamp proximity to `lastScheduledFor`
+- [ ] **CDSK-04**: Per-run data extracted from session JSON: `createdAt`, `lastActivityAt` (→ duration), `model`, conversation length, tool call count
+- [ ] **CDSK-05**: File watcher on `scheduled-tasks.json` for near-real-time detection of new runs (via `lastRunAt` changes)
+- [ ] **CDSK-06**: Setup: collector auto-detects Claude Desktop install path; prompts user to select orgId/userId if multiple exist
+
+### Claude Code Cron Adapter (CCCR)
+
+- [ ] **CCCR-01**: Collector plugin discovers Claude Code cron jobs from `crontab -l` output — filters for entries invoking `claude` CLI
+- [ ] **CCCR-02**: Wrapper script (`harnesstune-wrap`) that cron jobs call instead of `claude` directly — captures exit code, duration, stdout/stderr summary, token usage from `claude` output
+- [ ] **CCCR-03**: Post-run hook — wrapper uploads run report to collector, which forwards to relay
+- [ ] **CCCR-04**: Manual agent registration as fallback — user can register agents by name + cron expression if auto-discovery doesn't fit
+- [ ] **CCCR-05**: Setup: collector generates wrapper script and shows user how to update crontab entries
+
+### OpenClaw Adapter (OCLW)
+
+- [ ] **OCLW-01**: Collector plugin tails JSONL session files at `~/.openclaw/agents/<agentId>/sessions/*.jsonl` (same as v1.0 local adapter)
+- [ ] **OCLW-02**: Agent discovery from directory listing of `~/.openclaw/agents/` — each subdirectory = one agent
+- [ ] **OCLW-03**: Run segmentation — detects session boundaries in JSONL stream, builds per-run reports
+- [ ] **OCLW-04**: Setup: collector auto-detects OpenClaw install; prompts for agent directory if non-standard
+
+### Fleet Dashboard (FDSH)
+
+- [ ] **FDSH-01**: Fleet overview in main Dashboard — shows all workspaces as platform cards with agent count, last activity, error rate
+- [ ] **FDSH-02**: Drill-down: clicking a workspace card shows its agents as a list with per-agent status, last run, success rate
+- [ ] **FDSH-03**: Agent detail view — clicking an agent shows run history table: timestamp, duration, status, cost, expandable log excerpt
+- [ ] **FDSH-04**: Multi-day summary — date range selector (last 24h / 3 days / 7 days / 30 days) filters all views
+- [ ] **FDSH-05**: Agent health indicators — green (all recent runs succeeded), yellow (some failures), red (consecutive failures or stale), gray (disabled/no data)
+- [ ] **FDSH-06**: Cost summary per agent and per workspace — total tokens, total cost, trend (up/down/flat) over selected period
+
+### Proactive Alerts (ALRT)
+
+- [ ] **ALRT-01**: Stale agent detection — alert when an agent hasn't reported a run within 2x its expected schedule interval
+- [ ] **ALRT-02**: Failure rate threshold — alert when an agent's failure rate exceeds configurable threshold (default: 3 consecutive failures)
+- [ ] **ALRT-03**: Alerts delivered as VS Code notifications on editor open — batch unread alerts, show count badge
+- [ ] **ALRT-04**: Alert configuration per workspace — enable/disable, thresholds, quiet hours
+- [ ] **ALRT-05**: Optional relay digest — relay stores alert state; extension fetches unread alerts on connect
+
+### Relay Extensions (RLYX)
+
+- [ ] **RLYX-01**: Reports endpoint extended with `agentId` field — filter reports by agent within a channel
+- [ ] **RLYX-02**: `GET /channels/:id/agents` — returns discovered agent list for a channel
+- [ ] **RLYX-03**: `GET /channels/:id/agents/:agentId/runs` — paginated run history for a specific agent
+- [ ] **RLYX-04**: `GET /channels/:id/summary?days=N` — pre-aggregated summary (run counts, success rate, cost by agent) for dashboard
+
+## Out of Scope (v3.0)
 
 | Feature | Reason |
 |---------|--------|
-| Real-time streaming (WebSocket/SSE) | Async/polling for v2.0; live terminal streaming is v3 |
-| Agent orchestration | v2.0 is observe + communicate; automated coordination is future |
-| Multi-user / team features | Single user for now; shared relay, permissions, audit log are v3+ |
+| Real-time streaming (WebSocket/SSE) | Polling sufficient for "check every few days" usage pattern |
+| Agent orchestration / auto-coordination | v3 is observe + report; sending commands to agents is future |
+| Multi-user / team features | Single user; shared relay, permissions, audit log are future |
 | Mobile app | VSCode only; mobile companion for reading reports is future |
-| End-to-end encryption | Relay sees plaintext; E2E encryption is v3 feature flag |
+| End-to-end encryption | Relay sees plaintext; E2E encryption is future |
 | Building agent frameworks | Integrates with existing ones only |
-| Relay-side message schema validation | Keep relay as dumb mailbox; validate client-side |
-| Inbound HTTP server on remote machines | Breaks outbound-only networking model |
-| Auto-synthesize briefing from logs | Agent-generated briefings simpler for v2.0; log synthesis is v2.1 |
-| Loop comparison (A vs B) | High complexity, low urgency for v2.0 launch |
-| Framework auto-detection in CLI | Reduces manual config but medium complexity; defer to v2.1 |
-| Multi-workspace morning summary rollup | Useful with 5+ workspaces; single-workspace must work first |
-| Self-host LAN relay script | Docker Compose / npx bootstrap for air-gapped; defer to v2.1 |
+| Log streaming / live tail | Historical reporting focus; live log streaming is future |
+| Custom agent framework adapters | Support Paperclip, Claude, OpenClaw first; generic adapter SDK is future |
+| Self-host relay | Vercel + Turso for now; Docker self-host is future |
+| Agent-to-agent communication | Agents don't talk to each other through HarnessTune |
 
 ## Traceability
 
@@ -201,20 +276,30 @@
 | PRWK-01 | Phase 6 | Complete |
 | PRWK-02 | Phase 6 | Complete |
 | PRWK-03 | Phase 6 | Complete |
-| PRWK-04 | Phase 6 | Planned |
-| PRWK-05 | Phase 6 | Planned |
-| RLAY-01 through RLAY-14 | Phase 7 | Planned |
-| ACLI-01 through ACLI-11 | Phase 8 | Planned |
-| BRFG-01 through BRFG-05 | Phase 8–9 | Planned |
-| RLPH-01 through RLPH-05 | Phase 9–10 | Planned |
-| ACHAT-01 through ACHAT-05 | Phase 10 | Planned |
-| RWKS-01 through RWKS-09 | Phase 9 | Planned |
-| TMLN-01 through TMLN-08 | Phase 10 | Planned |
+| PRWK-04 | Phase 6 | Complete |
+| PRWK-05 | Phase 6 | Complete |
+| RLAY-01 through RLAY-14 | Phase 7 | Complete |
+| ACLI-01 through ACLI-11 | Phase 8 | Complete |
+| BRFG-01 through BRFG-05 | Phase 8–10 | Complete |
+| RLPH-01 through RLPH-05 | Phase 9–10 | Complete |
+| ACHAT-01 through ACHAT-05 | Phase 10 | Complete |
+| RWKS-01 through RWKS-09 | Phase 9 | Complete |
+| TMLN-01 through TMLN-08 | Phase 10 | Complete |
+| MAWM-01 through MAWM-05 | Phase 11 | Planned |
+| COLL-01 through COLL-06 | Phase 12 | Planned |
+| PCLP-01 through PCLP-06 | Phase 13 | Planned |
+| CDSK-01 through CDSK-06 | Phase 14 | Planned |
+| CCCR-01 through CCCR-05 | Phase 14 | Planned |
+| OCLW-01 through OCLW-04 | Phase 15 | Planned |
+| FDSH-01 through FDSH-06 | Phase 16 | Planned |
+| ALRT-01 through ALRT-05 | Phase 17 | Planned |
+| RLYX-01 through RLYX-04 | Phase 11 | Planned |
 
 **Coverage:**
 - v1.0 requirements: 40 total (all complete)
-- v2.0 requirements: 57 total
-- Unmapped: 0 (phase assignments are provisional — roadmap will finalize)
+- v2.0 requirements: 57 total (all complete)
+- v3.0 requirements: 47 total
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-16*

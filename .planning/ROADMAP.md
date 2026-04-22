@@ -33,9 +33,9 @@ Five phases (Phase 6 through Phase 10) constitute Milestone 2. Completion delive
 
 - [x] **Phase 6: Pre-Work — Type Consolidation + Monorepo** - Foundation cleanup that all v2.0 code depends on: single canonical BackendType, local/remote discriminant on WorkspaceRecord, registry v2 migration, monorepo structure
 - [x] **Phase 7: Relay API** - Live Vercel + Turso relay deployed — the shared mailbox all other v2.0 components talk to
-- [ ] **Phase 8: Agent CLI + Daily Briefing Reports** - `npx harnesstune-agent` sidecar on remote machines: registers with relay, uploads structured briefing reports, polls for messages
-- [ ] **Phase 9: Extension Types + RemoteAdapter + Remote Workspace Management** - Type-safe bridge from relay data into extension: RemoteAdapter polling loop, ralph loop report types, sidebar add-remote flow with full connection management
-- [ ] **Phase 10: Report Timeline UI + Async Chat** - ReportPanel WebviewPanel: chronological feed of briefings, ralph loop cards, convergence chart, interleaved chat, message composer
+- [x] **Phase 8: Agent CLI + Daily Briefing Reports** - `npx harnesstune-agent` sidecar on remote machines: registers with relay, uploads structured briefing reports, polls for messages
+- [x] **Phase 9: Extension Types + RemoteAdapter + Remote Workspace Management** - Type-safe bridge from relay data into extension: RemoteAdapter polling loop, ralph loop report types, sidebar add-remote flow with full connection management
+- [x] **Phase 10: Report Timeline UI + Async Chat** - ReportPanel WebviewPanel: chronological feed of briefings, ralph loop cards, convergence chart, interleaved chat, message composer
 
 ---
 
@@ -396,6 +396,213 @@ Plans:
 
 ---
 
+---
+
+## Milestone 3: Multi-Platform Agent Fleet Management
+
+Seven phases below constitute Milestone 3. Completion delivers a centralized control plane where the user checks in every few days to see how their agent fleet performed across multiple remote Macs running Paperclip, Claude Code/Desktop, and OpenClaw.
+
+---
+
+### Phase 11: Multi-Agent Model + Relay Extensions
+
+**Goal:** The data model supports multiple agents per workspace, and the relay can store and serve per-agent run history. This is the foundation for all platform adapters.
+
+**Depends on:** Phase 10 (v2.0 complete)
+
+**Requirements:** MAWM-01, MAWM-02, MAWM-03, MAWM-04, RLYX-01, RLYX-02, RLYX-03, RLYX-04
+
+**Key Deliverables:**
+- `AgentIdentity` type: `id`, `name`, `schedule`, `platform`, `lastRunAt`, `status`
+- `WorkspaceRecord` extended with `agents: AgentIdentity[]`
+- `RunReport` type in `@harnesstune/shared`: `agentId`, `startedAt`, `finishedAt`, `status`, `durationMs`, `logs`, `errorSummary`, `tokenUsage`, `costCents`
+- Relay schema migration: `agent_runs` table (channelId, agentId, startedAt, finishedAt, status, durationMs, logExcerpt, errorSummary, tokenUsage, costCents)
+- Relay endpoints: `GET /channels/:id/agents`, `GET /channels/:id/agents/:agentId/runs`, `GET /channels/:id/summary?days=N`
+- Reports endpoint extended with `agentId` filter parameter
+- Registry migration v2→v3: existing single-agent workspaces get a default agent entry
+
+**Success Criteria:**
+1. A channel can have multiple agents registered; `GET /channels/:id/agents` returns the list
+2. Run reports uploaded with `agentId` are retrievable filtered by that agent
+3. `GET /channels/:id/summary?days=3` returns aggregated run counts, success rate, and cost per agent
+4. Existing v2.0 workspaces load correctly after migration — backward compatible
+
+**Research Flag:** Standard patterns — skip research. Drizzle migration, type extension, REST endpoint addition are all well-established.
+
+---
+
+### Phase 12: Collector Daemon + Easy Setup
+
+**Goal:** A single `harnesstune-collector` process runs on a remote Mac, replaces the per-agent sidecar, and provides guided onboarding. Platform plugins register but are stubs — real implementations come in subsequent phases.
+
+**Depends on:** Phase 11
+
+**Requirements:** COLL-01, COLL-02, COLL-03, COLL-04, MAWM-05
+
+**Key Deliverables:**
+- `packages/harnesstune-collector` package in monorepo
+- `npx harnesstune-collector setup` — guided onboarding: relay URL, token (auto-registers channel), platform auto-detection (checks for Paperclip, Claude Desktop, Claude Code, OpenClaw installations)
+- Daemon mode with machine-level heartbeat (every 5 minutes)
+- Platform plugin interface: `discover()` → `AgentIdentity[]`, `collectRuns(since: Date)` → `RunReport[]`, `setup()` → interactive config
+- Plugin loader: reads `~/.harnesstune/collector.json` for enabled platforms + platform-specific config
+- Stub plugins for all 4 platforms (discover returns empty, collectRuns returns empty)
+- `harnesstune-collector start` / `stop` / `status` subcommands
+- Launchd plist generator for macOS (`harnesstune-collector install`) — auto-start on login
+
+**Success Criteria:**
+1. `npx harnesstune-collector setup` on a fresh Mac detects installed platforms and writes config
+2. `harnesstune-collector start` runs as daemon, sends heartbeat to relay every 5 minutes
+3. `harnesstune-collector install` creates a launchd plist that survives reboot
+4. Plugin interface is defined and stub plugins load without error
+
+**Research Flag:** Needs research — launchd plist best practices for Node.js daemons on macOS; whether to use `launchctl` directly or a helper like `node-mac-permissions`.
+
+---
+
+### Phase 13: Paperclip Adapter
+
+**Goal:** The collector's Paperclip plugin pulls agent data, run history, and cost metrics from a Paperclip instance via its REST API, and reports them through the relay.
+
+**Depends on:** Phase 12
+
+**Requirements:** PCLP-01, PCLP-02, PCLP-03, PCLP-04, PCLP-05, PCLP-06, COLL-05, COLL-06
+
+**Key Deliverables:**
+- Paperclip collector plugin implementing the platform plugin interface
+- `setup()`: prompts for Paperclip server URL + Board API Key, validates connection
+- `discover()`: calls `GET /companies/:companyId/agents`, maps to `AgentIdentity[]` with heartbeat schedules
+- `collectRuns(since)`: calls `GET /agents/:id/task-sessions` + `heartbeat_runs` data, maps to `RunReport[]`
+- Cost enrichment: calls `GET /companies/:companyId/costs/by-agent?from=&to=` for token/cost data per run
+- Activity mapping: calls `GET /companies/:companyId/activity?agentId=` for audit trail events
+- Historical backfill on first connect (last 7 days)
+
+**Success Criteria:**
+1. Collector discovers all agents from a live Paperclip instance and registers them in the relay
+2. Run history from the last 7 days appears in the relay with correct per-agent attribution
+3. Cost data (tokens, cost in cents) is present on run reports for agents that incurred LLM usage
+4. New runs that complete after collector start are detected and uploaded within one poll cycle
+
+**Research Flag:** Needs validation — confirm Paperclip's `GET /agents/:id/task-sessions` response shape and pagination. Board API Key permissions may need specific scope.
+
+---
+
+### Phase 14: Claude Desktop + Claude Code Cron Adapters
+
+**Goal:** The collector discovers and reports on Claude Desktop scheduled tasks and Claude Code cron jobs running on the same Mac.
+
+**Depends on:** Phase 12
+
+**Requirements:** CDSK-01, CDSK-02, CDSK-03, CDSK-04, CDSK-05, CDSK-06, CCCR-01, CCCR-02, CCCR-03, CCCR-04, CCCR-05, COLL-05, COLL-06
+
+**Key Deliverables:**
+- **Claude Desktop plugin:**
+  - `setup()`: auto-detects `~/Library/Application Support/Claude/local-agent-mode-sessions/`, prompts to select orgId/userId if multiple
+  - `discover()`: reads `scheduled-tasks.json`, maps entries to `AgentIdentity[]` with cron expressions
+  - `collectRuns(since)`: parses `local_*.json` session files, correlates to tasks by `initialMessage` matching + timestamp proximity to `lastScheduledFor`
+  - File watcher on `scheduled-tasks.json` for near-real-time run detection
+  - Extracts per-run: timestamps, duration, model, conversation length, tool call count
+  - Historical backfill (last 7 days of session files)
+
+- **Claude Code cron plugin:**
+  - `setup()`: generates `harnesstune-wrap` shell script, shows user how to update crontab
+  - `discover()`: parses `crontab -l`, filters for `claude` CLI invocations, maps to `AgentIdentity[]`
+  - `harnesstune-wrap`: wrapper that captures exit code, duration, stdout/stderr summary, uploads run report
+  - Manual agent registration fallback via `harnesstune-collector add-agent --name "..." --cron "..."`
+  - Historical backfill from wrapper logs (last 7 days)
+
+**Success Criteria:**
+1. Collector discovers all enabled scheduled tasks from Claude Desktop's `scheduled-tasks.json`
+2. After a Desktop scheduled task runs, the run report appears in the relay within one poll cycle with correct task attribution
+3. A cron job using `harnesstune-wrap` uploads a run report with exit code, duration, and log excerpt
+4. Manual `add-agent` registration works for cron jobs that don't use the wrapper
+5. Historical backfill populates the last 7 days of runs on first connect
+
+**Research Flag:** Needs research — Claude Desktop session file format may vary across versions. Need to confirm `initialMessage` field reliability for task correlation. Also: `crontab -l` parsing edge cases (env vars, comments, special syntax).
+
+---
+
+### Phase 15: OpenClaw Remote Adapter
+
+**Goal:** The collector discovers and reports on OpenClaw agents running on the remote Mac, extending the v1.0 local JSONL tailing pattern to work remotely via the relay.
+
+**Depends on:** Phase 12
+
+**Requirements:** OCLW-01, OCLW-02, OCLW-03, OCLW-04, COLL-05, COLL-06
+
+**Key Deliverables:**
+- OpenClaw collector plugin implementing the platform plugin interface
+- `setup()`: auto-detects `~/.openclaw/agents/`, prompts for directory if non-standard
+- `discover()`: lists `~/.openclaw/agents/` subdirectories, maps each to `AgentIdentity`
+- `collectRuns(since)`: tails JSONL files via chokidar, segments sessions by time gaps, builds `RunReport[]`
+- Run segmentation heuristic: new session = gap > 5 minutes between events (configurable)
+- Historical backfill: scans JSONL files for sessions in last 7 days
+
+**Success Criteria:**
+1. Collector discovers all OpenClaw agents from the filesystem
+2. JSONL events are segmented into discrete runs and uploaded to relay with correct agent attribution
+3. Historical backfill populates the last 7 days of runs on first connect
+4. New JSONL writes are detected in near-real-time via file watcher
+
+**Research Flag:** Standard patterns — skip research. Reuses v1.0 chokidar JSONL tailing; only new work is run segmentation and relay integration.
+
+---
+
+### Phase 16: Fleet Dashboard + Historical Reporting UI
+
+**Goal:** The extension's Dashboard and Reports panels are redesigned for the multi-agent fleet model — aggregate fleet view, per-workspace agent list, per-agent run history with multi-day summaries.
+
+**Depends on:** Phase 11 (data model), Phase 13/14/15 (at least one adapter producing data)
+
+**Requirements:** FDSH-01, FDSH-02, FDSH-03, FDSH-04, FDSH-05, FDSH-06
+
+**Key Deliverables:**
+- Fleet overview: platform cards with agent count, last activity, error rate across all workspaces
+- Workspace drill-down: agent list with per-agent status, last run time, success rate sparkline
+- Agent detail: run history table (timestamp, duration, status, cost, expandable log excerpt)
+- Date range selector (24h / 3 days / 7 days / 30 days) filtering all views
+- Agent health indicators: green/yellow/red/gray based on recent run patterns
+- Cost summary: per-agent and per-workspace totals with trend indicators
+- Summary endpoint integration: `GET /channels/:id/summary?days=N` for efficient pre-aggregated data
+
+**Success Criteria:**
+1. Fleet overview shows all workspaces as cards with correct agent counts and health indicators
+2. Clicking a workspace card shows its agents with run success rates matching the relay data
+3. Clicking an agent shows the run history table with correct timestamps, durations, and statuses
+4. Date range selector filters all views correctly — switching from "7 days" to "24h" updates all numbers
+5. Cost data displays per-agent when available (Paperclip, Claude Code), absent gracefully when not
+
+**Research Flag:** Standard patterns — skip research. React components in webview, existing dashboard pattern.
+
+---
+
+### Phase 17: Proactive Alerts
+
+**Goal:** The extension proactively notifies the user about agent problems — stale agents, high failure rates — so they don't have to check manually.
+
+**Depends on:** Phase 16 (fleet dashboard provides context for alerts)
+
+**Requirements:** ALRT-01, ALRT-02, ALRT-03, ALRT-04, ALRT-05
+
+**Key Deliverables:**
+- Alert engine in extension: evaluates relay summary data against configured thresholds
+- Stale agent detection: alert when agent hasn't reported within 2x expected schedule interval
+- Failure rate threshold: alert on N consecutive failures (default: 3)
+- VS Code notification delivery: batch unread alerts, show count in status bar badge
+- Alert configuration per workspace: enable/disable, thresholds, quiet hours (stored in workspace config)
+- Relay-side alert state: relay stores alert flags; extension fetches unread alerts on connect
+- Alert dismissal: marking alerts as read syncs back to relay
+
+**Success Criteria:**
+1. An agent that misses 2x its schedule triggers a stale alert in VS Code
+2. Three consecutive agent failures trigger a failure alert
+3. Alerts appear as VS Code notifications on editor open with correct agent/workspace context
+4. Alert configuration changes in settings persist and affect threshold evaluation
+5. Dismissed alerts don't reappear on next editor open
+
+**Research Flag:** Standard patterns — skip research. VS Code notification API, simple threshold logic.
+
+---
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
@@ -405,11 +612,18 @@ Plans:
 | 3. Agent Schematic (Live Topology) | 3/3 | Complete | 2026-04-18 |
 | 4. Chat Interface + Terminal | 2/2 | Complete | 2026-04-18 |
 | 5. Workspace Scaffolding + OpenClaw Adapter | 3/3 | Complete | 2026-04-19 |
-| 6. Pre-Work — Type Consolidation + Monorepo | 0/? | Not started | - |
-| 7. Relay API | 0/? | Not started | - |
-| 8. Agent CLI + Daily Briefing Reports | 0/? | Not started | - |
-| 9. Extension Types + RemoteAdapter + Remote Workspace Management | 1/2 | In Progress|  |
-| 10. Report Timeline UI + Async Chat | 0/? | Not started | - |
+| 6. Pre-Work — Type Consolidation + Monorepo | 2/2 | Complete | 2026-04-19 |
+| 7. Relay API | 2/2 | Complete | 2026-04-19 |
+| 8. Agent CLI + Daily Briefing Reports | 3/3 | Complete | 2026-04-19 |
+| 9. RemoteAdapter + Remote Workspace Management | 2/2 | Complete | 2026-04-19 |
+| 10. Report Timeline UI + Async Chat | 2/2 | Complete | 2026-04-21 |
+| 11. Multi-Agent Model + Relay Extensions | 0/? | Not started | - |
+| 12. Collector Daemon + Easy Setup | 0/? | Not started | - |
+| 13. Paperclip Adapter | 0/? | Not started | - |
+| 14. Claude Desktop + Claude Code Cron Adapters | 0/? | Not started | - |
+| 15. OpenClaw Remote Adapter | 0/? | Not started | - |
+| 16. Fleet Dashboard + Historical Reporting UI | 0/? | Not started | - |
+| 17. Proactive Alerts | 0/? | Not started | - |
 
 ---
 
@@ -464,69 +678,116 @@ Plans:
 | PRWK-03 | Phase 6 | Complete |
 | PRWK-04 | Phase 6 | Complete |
 | PRWK-05 | Phase 6 | Complete |
-| RLAY-01 | Phase 7 | Planned |
-| RLAY-02 | Phase 7 | Planned |
-| RLAY-03 | Phase 7 | Planned |
-| RLAY-04 | Phase 7 | Planned |
-| RLAY-05 | Phase 7 | Planned |
-| RLAY-06 | Phase 7 | Planned |
-| RLAY-07 | Phase 7 | Planned |
-| RLAY-08 | Phase 7 | Planned |
-| RLAY-09 | Phase 7 | Planned |
-| RLAY-10 | Phase 7 | Planned |
-| RLAY-11 | Phase 7 | Planned |
-| RLAY-12 | Phase 7 | Planned |
-| RLAY-13 | Phase 7 | Planned |
-| RLAY-14 | Phase 7 | Planned |
-| ACLI-01 | Phase 8 | Planned |
-| ACLI-02 | Phase 8 | Planned |
-| ACLI-03 | Phase 8 | Planned |
-| ACLI-04 | Phase 8 | Planned |
-| ACLI-05 | Phase 8 | Planned |
-| ACLI-06 | Phase 8 | Planned |
-| ACLI-07 | Phase 8 | Planned |
-| ACLI-08 | Phase 8 | Planned |
-| ACLI-09 | Phase 8 | Planned |
-| ACLI-10 | Phase 8 | Planned |
-| ACLI-11 | Phase 8 | Planned |
-| BRFG-01 | Phase 8 | Planned |
-| BRFG-02 | Phase 8 | Planned |
-| BRFG-03 | Phase 8 | Planned |
-| BRFG-04 | Phase 8 | Planned |
-| BRFG-05 | Phase 10 | Planned |
-| RLPH-01 | Phase 9 | Planned |
-| RLPH-02 | Phase 9 | Planned |
-| RLPH-03 | Phase 9 | Planned |
-| RLPH-04 | Phase 9 | Planned |
-| RLPH-05 | Phase 9 | Planned |
-| RWKS-01 | Phase 9 | Planned |
-| RWKS-02 | Phase 9 | Planned |
-| RWKS-03 | Phase 9 | Planned |
-| RWKS-04 | Phase 9 | Planned |
-| RWKS-05 | Phase 9 | Planned |
-| RWKS-06 | Phase 9 | Planned |
-| RWKS-07 | Phase 9 | Planned |
-| RWKS-08 | Phase 9 | Planned |
-| RWKS-09 | Phase 9 | Planned |
-| ACHAT-01 | Phase 10 | Planned |
-| ACHAT-02 | Phase 10 | Planned |
-| ACHAT-03 | Phase 10 | Planned |
-| ACHAT-04 | Phase 10 | Planned |
-| ACHAT-05 | Phase 10 | Planned |
-| TMLN-01 | Phase 10 | Planned |
-| TMLN-02 | Phase 10 | Planned |
-| TMLN-03 | Phase 10 | Planned |
-| TMLN-04 | Phase 10 | Planned |
-| TMLN-05 | Phase 10 | Planned |
-| TMLN-06 | Phase 10 | Planned |
-| TMLN-07 | Phase 10 | Planned |
-| TMLN-08 | Phase 10 | Planned |
+| RLAY-01 | Phase 7 | Complete |
+| RLAY-02 | Phase 7 | Complete |
+| RLAY-03 | Phase 7 | Complete |
+| RLAY-04 | Phase 7 | Complete |
+| RLAY-05 | Phase 7 | Complete |
+| RLAY-06 | Phase 7 | Complete |
+| RLAY-07 | Phase 7 | Complete |
+| RLAY-08 | Phase 7 | Complete |
+| RLAY-09 | Phase 7 | Complete |
+| RLAY-10 | Phase 7 | Complete |
+| RLAY-11 | Phase 7 | Complete |
+| RLAY-12 | Phase 7 | Complete |
+| RLAY-13 | Phase 7 | Complete |
+| RLAY-14 | Phase 7 | Complete |
+| ACLI-01 | Phase 8 | Complete |
+| ACLI-02 | Phase 8 | Complete |
+| ACLI-03 | Phase 8 | Complete |
+| ACLI-04 | Phase 8 | Complete |
+| ACLI-05 | Phase 8 | Complete |
+| ACLI-06 | Phase 8 | Complete |
+| ACLI-07 | Phase 8 | Complete |
+| ACLI-08 | Phase 8 | Complete |
+| ACLI-09 | Phase 8 | Complete |
+| ACLI-10 | Phase 8 | Complete |
+| ACLI-11 | Phase 8 | Complete |
+| BRFG-01 | Phase 8 | Complete |
+| BRFG-02 | Phase 8 | Complete |
+| BRFG-03 | Phase 8 | Complete |
+| BRFG-04 | Phase 8 | Complete |
+| BRFG-05 | Phase 10 | Complete |
+| RLPH-01 | Phase 9 | Complete |
+| RLPH-02 | Phase 9 | Complete |
+| RLPH-03 | Phase 9 | Complete |
+| RLPH-04 | Phase 9 | Complete |
+| RLPH-05 | Phase 9 | Complete |
+| RWKS-01 | Phase 9 | Complete |
+| RWKS-02 | Phase 9 | Complete |
+| RWKS-03 | Phase 9 | Complete |
+| RWKS-04 | Phase 9 | Complete |
+| RWKS-05 | Phase 9 | Complete |
+| RWKS-06 | Phase 9 | Complete |
+| RWKS-07 | Phase 9 | Complete |
+| RWKS-08 | Phase 9 | Complete |
+| RWKS-09 | Phase 9 | Complete |
+| ACHAT-01 | Phase 10 | Complete |
+| ACHAT-02 | Phase 10 | Complete |
+| ACHAT-03 | Phase 10 | Complete |
+| ACHAT-04 | Phase 10 | Complete |
+| ACHAT-05 | Phase 10 | Complete |
+| TMLN-01 | Phase 10 | Complete |
+| TMLN-02 | Phase 10 | Complete |
+| TMLN-03 | Phase 10 | Complete |
+| TMLN-04 | Phase 10 | Complete |
+| TMLN-05 | Phase 10 | Complete |
+| TMLN-06 | Phase 10 | Complete |
+| TMLN-07 | Phase 10 | Complete |
+| TMLN-08 | Phase 10 | Complete |
+| MAWM-01 | Phase 11 | Planned |
+| MAWM-02 | Phase 11 | Planned |
+| MAWM-03 | Phase 11 | Planned |
+| MAWM-04 | Phase 11 | Planned |
+| MAWM-05 | Phase 11 | Planned |
+| RLYX-01 | Phase 11 | Planned |
+| RLYX-02 | Phase 11 | Planned |
+| RLYX-03 | Phase 11 | Planned |
+| RLYX-04 | Phase 11 | Planned |
+| COLL-01 | Phase 12 | Planned |
+| COLL-02 | Phase 12 | Planned |
+| COLL-03 | Phase 12 | Planned |
+| COLL-04 | Phase 12 | Planned |
+| COLL-05 | Phase 12 | Planned |
+| COLL-06 | Phase 12 | Planned |
+| PCLP-01 | Phase 13 | Planned |
+| PCLP-02 | Phase 13 | Planned |
+| PCLP-03 | Phase 13 | Planned |
+| PCLP-04 | Phase 13 | Planned |
+| PCLP-05 | Phase 13 | Planned |
+| PCLP-06 | Phase 13 | Planned |
+| CDSK-01 | Phase 14 | Planned |
+| CDSK-02 | Phase 14 | Planned |
+| CDSK-03 | Phase 14 | Planned |
+| CDSK-04 | Phase 14 | Planned |
+| CDSK-05 | Phase 14 | Planned |
+| CDSK-06 | Phase 14 | Planned |
+| CCCR-01 | Phase 14 | Planned |
+| CCCR-02 | Phase 14 | Planned |
+| CCCR-03 | Phase 14 | Planned |
+| CCCR-04 | Phase 14 | Planned |
+| CCCR-05 | Phase 14 | Planned |
+| OCLW-01 | Phase 15 | Planned |
+| OCLW-02 | Phase 15 | Planned |
+| OCLW-03 | Phase 15 | Planned |
+| OCLW-04 | Phase 15 | Planned |
+| FDSH-01 | Phase 16 | Planned |
+| FDSH-02 | Phase 16 | Planned |
+| FDSH-03 | Phase 16 | Planned |
+| FDSH-04 | Phase 16 | Planned |
+| FDSH-05 | Phase 16 | Planned |
+| FDSH-06 | Phase 16 | Planned |
+| ALRT-01 | Phase 17 | Planned |
+| ALRT-02 | Phase 17 | Planned |
+| ALRT-03 | Phase 17 | Planned |
+| ALRT-04 | Phase 17 | Planned |
+| ALRT-05 | Phase 17 | Planned |
 
 **v1.0 Coverage: 41/41 requirements mapped. All complete.**
 
-**v2.0 Coverage: 57/57 requirements mapped. No orphans.**
+**v2.0 Coverage: 57/57 requirements mapped. All complete.**
 
-Note: BRFG-05 (reports render in extension as chronological timeline) maps to Phase 10 — it is a rendering concern (TMLN-01 through TMLN-08), not a CLI concern. The briefing report schema and upload mechanism are defined in Phase 8, but the timeline UI that renders them belongs to Phase 10. RLPH-01 through RLPH-05 map to Phase 9 because the ralph loop TypeScript types are defined alongside RemoteAdapter types; rendering of ralph loop cards happens in Phase 10 (TMLN-03, TMLN-04).
+**v3.0 Coverage: 47/47 requirements mapped. No orphans.**
 
 ---
 
