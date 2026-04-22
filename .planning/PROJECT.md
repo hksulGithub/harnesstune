@@ -8,19 +8,18 @@ A VSCode extension purpose-built for agent harness engineering — monitoring, m
 
 Engineers running multiple agent systems can see the health, topology, and status of every agent across every workspace — and interact with any of them — from one place.
 
-## Current Milestone: v2.0 Remote Agent Management
+## Current Milestone: v3.0 Multi-Platform Agent Fleet Management
 
-**Goal:** Turn HarnessTune from a local agent monitor into a remote command center using a relay/mailbox pattern — manage agents across multiple machines from one VSCode window.
+**Goal:** HarnessTune becomes a centralized control plane for monitoring agent fleets across multiple remote machines — one workspace per platform, multiple agents (cron jobs / scheduled tasks) per workspace, with historical reporting at the individual agent level.
 
 **Target features:**
-- Relay API (Vercel + Turso) — authenticated mailbox for agents and command center
-- Agent CLI (`npx harnesstune-agent`) — sidecar on remote machines that uploads reports and polls for messages
-- RemoteAdapter in extension — remote workspaces appear alongside local ones in sidebar
-- Daily briefing reports — structured snapshots of agent goals, progress, blockers, metrics
-- Ralph loop progress reports — iteration-over-iteration improvement tracking with charts
-- Async chat/feedback — bidirectional messaging through relay
-- Remote workspace management — add/view/configure/remove remote workspaces
-- Token-based auth — per-agent API tokens stored in SecretStore
+- Multi-agent workspace model — workspace = platform instance on a machine, agent = individual cron job or scheduled task
+- Paperclip adapter — pull from Paperclip's existing API/DB (audit trails, cost, task history, heartbeat schedules)
+- Claude Desktop scheduled task integration — discover and report on Desktop's scheduled task runs
+- Enhanced agent CLI — easy `npx harnesstune-agent setup` with guided onboarding, platform auto-detection
+- Per-agent historical reporting — run history, logs, error patterns, cost/tokens, multi-day summaries
+- Proactive alerts — "agent X hasn't reported in 24h", failure rate thresholds, delivered as VS Code notifications + optional relay digest
+- Fleet dashboard — aggregate view across all platforms/machines, drill-down to individual agent run history
 
 ## Requirements
 
@@ -37,24 +36,34 @@ Engineers running multiple agent systems can see the health, topology, and statu
 - [x] Configure workspace (backend type switching via context menu)
 - [x] Status bar with aggregate workspace health
 
+### Validated (v2.0)
+
+- [x] Relay API — REST mailbox with Turso (SQLite) backend, Vercel serverless hosting
+- [x] Agent CLI — Node.js sidecar for remote machines, report upload + message polling
+- [x] RemoteAdapter — extension adapter connecting to relay for remote workspaces
+- [x] Daily briefing reports — structured agent state snapshots on configurable schedule
+- [x] Ralph loop progress reports — iteration tracking with baseline/current/delta metrics
+- [x] Async chat/feedback — bidirectional messaging through relay
+- [x] Remote workspace management — add, view, configure, remove remote workspaces
+- [x] Token-based authentication — per-agent API tokens, SecretStore integration
+
 ### Active
 
-- [ ] Relay API — REST mailbox with Turso (SQLite) backend, Vercel serverless hosting
-- [ ] Agent CLI — Node.js sidecar for remote machines, report upload + message polling
-- [ ] RemoteAdapter — extension adapter connecting to relay for remote workspaces
-- [ ] Daily briefing reports — structured agent state snapshots on configurable schedule
-- [ ] Ralph loop progress reports — iteration tracking with baseline/current/delta metrics
-- [ ] Async chat/feedback — bidirectional messaging through relay
-- [ ] Remote workspace management — add, view, configure, remove remote workspaces
-- [ ] Token-based authentication — per-agent API tokens, SecretStore integration
+- [ ] Multi-agent workspace model — workspace = platform, agent = cron job / scheduled task
+- [ ] Paperclip adapter — integrate with Paperclip's API for agent data, audit trails, cost
+- [ ] Claude Desktop scheduled task adapter — discover and report on scheduled task runs
+- [ ] Enhanced agent CLI onboarding — `npx harnesstune-agent setup` with guided install, platform detection
+- [ ] Per-agent historical reporting — run history, logs, errors, cost/tokens over multi-day windows
+- [ ] Proactive alerts — stale agent detection, failure rate thresholds, VS Code notifications
+- [ ] Fleet dashboard — aggregate view across platforms, drill-down to agent run history
 
 ### Out of Scope
 
-- Real-time streaming — async/polling for v2, live terminal streaming is v3
-- Agent orchestration — v2 is observe + communicate, automated coordination is future
-- Multi-user / team features — single user for now, team features (shared relay, permissions, audit log) are v3+
+- Real-time streaming — async/polling pattern works, live WebSocket/SSE is future
+- Agent orchestration — v3 is observe + report, automated coordination is future
+- Multi-user / team features — single user for now, team features are future
 - Mobile app — VSCode only, mobile companion for reading reports is future
-- End-to-end encryption — relay sees plaintext, E2E encryption is v3 feature flag
+- End-to-end encryption — relay sees plaintext, E2E encryption is future
 - Building agent frameworks — integrates with existing ones only
 
 ## Context
@@ -63,9 +72,12 @@ Engineers running multiple agent systems can see the health, topology, and statu
 - **Ecosystem problem:** AI agent architectures are fragmenting across Claude Code, OpenClaw, Paperclip, and custom frameworks. No unified monitoring/management solution exists.
 - **Target user:** Initially internal dogfooding, then open-source for community adoption
 - **Agent backends (priority order):** Claude Code (P0), OpenClaw (P1), Paperclip (P1), Custom/generic adapter (P2)
-- **v2.0 architecture:** Relay/mailbox pattern — agents and command center both make outbound HTTPS to a shared REST relay. No inbound ports, no NAT traversal, no tunnels.
-- **v2.0 stack:** Relay on Vercel (serverless) + Turso (SQLite edge DB, 9GB free tier). Self-hostable for air-gapped networks.
-- **v2.0 API design:** Generic channel-based document store — relay is a dumb mailbox, all report structure lives client-side
+- **Architecture:** Relay/mailbox pattern — agents and command center both make outbound HTTPS to a shared REST relay. No inbound ports, no NAT traversal, no tunnels. "Just works" over the internet.
+- **Stack:** Relay on Vercel (serverless) + Turso (SQLite edge DB, 9GB free tier). Self-hostable for air-gapped networks.
+- **API design:** Generic channel-based document store — relay is a dumb mailbox, all report structure lives client-side
+- **v3.0 platforms:** Paperclip (orchestration layer with own API), Claude Code/Desktop (sidecar + scheduled tasks), OpenClaw (JSONL + sidecar)
+- **v3.0 deployment:** Multiple remote Macs, each running one or more platforms, all reporting through the same relay
+- **v3.0 usage pattern:** Check in every few days, see multi-day agent history at cron-job granularity
 
 ## Constraints
 
