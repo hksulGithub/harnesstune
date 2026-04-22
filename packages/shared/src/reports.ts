@@ -46,7 +46,19 @@ export interface RelayMessage {
   createdAt: string;
 }
 
-/** Unified timeline item — report or chat message */
+/** Local agent activity — synthesised from hook events */
+export interface ActivityItem {
+  eventType: string;
+  toolName?: string;
+  model?: string;
+  error?: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  sessionId: string;
+}
+
+/** Unified timeline item — report, chat message, or local activity */
 export type TimelineItem =
   | { kind: 'report'; data: ReportEnvelope; at: string }
-  | { kind: 'message'; data: RelayMessage; at: string };
+  | { kind: 'message'; data: RelayMessage; at: string }
+  | { kind: 'activity'; data: ActivityItem; at: string };

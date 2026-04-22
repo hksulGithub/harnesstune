@@ -63,7 +63,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
     });
   }
 
-  private postMessage(message: HostToWebviewMessage): void {
+  public postMessage(message: HostToWebviewMessage): void {
     this.webview?.postMessage(message);
   }
 
@@ -83,7 +83,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource} 'unsafe-inline';">
   <link rel="stylesheet" href="${styleUri}">
-  <title>HarnessTune</title>
+  <title>Workspaces</title>
 </head>
 <body>
   <div id="root"></div>

@@ -129,7 +129,7 @@ body {
 
 .timeline-feed {
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse;
   gap: 8px;
   padding: 12px 16px;
 }
@@ -408,6 +408,46 @@ body {
   width: 8px;
   height: 8px;
   border-radius: 2px;
+}
+
+/* ── Activity card ─────────────────────────────────── */
+.activity-card {
+  padding: 6px 0;
+}
+
+.activity-card--error {
+  border-left: 3px solid var(--vscode-errorForeground);
+}
+
+.activity-card__tool-name {
+  font-size: 12px;
+  font-family: var(--vscode-editor-font-family);
+  color: var(--vscode-textLink-foreground);
+  background: var(--vscode-textBlockQuote-background);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.activity-card__error {
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--vscode-errorForeground);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.activity-card__tokens {
+  display: flex;
+  gap: 12px;
+  padding: 2px 12px 6px;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  font-family: var(--vscode-editor-font-family);
+}
+
+.activity-card__model {
+  margin-left: auto;
+  font-style: italic;
 }
 
 /* ── Chat bubbles ──────────────────────────────────── */

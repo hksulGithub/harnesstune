@@ -245,7 +245,6 @@ export default function App(): React.ReactElement {
     <div className="chat-root">
       {workspaceName && (
         <div className="chat-header">
-          <span className="chat-header-name">{workspaceName}</span>
           <span className={`chat-header-state chat-state-${sessionState}`}>{stateLabel}</span>
         </div>
       )}

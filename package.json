@@ -124,6 +124,12 @@
       },
       {
         "viewType": "harnesstune.schematic"
+      },
+      {
+        "viewType": "harnesstune.reports"
+      },
+      {
+        "viewType": "harnesstune.chat"
       }
     ],
     "viewsContainers": {

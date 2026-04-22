@@ -15,16 +15,21 @@ export class SchematicPanel {
   private readonly _onDidReceiveMessage = new vscode.EventEmitter<WebviewToHostMessage>();
   public readonly onDidReceiveMessage = this._onDidReceiveMessage.event;
 
-  public static createOrShow(extensionUri: vscode.Uri): SchematicPanel {
+  public static createOrShow(extensionUri: vscode.Uri, viewColumn: vscode.ViewColumn = vscode.ViewColumn.Two): SchematicPanel {
     if (SchematicPanel.currentPanel) {
-      SchematicPanel.currentPanel.reveal();
-      return SchematicPanel.currentPanel;
+      try {
+        SchematicPanel.currentPanel.panel.reveal();
+        return SchematicPanel.currentPanel;
+      } catch {
+        // Panel was disposed by VSCode — fall through to create a new one
+        SchematicPanel.currentPanel = undefined;
+      }
     }
 
     const panel = vscode.window.createWebviewPanel(
       SchematicPanel.viewType,
-      'HarnessTune Schematic',
-      vscode.ViewColumn.Two,
+      'Schematic',
+      viewColumn,
       {
         enableScripts: true,
         localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'dist')],
@@ -37,6 +42,7 @@ export class SchematicPanel {
   }
 
   public static revive(panel: vscode.WebviewPanel, extensionUri: vscode.Uri): void {
+    panel.title = 'Schematic';
     SchematicPanel.currentPanel = new SchematicPanel(panel, extensionUri);
   }
 
@@ -48,7 +54,9 @@ export class SchematicPanel {
 
     this.panel.onDidDispose(
       () => {
-        SchematicPanel.currentPanel = undefined;
+        if (SchematicPanel.currentPanel === this) {
+          SchematicPanel.currentPanel = undefined;
+        }
         this.dispose();
       },
       null,
@@ -65,21 +73,35 @@ export class SchematicPanel {
   }
 
   public postMessage(message: HostToWebviewMessage): void {
-    this.panel.webview.postMessage(message);
+    try {
+      this.panel.webview.postMessage(message);
+    } catch {
+      // Panel already disposed
+    }
   }
 
   public reveal(): void {
-    this.panel.reveal();
+    try {
+      this.panel.reveal();
+    } catch {
+      // Panel already disposed by VSCode
+      SchematicPanel.currentPanel = undefined;
+    }
   }
 
+  private disposed = false;
+
   public dispose(): void {
-    SchematicPanel.currentPanel = undefined;
+    if (this.disposed) { return; }
+    this.disposed = true;
+    if (SchematicPanel.currentPanel === this) {
+      SchematicPanel.currentPanel = undefined;
+    }
     this._onDidReceiveMessage.dispose();
     while (this.disposables.length) {
       const disposable = this.disposables.pop();
       disposable?.dispose();
     }
-    this.panel.dispose();
   }
 
   private getHtmlForWebview(webview: vscode.Webview): string {
@@ -98,7 +120,7 @@ export class SchematicPanel {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource} 'unsafe-inline';">
   <link rel="stylesheet" href="${styleUri}">
-  <title>HarnessTune Schematic</title>
+  <title>Schematic</title>
 </head>
 <body>
   <div id="root"></div>

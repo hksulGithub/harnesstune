@@ -22,7 +22,7 @@ export class ChatPanel {
   /** Currently active workspace id shown in this panel */
   public activeWorkspaceId: string | undefined;
 
-  public static createOrShow(extensionUri: vscode.Uri): ChatPanel {
+  public static createOrShow(extensionUri: vscode.Uri, viewColumn?: vscode.ViewColumn): ChatPanel {
     if (ChatPanel.currentPanel) {
       try {
         ChatPanel.currentPanel.panel.reveal();
@@ -33,10 +33,11 @@ export class ChatPanel {
       }
     }
 
+    const col = viewColumn ?? ChatPanel.lastViewColumn;
     const panel = vscode.window.createWebviewPanel(
       ChatPanel.viewType,
-      'HarnessTune Chat',
-      ChatPanel.lastViewColumn,
+      'Chat',
+      col,
       {
         enableScripts: true,
         localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'dist')],
@@ -49,6 +50,7 @@ export class ChatPanel {
   }
 
   public static revive(panel: vscode.WebviewPanel, extensionUri: vscode.Uri): void {
+    panel.title = 'Chat';
     ChatPanel.currentPanel = new ChatPanel(panel, extensionUri);
   }
 
@@ -70,14 +72,10 @@ export class ChatPanel {
 
     this.panel.onDidDispose(
       () => {
-        // Don't update lastViewColumn here — onDidChangeViewState already tracks it.
-        // Revived panels that immediately dispose would corrupt the saved position.
-        ChatPanel.currentPanel = undefined;
-        this._onDidReceiveMessage.dispose();
-        while (this.disposables.length) {
-          const disposable = this.disposables.pop();
-          disposable?.dispose();
+        if (ChatPanel.currentPanel === this) {
+          ChatPanel.currentPanel = undefined;
         }
+        this.dispose();
       },
       null,
       this.disposables,
@@ -118,13 +116,14 @@ export class ChatPanel {
   public dispose(): void {
     if (this.disposed) { return; }
     this.disposed = true;
-    ChatPanel.currentPanel = undefined;
+    if (ChatPanel.currentPanel === this) {
+      ChatPanel.currentPanel = undefined;
+    }
     this._onDidReceiveMessage.dispose();
     while (this.disposables.length) {
       const disposable = this.disposables.pop();
       disposable?.dispose();
     }
-    this.panel.dispose();
   }
 
   private getHtmlForWebview(webview: vscode.Webview): string {
@@ -143,7 +142,7 @@ export class ChatPanel {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource} 'unsafe-inline';">
   <link rel="stylesheet" href="${styleUri}">
-  <title>HarnessTune Chat</title>
+  <title>Chat</title>
 </head>
 <body>
   <div id="root"></div>

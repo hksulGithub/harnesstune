@@ -9,22 +9,38 @@ export class ReportPanel {
   private readonly panel: vscode.WebviewPanel;
   private readonly extensionUri: vscode.Uri;
   private readonly disposables: vscode.Disposable[] = [];
-  private readonly workspaceId: string;
-  private readonly workspaceName: string;
+  private workspaceId: string;
+  private workspaceName: string;
 
   private readonly _onDidReceiveMessage = new vscode.EventEmitter<WebviewToHostMessage>();
   public readonly onDidReceiveMessage = this._onDidReceiveMessage.event;
 
-  public static createOrShow(extensionUri: vscode.Uri, workspaceId: string, workspaceName: string): ReportPanel {
+  /** Listeners registered by extension.ts — disposed & re-registered on workspace switch */
+  private messageListenerDisposable: vscode.Disposable | undefined;
+
+  public static createOrShow(extensionUri: vscode.Uri, workspaceId: string, workspaceName: string, viewColumn: vscode.ViewColumn = vscode.ViewColumn.Two): ReportPanel {
     if (ReportPanel.currentPanel) {
-      ReportPanel.currentPanel.reveal();
-      return ReportPanel.currentPanel;
+      try {
+        // Dispose previous message listener so extension.ts can re-wire for the new workspace
+        ReportPanel.currentPanel.messageListenerDisposable?.dispose();
+        ReportPanel.currentPanel.messageListenerDisposable = undefined;
+        ReportPanel.currentPanel.workspaceId = workspaceId;
+        ReportPanel.currentPanel.workspaceName = workspaceName;
+        ReportPanel.currentPanel.panel.title = `Reports - ${workspaceName}`;
+        // Regenerate HTML to force a fresh React mount — clears stale vscode.getState()
+        ReportPanel.currentPanel.panel.webview.html = ReportPanel.currentPanel.getHtmlForWebview(ReportPanel.currentPanel.panel.webview);
+        ReportPanel.currentPanel.reveal();
+        return ReportPanel.currentPanel;
+      } catch {
+        // Panel was disposed by VSCode — fall through to create a new one
+        ReportPanel.currentPanel = undefined;
+      }
     }
 
     const panel = vscode.window.createWebviewPanel(
       ReportPanel.viewType,
-      `HarnessTune Reports - ${workspaceName}`,
-      vscode.ViewColumn.One,
+      `Reports - ${workspaceName}`,
+      viewColumn,
       {
         enableScripts: true,
         localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'dist')],
@@ -37,6 +53,7 @@ export class ReportPanel {
   }
 
   public static revive(panel: vscode.WebviewPanel, extensionUri: vscode.Uri): void {
+    panel.title = 'Reports';
     ReportPanel.currentPanel = new ReportPanel(panel, extensionUri, '', '');
   }
 
@@ -49,7 +66,9 @@ export class ReportPanel {
     this.panel.webview.html = this.getHtmlForWebview(this.panel.webview);
 
     this.panel.onDidDispose(() => {
-      ReportPanel.currentPanel = undefined;
+      if (ReportPanel.currentPanel === this) {
+        ReportPanel.currentPanel = undefined;
+      }
       this.dispose();
     }, null, this.disposables);
 
@@ -62,18 +81,50 @@ export class ReportPanel {
     this.panel.webview.postMessage(message);
   }
 
-  public reveal(): void {
-    this.panel.reveal();
+  public getWorkspaceId(): string {
+    return this.workspaceId;
   }
 
+  /** Update workspace binding without revealing the panel (avoids layout disruption on reload). */
+  public bindWorkspace(workspaceId: string, workspaceName: string): void {
+    this.messageListenerDisposable?.dispose();
+    this.messageListenerDisposable = undefined;
+    this.workspaceId = workspaceId;
+    this.workspaceName = workspaceName;
+    this.panel.title = `Reports - ${workspaceName}`;
+    // Regenerate HTML to force a fresh React mount — clears stale vscode.getState()
+    this.panel.webview.html = this.getHtmlForWebview(this.panel.webview);
+  }
+
+  public reveal(): void {
+    try {
+      this.panel.reveal();
+    } catch {
+      // Panel already disposed by VSCode
+      ReportPanel.currentPanel = undefined;
+    }
+  }
+
+  /** Register a message listener (disposes previous one on workspace switch). */
+  public setMessageListener(listener: vscode.Disposable): void {
+    this.messageListenerDisposable?.dispose();
+    this.messageListenerDisposable = listener;
+  }
+
+  private disposed = false;
+
   public dispose(): void {
-    ReportPanel.currentPanel = undefined;
+    if (this.disposed) { return; }
+    this.disposed = true;
+    if (ReportPanel.currentPanel === this) {
+      ReportPanel.currentPanel = undefined;
+    }
+    this.messageListenerDisposable?.dispose();
     this._onDidReceiveMessage.dispose();
     while (this.disposables.length) {
       const disposable = this.disposables.pop();
       disposable?.dispose();
     }
-    this.panel.dispose();
   }
 
   private getHtmlForWebview(webview: vscode.Webview): string {
@@ -92,7 +143,7 @@ export class ReportPanel {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource} 'unsafe-inline';">
   <link rel="stylesheet" href="${styleUri}">
-  <title>HarnessTune Reports - ${this.workspaceName}</title>
+  <title>Reports - ${this.workspaceName}</title>
 </head>
 <body>
   <div id="root"></div>

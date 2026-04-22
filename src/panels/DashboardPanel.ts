@@ -15,20 +15,26 @@ export class DashboardPanel {
   private readonly _onDidReceiveMessage = new vscode.EventEmitter<WebviewToHostMessage>();
   public readonly onDidReceiveMessage = this._onDidReceiveMessage.event;
 
-  public static createOrShow(extensionUri: vscode.Uri): DashboardPanel {
+  public static createOrShow(extensionUri: vscode.Uri, viewColumn: vscode.ViewColumn = vscode.ViewColumn.One): DashboardPanel {
     if (DashboardPanel.currentPanel) {
-      DashboardPanel.currentPanel.reveal();
-      return DashboardPanel.currentPanel;
+      try {
+        // Don't pass viewColumn — let restored/existing panels stay where they are.
+        // Forcing a viewColumn collapses user-arranged layouts (e.g. 2x2 → 1x2).
+        DashboardPanel.currentPanel.panel.reveal();
+        return DashboardPanel.currentPanel;
+      } catch (e) {
+        // Panel was disposed by VSCode — fall through to create a new one
+        DashboardPanel.currentPanel = undefined;
+      }
     }
-
     const panel = vscode.window.createWebviewPanel(
       DashboardPanel.viewType,
-      'HarnessTune Dashboard',
-      vscode.ViewColumn.One,
+      'Dashboard',
+      viewColumn,
       {
         enableScripts: true,
         localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'dist')],
-        retainContextWhenHidden: false,
+        retainContextWhenHidden: true,
       },
     );
 
@@ -37,6 +43,7 @@ export class DashboardPanel {
   }
 
   public static revive(panel: vscode.WebviewPanel, extensionUri: vscode.Uri): void {
+    panel.title = 'Dashboard';
     DashboardPanel.currentPanel = new DashboardPanel(panel, extensionUri);
   }
 
@@ -48,7 +55,12 @@ export class DashboardPanel {
 
     this.panel.onDidDispose(
       () => {
-        DashboardPanel.currentPanel = undefined;
+        // Guard: only clear currentPanel if it still points to THIS instance.
+        // Without this, a late-firing onDidDispose from an old panel can wipe
+        // the reference to a newly created panel (async dispose race).
+        if (DashboardPanel.currentPanel === this) {
+          DashboardPanel.currentPanel = undefined;
+        }
         this.dispose();
       },
       null,
@@ -65,21 +77,38 @@ export class DashboardPanel {
   }
 
   public postMessage(message: HostToWebviewMessage): void {
-    this.panel.webview.postMessage(message);
+    try {
+      this.panel.webview.postMessage(message);
+    } catch {
+      // Panel already disposed
+    }
   }
 
   public reveal(): void {
-    this.panel.reveal();
+    try {
+      this.panel.reveal();
+    } catch (e) {
+      // Panel already disposed by VSCode
+      DashboardPanel.currentPanel = undefined;
+    }
   }
 
+  private disposed = false;
+
   public dispose(): void {
-    DashboardPanel.currentPanel = undefined;
+    if (this.disposed) { return; }
+    this.disposed = true;
+    if (DashboardPanel.currentPanel === this) {
+      DashboardPanel.currentPanel = undefined;
+    }
     this._onDidReceiveMessage.dispose();
     while (this.disposables.length) {
       const disposable = this.disposables.pop();
       disposable?.dispose();
     }
-    this.panel.dispose();
+    // Don't call this.panel.dispose() here — onDidDispose already calls
+    // dispose(), so re-calling panel.dispose() is re-entrant and can corrupt
+    // the singleton reference during restore/reload cycles.
   }
 
   private getHtmlForWebview(webview: vscode.Webview): string {
@@ -98,7 +127,7 @@ export class DashboardPanel {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource} 'unsafe-inline';">
   <link rel="stylesheet" href="${styleUri}">
-  <title>HarnessTune Dashboard</title>
+  <title>Dashboard</title>
 </head>
 <body>
   <div id="root"></div>

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import type { HostToWebviewMessage } from '../../types/messages';
 import type { TimelineItem, RalphReportBody } from '@harnesstune/shared';
 import vscode from './vscodeApi';
-import PanelHeader from './components/PanelHeader';
 import FilterTabs from './components/FilterTabs';
 import type { FilterTab } from './components/FilterTabs';
 import TimelineFeed from './components/TimelineFeed';
@@ -74,6 +73,7 @@ export default function App() {
   // Filter items
   const filteredItems = items.filter(item => {
     if (filter === 'all') return true;
+    if (filter === 'activity') return item.kind === 'activity';
     if (filter === 'briefings') return item.kind === 'report' && item.data.type === 'briefing';
     if (filter === 'ralph') return item.kind === 'report' && item.data.type === 'ralph';
     if (filter === 'chat') return item.kind === 'message';
@@ -81,6 +81,21 @@ export default function App() {
   });
 
   const handleSend = useCallback((text: string) => {
+    // Optimistic append — show the message immediately
+    const now = new Date().toISOString();
+    const optimisticItem: TimelineItem = {
+      kind: 'message',
+      data: {
+        id: `local-${Date.now()}`,
+        channelId: '',
+        direction: 'to_agent' as const,
+        body: { text, sentAt: now, inReplyToReportId: replyTo?.reportId },
+        createdAt: now,
+      },
+      at: now,
+    };
+    setItems(prev => [optimisticItem, ...prev]);
+
     vscode.postMessage({
       type: 'timeline:sendMessage',
       workspaceId,
@@ -103,8 +118,7 @@ export default function App() {
 
   return (
     <div className="report-panel">
-      <PanelHeader workspaceName={workspaceName} connectionStatus={connectionStatus} />
-      <FilterTabs active={filter} onSelect={setFilter} items={items} />
+      <FilterTabs active={filter} onSelect={setFilter} items={items} connectionStatus={connectionStatus} />
       <div className="timeline-feed-container">
         {loading ? (
           <div className="timeline-loading">

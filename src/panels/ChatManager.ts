@@ -31,8 +31,8 @@ export class ChatManager implements vscode.Disposable {
     this.extensionUri = extensionUri;
   }
 
-  private getOrCreatePanel(): ChatPanel {
-    return ChatPanel.createOrShow(this.extensionUri);
+  private getOrCreatePanel(viewColumn?: vscode.ViewColumn): ChatPanel {
+    return ChatPanel.createOrShow(this.extensionUri, viewColumn);
   }
 
   private get chatPanel(): ChatPanel | undefined {
@@ -105,9 +105,10 @@ export class ChatManager implements vscode.Disposable {
     workspaceRootPath: string,
     options?: ChatManagerOpenOptions,
     backendType: BackendType = 'claude-code',
+    viewColumn?: vscode.ViewColumn,
   ): void {
     this.openChat(workspaceId, workspaceName, workspaceRootPath, options, backendType);
-    this.getOrCreatePanel();
+    this.getOrCreatePanel(viewColumn);
     this.switchToWorkspace(workspaceId);
   }
 

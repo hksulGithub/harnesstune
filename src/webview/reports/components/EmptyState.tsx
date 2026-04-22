@@ -9,6 +9,7 @@ interface EmptyStateProps {
 
 const typeNames: Record<FilterTab, string> = {
   all: 'items',
+  activity: 'activity events',
   briefings: 'briefings',
   ralph: 'ralph reports',
   chat: 'messages',

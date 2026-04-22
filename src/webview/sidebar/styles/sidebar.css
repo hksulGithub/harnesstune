@@ -30,6 +30,19 @@ body {
   background: var(--vscode-list-hoverBackground);
 }
 
+.workspace-item--active {
+  background: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-list-activeSelectionForeground);
+}
+
+.workspace-item--active .workspace-name {
+  color: var(--vscode-list-activeSelectionForeground);
+}
+
+.workspace-item--active:hover {
+  background: var(--vscode-list-activeSelectionBackground);
+}
+
 .workspace-item:focus-visible {
   outline: 1px solid var(--vscode-focusBorder);
   outline-offset: -1px;

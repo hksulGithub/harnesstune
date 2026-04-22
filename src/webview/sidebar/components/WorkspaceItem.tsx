@@ -5,6 +5,7 @@ import { vscode } from '../vscodeApi';
 
 interface WorkspaceItemProps {
   workspace: WorkspaceRecord;
+  isActive: boolean;
 }
 
 interface MenuPosition {
@@ -12,7 +13,7 @@ interface MenuPosition {
   y: number;
 }
 
-export function WorkspaceItem({ workspace }: WorkspaceItemProps) {
+export function WorkspaceItem({ workspace, isActive }: WorkspaceItemProps) {
   const [menuPos, setMenuPos] = useState<MenuPosition | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -50,7 +51,7 @@ export function WorkspaceItem({ workspace }: WorkspaceItemProps) {
 
   return (
     <div
-      className="workspace-item"
+      className={`workspace-item${isActive ? ' workspace-item--active' : ''}`}
       role="button"
       tabIndex={0}
       onClick={handleOpen}

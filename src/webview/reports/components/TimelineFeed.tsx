@@ -3,6 +3,7 @@ import type { TimelineItem, RalphReportBody } from '@harnesstune/shared';
 import BriefingReportCard from './BriefingReportCard';
 import RalphLoopReportCard from './RalphLoopReportCard';
 import ChatBubble from './ChatBubble';
+import ActivityCard from './ActivityCard';
 
 interface TimelineFeedProps {
   items: TimelineItem[];
@@ -14,6 +15,9 @@ export default function TimelineFeed({ items, loopIterations, onReply }: Timelin
   return (
     <div className="timeline-feed">
       {items.map((item, idx) => {
+        if (item.kind === 'activity') {
+          return <ActivityCard key={`act-${idx}`} activity={item.data} at={item.at} />;
+        }
         if (item.kind === 'message') {
           return <ChatBubble key={`msg-${item.data.id}`} message={item.data} />;
         }
