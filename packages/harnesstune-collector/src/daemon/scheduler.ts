@@ -1,106 +1,125 @@
 import { randomUUID } from 'node:crypto';
-import type { PlatformPlugin } from '../plugins/interface.js';
-import type { CollectorRelayClient } from '../client.js';
+import type { CollectorConfig } from '../config.js';
+import { resolveToken } from '../config.js';
 import type { RetryQueue } from '../queue.js';
+import type { PlatformPlugin } from '../plugins/interface.js';
+
+export interface PluginCursors {
+  [pluginId: string]: Date;
+}
+
+export interface CycleResult {
+  lastPoll: string;
+  plugins: Record<string, { enabled: boolean; agentCount: number }>;
+}
 
 /**
- * PluginScheduler — polls each enabled plugin on a configurable interval.
- *
- * For each plugin:
- *   1. Calls plugin.discover() to sync agent list with relay
- *   2. Calls plugin.collectRuns(since) to upload new run reports
- *   3. Advances the per-plugin `since` cursor on success
- *
- * The scheduler runs a single poll cycle and the daemon wraps it in a setInterval.
+ * Run one collection cycle: for each enabled plugin, call collectRuns(since),
+ * upload results to relay, advance cursors.
  */
-export class PluginScheduler {
-  /** Per-plugin cursor: tracks 'since' date for incremental run collection */
-  private cursors = new Map<string, Date>();
+export async function runCycle(
+  plugins: PlatformPlugin[],
+  config: CollectorConfig,
+  queue: RetryQueue,
+  cursors: PluginCursors,
+): Promise<CycleResult> {
+  const token = resolveToken(config);
+  const pluginSummary: Record<string, { enabled: boolean; agentCount: number }> = {};
+  const enabledIds = new Set(config.platforms.filter(p => p.enabled).map(p => p.id));
 
-  constructor(
-    private readonly plugins: PlatformPlugin[],
-    private readonly client: CollectorRelayClient,
-    private readonly channelId: string,
-    private readonly queue: RetryQueue,
-  ) {}
+  for (const plugin of plugins) {
+    const enabled = enabledIds.has(plugin.id);
+    if (!enabled) {
+      pluginSummary[plugin.id] = { enabled: false, agentCount: 0 };
+      continue;
+    }
 
-  /**
-   * Run one poll cycle across all plugins.
-   * Returns the plugin status map (id → agentCount) for status file updates.
-   */
-  async poll(): Promise<Record<string, { enabled: boolean; agentCount: number }>> {
-    const statusMap: Record<string, { enabled: boolean; agentCount: number }> = {};
+    try {
+      // Discover agents for count
+      const agents = await plugin.discover();
+      pluginSummary[plugin.id] = { enabled: true, agentCount: agents.length };
 
-    for (const plugin of this.plugins) {
-      let agentCount = 0;
-      try {
-        // 1. Discover agents
-        const agents = await plugin.discover();
-        agentCount = agents.length;
+      // Register discovered agents with relay
+      for (const agent of agents) {
+        try {
+          await fetch(`${config.relayUrl}/api/channels/${config.channelId}/agents`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              agentId: agent.agentId,
+              name: agent.name,
+              platform: agent.platform,
+              schedule: agent.schedule,
+            }),
+          });
+        } catch (err) {
+          console.error(`Failed to register agent ${agent.agentId}:`, err);
+        }
+      }
 
-        if (agents.length > 0) {
-          // Upload agent registrations to relay
-          for (const agent of agents) {
-            await this.upsertAgent(agent, plugin.id);
+      // Collect runs since last cursor
+      const since = cursors[plugin.id] ?? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const runs = await plugin.collectRuns(since);
+
+      // Upload each run to relay
+      for (const run of runs) {
+        const envelope = {
+          type: 'run_batch' as const,
+          body: { runs: [run] },
+          generatedAt: new Date().toISOString(),
+          reportId: randomUUID(),
+        };
+        try {
+          const res = await fetch(`${config.relayUrl}/api/channels/${config.channelId}/reports`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(envelope),
+          });
+          if (!res.ok) {
+            queue.enqueue(config.channelId, envelope);
           }
+        } catch {
+          queue.enqueue(config.channelId, envelope);
         }
-
-        // 2. Collect runs since cursor
-        const since = this.cursors.get(plugin.id) ?? new Date(0);
-        const runs = await plugin.collectRuns(since);
-
-        if (runs.length > 0) {
-          await this.uploadRuns(runs);
-          // Advance cursor to latest run timestamp
-          const latest = runs.reduce((max, r) =>
-            r.finishedAt > max.finishedAt ? r : max,
-          );
-          this.cursors.set(plugin.id, new Date(latest.finishedAt));
-        }
-
-        statusMap[plugin.id] = { enabled: true, agentCount };
-      } catch (err) {
-        console.error(`Plugin ${plugin.id} poll error:`, err);
-        statusMap[plugin.id] = { enabled: true, agentCount };
       }
-    }
 
-    return statusMap;
-  }
-
-  private async upsertAgent(
-    agent: { agentId: string; name: string; platform: string; schedule: string | null; lastRunAt: string | null; status: string },
-    _pluginId: string,
-  ): Promise<void> {
-    try {
-      await this.client.post(
-        `/api/channels/${this.channelId}/agents`,
-        { agentId: agent.agentId, name: agent.name, platform: agent.platform, schedule: agent.schedule },
-      );
-    } catch (err) {
-      console.error(`Failed to upsert agent ${agent.agentId}:`, err);
-    }
-  }
-
-  private async uploadRuns(runs: unknown[]): Promise<void> {
-    const envelope = {
-      type: 'run_batch' as const,
-      body: { runs },
-      generatedAt: new Date().toISOString(),
-      reportId: randomUUID(),
-    };
-    try {
-      const res = await this.client.post(
-        `/api/channels/${this.channelId}/reports`,
-        envelope,
-      );
-      if (!res.ok) {
-        console.error(`Run batch upload failed: ${res.status}`);
-        this.queue.enqueue(this.channelId, envelope);
+      // Advance cursor
+      if (runs.length > 0) {
+        const latest = runs.reduce((max, r) => {
+          const t = new Date(r.finishedAt);
+          return t > max ? t : max;
+        }, since);
+        cursors[plugin.id] = latest;
       }
     } catch (err) {
-      console.error('Run batch upload error:', err);
-      this.queue.enqueue(this.channelId, envelope);
+      console.error(`Plugin ${plugin.id} error:`, err);
+      pluginSummary[plugin.id] = { enabled: true, agentCount: 0 };
     }
   }
+
+  // Attempt queue replay on successful cycle (relay is reachable)
+  const relayClient = {
+    post: async (path: string, body: unknown) =>
+      fetch(`${config.relayUrl}${path}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      }),
+  };
+  const replayed = await queue.replay(relayClient, config.channelId);
+  if (replayed > 0) console.log(`Replayed ${replayed} queued report(s)`);
+
+  return {
+    lastPoll: new Date().toISOString(),
+    plugins: pluginSummary,
+  };
 }

@@ -1,48 +1,45 @@
 import { randomUUID } from 'node:crypto';
-import type { CollectorRelayClient } from '../client.js';
+import type { CollectorConfig } from '../config.js';
+import { resolveToken } from '../config.js';
 import type { RetryQueue } from '../queue.js';
 
-export type HeartbeatStatus = 'connected' | 'disconnected';
-
-export interface HeartbeatBody {
-  status: HeartbeatStatus;
-  uptimeSeconds: number;
-  platform: 'collector';
-  plugins: Record<string, { enabled: boolean; agentCount: number }>;
+export interface HeartbeatPluginSummary {
+  [pluginId: string]: { enabled: boolean; agentCount: number };
 }
 
-/**
- * Send a machine-level collector heartbeat to the relay.
- * On failure the envelope is enqueued for retry.
- */
 export async function sendHeartbeat(
-  client: CollectorRelayClient,
-  channelId: string,
+  config: CollectorConfig,
   queue: RetryQueue,
-  status: HeartbeatStatus,
-  plugins: Record<string, { enabled: boolean; agentCount: number }>,
+  status: 'connected' | 'disconnected',
+  plugins: HeartbeatPluginSummary,
 ): Promise<void> {
-  const body: HeartbeatBody = {
-    status,
-    uptimeSeconds: Math.floor(process.uptime()),
-    platform: 'collector',
-    plugins,
-  };
+  const token = resolveToken(config);
   const envelope = {
     type: 'heartbeat' as const,
-    body,
+    body: {
+      status,
+      uptimeSeconds: Math.floor(process.uptime()),
+      plugins,
+    },
     generatedAt: new Date().toISOString(),
     reportId: randomUUID(),
   };
 
   try {
-    const res = await client.post(`/api/channels/${channelId}/reports`, envelope);
+    const res = await fetch(`${config.relayUrl}/api/channels/${config.channelId}/reports`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(envelope),
+    });
     if (!res.ok) {
       console.error(`Heartbeat upload failed: ${res.status}`);
-      queue.enqueue(channelId, envelope);
+      queue.enqueue(config.channelId, envelope);
     }
   } catch (err) {
     console.error('Heartbeat error:', err);
-    queue.enqueue(channelId, envelope);
+    queue.enqueue(config.channelId, envelope);
   }
 }
