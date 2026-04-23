@@ -19,7 +19,10 @@ export class WorkspaceRegistry implements IWorkspaceRegistry {
       const raw = await vscode.workspace.fs.readFile(this.registryUri);
       const text = Buffer.from(raw).toString('utf-8');
       const data: WorkspaceRegistryData = JSON.parse(text);
-      if (data.version === 1) {
+      const version = (data as { version: number }).version;
+      if (version < 1) {
+        throw new Error(`Unsupported registry version: ${version} (must be 1, 2, or 3)`);
+      } else if (data.version === 1) {
         // v1 → v2 migration: add mode: 'local' to all existing records
         this.workspaces = data.workspaces.map(ws => ({
           ...ws,
@@ -30,6 +33,7 @@ export class WorkspaceRegistry implements IWorkspaceRegistry {
         await this.persist();
       } else if (data.version === 2) {
         // v2 → v3 migration: add agents: [] to all existing workspaces
+        // Note: ws here is a v2 record; the cast is intentional to check for a pre-existing agents field
         this.workspaces = data.workspaces.map(ws => ({
           ...ws,
           backendType: ws.backendType ?? 'claude-code',
@@ -40,7 +44,8 @@ export class WorkspaceRegistry implements IWorkspaceRegistry {
       } else if (data.version === 3) {
         this.workspaces = data.workspaces;
       } else {
-        throw new Error(`Unsupported registry version: ${(data as { version: number }).version}`);
+        // version > 3 — written by a newer extension, refuse to overwrite
+        throw new Error(`Unsupported registry version: ${version} (this extension supports up to v3)`);
       }
     } catch (err: unknown) {
       // If file doesn't exist (FileNotFound), initialize with empty state
