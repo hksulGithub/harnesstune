@@ -6,6 +6,9 @@ import { rateLimitMiddleware } from './middleware/rateLimit.js';
 import { publicChannelsRouter, channelsRouter } from './routes/channels.js';
 import { reportsRouter } from './routes/reports.js';
 import { messagesRouter } from './routes/messages.js';
+import { agentsRouter } from './routes/agents.js';
+import { runsRouter } from './routes/runs.js';
+import { summaryRouter } from './routes/summary.js';
 
 export const RELAY_VERSION = '0.1.0';
 
@@ -44,6 +47,10 @@ api.use('*', rateLimitMiddleware);
 api.route('/channels', channelsRouter);
 api.route('/channels/:channelId/reports', reportsRouter);
 api.route('/channels/:channelId/messages', messagesRouter);
+api.route('/channels/:channelId/agents', agentsRouter);
+api.route('/channels/:channelId/runs', runsRouter);
+api.route('/channels/:channelId/agents/:agentId/runs', runsRouter);
+api.route('/channels/:channelId/summary', summaryRouter);
 
 app.route('/api', api);
 

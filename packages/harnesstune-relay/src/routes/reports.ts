@@ -27,10 +27,12 @@ reportsRouter.post('/', async (c) => {
     }, 413);
   }
 
-  const body = await c.req.json<{ type: string; body: Record<string, unknown> }>();
+  const body = await c.req.json<{ type: string; body: Record<string, unknown>; agentId?: string }>();
   if (!body.type || !body.body) {
     return c.json({ error: 'type and body are required' }, 400);
   }
+
+  const agentId = (body as { agentId?: string }).agentId ?? null;
 
   const db = getDb();
   const id = randomUUID();
@@ -39,12 +41,13 @@ reportsRouter.post('/', async (c) => {
     channelId,
     type: body.type,
     body: JSON.stringify(body.body),
+    agentId,
   });
 
   return c.json({ id, channelId, type: body.type, createdAt: new Date().toISOString() }, 201);
 });
 
-// GET /channels/:channelId/reports — paginated metadata list (?since= cursor)
+// GET /channels/:channelId/reports — paginated metadata list (?since= cursor, ?agentId= filter)
 reportsRouter.get('/', async (c) => {
   const channelId = c.req.param('channelId');
   const authedChannelId = c.get('channelId');
@@ -53,19 +56,25 @@ reportsRouter.get('/', async (c) => {
   }
 
   const since = c.req.query('since');  // ISO 8601 timestamp cursor
+  const agentId = c.req.query('agentId');  // optional agent filter
   const limit = Math.min(parseInt(c.req.query('limit') ?? '20', 10), 100);
 
   const db = getDb();
+
+  // Build where conditions
+  const conditions = [eq(reports.channelId, channelId)];
+  if (since) conditions.push(gt(reports.createdAt, new Date(since)));
+  if (agentId) conditions.push(eq(reports.agentId, agentId));
+
   const rows = await db.select({
     id: reports.id,
     channelId: reports.channelId,
     type: reports.type,
+    agentId: reports.agentId,
     createdAt: reports.createdAt,
     // body intentionally excluded — metadata only (RLAY-10)
   }).from(reports).where(
-    since
-      ? and(eq(reports.channelId, channelId), gt(reports.createdAt, new Date(since)))
-      : eq(reports.channelId, channelId)
+    and(...conditions)
   ).orderBy(desc(reports.createdAt)).limit(limit);
 
   return c.json({ reports: rows, count: rows.length });
