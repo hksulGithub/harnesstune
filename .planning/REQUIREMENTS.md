@@ -185,17 +185,17 @@
 - [ ] **COLL-02**: `npx harnesstune-collector setup` — guided onboarding: relay URL, token, platform auto-detection (detects installed platforms)
 - [ ] **COLL-03**: Platform plugin architecture — collector loads platform-specific modules (Paperclip, Claude Desktop, Claude Code, OpenClaw)
 - [ ] **COLL-04**: Collector runs as persistent daemon with heartbeat — reports machine-level health to relay
-- [ ] **COLL-05**: Per-agent run reporting — after each cron/scheduled task run completes, collector uploads a structured run report to relay with `agentId`, `startedAt`, `finishedAt`, `status` (success/fail/timeout), `durationMs`, `logs` (truncated), `errorSummary`, `tokenUsage`, `costCents`
-- [ ] **COLL-06**: Historical batch sync — on first connect, collector backfills recent run history (last 7 days) from each platform's local data
+- [x] **COLL-05**: Per-agent run reporting — after each cron/scheduled task run completes, collector uploads a structured run report to relay with `agentId`, `startedAt`, `finishedAt`, `status` (success/fail/timeout), `durationMs`, `logs` (truncated), `errorSummary`, `tokenUsage`, `costCents`
+- [x] **COLL-06**: Historical batch sync — on first connect, collector backfills recent run history (last 7 days) from each platform's local data
 
 ### Paperclip Adapter (PCLP)
 
-- [ ] **PCLP-01**: Collector plugin polls Paperclip REST API using Board API Key (Bearer token auth)
-- [ ] **PCLP-02**: Agent discovery via `GET /companies/:companyId/agents` — maps Paperclip agents to HarnessTune agent identities
-- [ ] **PCLP-03**: Run history via `GET /agents/:id/task-sessions` and `heartbeat_runs` data — maps to standardized run reports
-- [ ] **PCLP-04**: Cost data via `GET /companies/:companyId/costs/by-agent?from=&to=` — per-agent token and cost breakdowns
-- [ ] **PCLP-05**: Activity/audit via `GET /companies/:companyId/activity?agentId=` — maps to timeline events
-- [ ] **PCLP-06**: Setup: collector prompts for Paperclip server URL + Board API Key during `setup`
+- [x] **PCLP-01**: Collector plugin polls Paperclip REST API using Board API Key (Bearer token auth)
+- [x] **PCLP-02**: Agent discovery via `GET /companies/:companyId/agents` — maps Paperclip agents to HarnessTune agent identities
+- [x] **PCLP-03**: Run history via `GET /agents/:id/task-sessions` and `heartbeat_runs` data — maps to standardized run reports
+- [x] **PCLP-04**: Cost data via `GET /companies/:companyId/costs/by-agent?from=&to=` — per-agent token and cost breakdowns
+- [x] **PCLP-05**: Activity/audit via `GET /companies/:companyId/activity?agentId=` — maps to timeline events
+- [x] **PCLP-06**: Setup: collector prompts for Paperclip server URL + Board API Key during `setup`
 
 ### Claude Desktop Adapter (CDSK)
 
