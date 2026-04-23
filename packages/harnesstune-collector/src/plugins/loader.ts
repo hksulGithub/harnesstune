@@ -27,8 +27,8 @@ function buildPlugins(): PlatformPlugin[] {
 
   return [
     new PaperclipPlugin(platformConfigs['paperclip']),
-    new ClaudeDesktopPlugin(),
-    new ClaudeCodePlugin(),
+    new ClaudeDesktopPlugin(platformConfigs['claude-desktop']),
+    new ClaudeCodePlugin(platformConfigs['claude-code']),
     new OpenClawPlugin(),
   ];
 }
