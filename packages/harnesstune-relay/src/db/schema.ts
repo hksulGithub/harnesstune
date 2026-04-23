@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, primaryKey, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const channels = sqliteTable('channels', {
   id: text('id').primaryKey(),           // UUID
@@ -41,7 +41,10 @@ export const agents = sqliteTable('agents', {
   lastRunAt: integer('last_run_at', { mode: 'timestamp' }),  // nullable
   status: text('status').notNull().default('unknown'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-});
+}, (table) => ({
+  // Enforce one agent identity per channel at the DB level (D-02)
+  channelAgentUniq: uniqueIndex('agents_channel_agent_uniq').on(table.channelId, table.agentId),
+}));
 
 export const agentRuns = sqliteTable('agent_runs', {
   id: text('id').primaryKey(),                 // UUID
