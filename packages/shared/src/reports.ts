@@ -35,7 +35,27 @@ export interface ReportEnvelope {
   generatedAt: string;
   /** UUID v4 unique identifier for this report */
   reportId: string;
+  /** Optional agent identifier for per-agent attribution — D-01 */
+  agentId?: string;
 }
+
+/** Structured execution record from a collector/agent run — stored in agent_runs table, NOT a ReportEnvelope type */
+export interface RunReport {
+  agentId: string;
+  startedAt: string;       // ISO 8601
+  finishedAt: string;      // ISO 8601
+  status: 'success' | 'failure' | 'timeout' | 'running';
+  durationMs: number;
+  logExcerpt?: string;     // truncated log output
+  errorSummary?: string;   // error message if failed
+  tokenUsage?: {
+    inputTokens: number;
+    outputTokens: number;
+  };
+  costCents?: number;
+}
+
+export type RunStatus = RunReport['status'];
 
 /** A message from the relay messages API */
 export interface RelayMessage {
