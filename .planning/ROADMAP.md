@@ -429,6 +429,12 @@ Seven phases below constitute Milestone 3. Completion delivers a centralized con
 
 **Research Flag:** Standard patterns — skip research. Drizzle migration, type extension, REST endpoint addition are all well-established.
 
+**Plans:** 2 plans
+
+Plans:
+- [ ] 11-01-PLAN.md — RunReport shared type, relay schema (agents + agent_runs tables), relay endpoints (agents, runs, summary, reports agentId filter)
+- [ ] 11-02-PLAN.md — AgentIdentity type, registry v2→v3 migration, RelayClient agent/run/summary methods, RemoteAdapter agent polling
+
 ---
 
 ### Phase 12: Collector Daemon + Easy Setup
