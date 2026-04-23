@@ -17,7 +17,7 @@ reportsRouter.post('/', async (c) => {
     return c.json({ error: 'Forbidden' }, 403);
   }
 
-  // Check content-length for 2MB limit
+  // Check content-length header as a fast pre-flight check (may be absent — not authoritative)
   const contentLength = parseInt(c.req.header('Content-Length') ?? '0', 10);
   if (contentLength > MAX_REPORT_SIZE) {
     return c.json({
@@ -30,6 +30,16 @@ reportsRouter.post('/', async (c) => {
   const body = await c.req.json<{ type: string; body: Record<string, unknown>; agentId?: string }>();
   if (!body.type || !body.body) {
     return c.json({ error: 'type and body are required' }, 400);
+  }
+
+  // Enforce body size limit on actual parsed content (Content-Length header may be absent or spoofed)
+  const serializedBodySize = JSON.stringify(body.body).length;
+  if (serializedBodySize > MAX_REPORT_SIZE) {
+    return c.json({
+      error: 'Payload too large',
+      maxBytes: MAX_REPORT_SIZE,
+      message: `Report body must not exceed ${MAX_REPORT_SIZE / 1024 / 1024}MB`,
+    }, 413);
   }
 
   const agentId = (body as { agentId?: string }).agentId ?? null;
