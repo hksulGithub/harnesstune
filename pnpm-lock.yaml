@@ -71,6 +71,16 @@ importers:
         specifier: ^5.6.0
         version: 5.9.3
 
+  packages/harnesstune-collector:
+    dependencies:
+      '@harnesstune/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+
   packages/harnesstune-relay:
     dependencies:
       '@harnesstune/shared':
