@@ -4,6 +4,7 @@ import type { AgentBackendAdapter } from './AgentBackendAdapter';
 import type { AgentEvent } from '../types/agent';
 import type { TimelineItem, RalphReportBody } from '@harnesstune/shared';
 import { RelayClient, RelayError } from '../relay';
+import type { IWorkspaceRegistry } from '../types/workspace';
 
 const DEFAULT_POLL_INTERVAL = 30_000; // 30 seconds
 const MAX_BACKOFF = 5 * 60_000;       // 5 minutes
@@ -35,6 +36,7 @@ export class RemoteAdapter implements AgentBackendAdapter {
     private readonly channelId: string,
     private readonly pollInterval: number = DEFAULT_POLL_INTERVAL,
     initialCursors?: { reportCursor?: string; messageCursor?: string },
+    private readonly registry?: IWorkspaceRegistry,
   ) {
     this.baseInterval = pollInterval;
     this.currentInterval = pollInterval;
@@ -131,6 +133,18 @@ export class RemoteAdapter implements AgentBackendAdapter {
       // Check staleness (3 missed heartbeats = 15 min)
       if (this.lastHeartbeatAt && (Date.now() - this.lastHeartbeatAt) > STALE_THRESHOLD) {
         this._onStatusChange.fire({ workspaceId: this.workspaceId, status: 'stale', lastHeartbeatAt: this.lastHeartbeatAt });
+      }
+
+      // Refresh agent cache from relay
+      if (this.registry && this.workspaceId) {
+        try {
+          const agents = await this.client.getAgents();
+          // Update workspace registry with latest agent data
+          await this.registry.update(this.workspaceId, { agents });
+        } catch (err) {
+          // Agent fetch failure is non-critical — don't break the poll cycle
+          console.warn('HarnessTune RemoteAdapter: agent cache refresh failed:', err);
+        }
       }
     } catch (err) {
       this.consecutiveErrors++;

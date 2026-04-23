@@ -1,4 +1,5 @@
 import type { ReportEnvelope, RelayMessage } from '@harnesstune/shared';
+import type { AgentIdentity } from '../types/workspace';
 
 export interface RelayClientConfig {
   relayUrl: string;   // e.g. 'https://harnesstune-relay.vercel.app/api'
@@ -21,6 +22,36 @@ export interface RelayReportListItem {
 export interface RelayMessagePayload {
   text: string;
   sentAt: string;
+}
+
+export interface AgentSummary {
+  agentId: string;
+  totalRuns: number;
+  successCount: number;
+  failureCount: number;
+  successRate: number;
+  totalCostCents: number;
+  lastRunAt: string | null;
+}
+
+export interface ChannelSummaryResponse {
+  channelId: string;
+  days: number;
+  agents: AgentSummary[];
+}
+
+export interface RunRecord {
+  id: string;
+  channelId: string;
+  agentId: string;
+  startedAt: string;
+  finishedAt: string;
+  status: string;
+  durationMs: number;
+  logExcerpt: string | null;
+  errorSummary: string | null;
+  tokenUsage: string | null;
+  costCents: number | null;
 }
 
 export class RelayClient {
@@ -105,6 +136,47 @@ export class RelayClient {
     if (!res.ok) { throw new RelayError(res.status, await res.text()); }
     const data = await res.json() as { channelId?: string; id?: string };
     return data.channelId ?? data.id ?? '';
+  }
+
+  /** Fetch all agents for the channel */
+  async getAgents(): Promise<AgentIdentity[]> {
+    const res = await this.doFetch(`/channels/${this.channelId}/agents`, { timeout: 5000 });
+    if (!res.ok) { throw new RelayError(res.status, await res.text()); }
+    const data = await res.json() as { agents: AgentIdentity[] };
+    return data.agents;
+  }
+
+  /** Register an agent with the channel */
+  async registerAgent(agentId: string, platform: string, name?: string, schedule?: string): Promise<AgentIdentity> {
+    const body: Record<string, string> = { agentId, platform };
+    if (name) { body.name = name; }
+    if (schedule) { body.schedule = schedule; }
+    const res = await this.doFetch(`/channels/${this.channelId}/agents`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+      timeout: 5000,
+    });
+    if (!res.ok) { throw new RelayError(res.status, await res.text()); }
+    return res.json() as Promise<AgentIdentity>;
+  }
+
+  /** Fetch paginated run history for a specific agent */
+  async getRuns(agentId: string, since?: string, limit = 20): Promise<RunRecord[]> {
+    const params = new URLSearchParams();
+    if (since) { params.set('since', since); }
+    params.set('limit', String(limit));
+    const url = `/channels/${this.channelId}/agents/${agentId}/runs${params.toString() ? '?' + params.toString() : ''}`;
+    const res = await this.doFetch(url, { timeout: 5000 });
+    if (!res.ok) { throw new RelayError(res.status, await res.text()); }
+    const data = await res.json() as { runs: RunRecord[] };
+    return data.runs;
+  }
+
+  /** Fetch pre-aggregated summary for the channel */
+  async getSummary(days = 7): Promise<ChannelSummaryResponse> {
+    const res = await this.doFetch(`/channels/${this.channelId}/summary?days=${days}`, { timeout: 5000 });
+    if (!res.ok) { throw new RelayError(res.status, await res.text()); }
+    return res.json() as Promise<ChannelSummaryResponse>;
   }
 
   private async doFetch(path: string, opts: { method?: string; body?: string; timeout?: number } = {}): Promise<Response> {
