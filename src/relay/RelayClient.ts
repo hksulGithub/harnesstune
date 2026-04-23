@@ -135,7 +135,11 @@ export class RelayClient {
     const res = await this.doFetch('/channels/me', { timeout: 8000 });
     if (!res.ok) { throw new RelayError(res.status, await res.text()); }
     const data = await res.json() as { channelId?: string; id?: string };
-    return data.channelId ?? data.id ?? '';
+    const channelId = data.channelId ?? data.id;
+    if (!channelId) {
+      throw new RelayError(0, 'Channel ID not found in /channels/me response');
+    }
+    return channelId;
   }
 
   /** Fetch all agents for the channel */
