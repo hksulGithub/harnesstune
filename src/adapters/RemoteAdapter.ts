@@ -3,7 +3,7 @@ import * as crypto from 'crypto';
 import type { AgentBackendAdapter } from './AgentBackendAdapter';
 import type { AgentEvent } from '../types/agent';
 import type { TimelineItem, RalphReportBody } from '@harnesstune/shared';
-import { RelayClient, RelayError } from '../relay';
+import { RelayClient, RelayError, type ReportListItem } from '../relay';
 import type { IWorkspaceRegistry } from '../types/workspace';
 
 const DEFAULT_POLL_INTERVAL = 30_000; // 30 seconds
@@ -108,13 +108,11 @@ export class RemoteAdapter implements AgentBackendAdapter {
           this.reportCursor = report.generatedAt;
         }
 
-        // Track heartbeat freshness
+        // Track heartbeat freshness — list response has no body, so treat any heartbeat as 'connected'
+        // (the list endpoint returns metadata only; body.status is not available without getReport())
         if (report.type === 'heartbeat') {
           this.lastHeartbeatAt = Date.now();
-          const body = report.body as { status: string };
-          if (body.status === 'connected') {
-            this._onStatusChange.fire({ workspaceId: this.workspaceId, status: 'running', lastHeartbeatAt: this.lastHeartbeatAt });
-          }
+          this._onStatusChange.fire({ workspaceId: this.workspaceId, status: 'running', lastHeartbeatAt: this.lastHeartbeatAt });
         }
 
         // Emit synthetic AgentEvent for each report
@@ -184,6 +182,8 @@ export class RemoteAdapter implements AgentBackendAdapter {
     const loopMap: Record<string, RalphReportBody[]> = {};
 
     for (const report of reports) {
+      // report is a ReportListItem (metadata only — no body field)
+      // generatedAt is mapped from DB createdAt in RelayClient.getReports()
       if (!this.reportCursor || report.generatedAt > this.reportCursor) {
         this.reportCursor = report.generatedAt;
       }
@@ -192,13 +192,11 @@ export class RemoteAdapter implements AgentBackendAdapter {
         this.lastHeartbeatAt = Date.now();
         continue;
       }
-      items.push({ kind: 'report', data: report, at: report.generatedAt });
-      // Collect ralph iterations by loopId
-      if (report.type === 'ralph') {
-        const body = report.body as RalphReportBody;
-        if (!loopMap[body.loopId]) { loopMap[body.loopId] = []; }
-        loopMap[body.loopId].push(body);
-      }
+      // Cast to ReportEnvelope for TimelineItem compatibility; body is absent on list items.
+      // Callers that need the full body should call RelayClient.getReport(report.id) individually.
+      items.push({ kind: 'report', data: report as unknown as import('@harnesstune/shared').ReportEnvelope, at: report.generatedAt });
+      // ralph loop body collection requires full body — not available from list endpoint.
+      // loopMap remains empty here; full bodies must be fetched via getReport() if needed.
     }
 
     for (const msg of messages) {

@@ -12,6 +12,17 @@ export interface RelayHealthResponse {
   version: string;
 }
 
+/** Shape returned by GET /channels/:channelId/reports (metadata list — no body) */
+export interface ReportListItem {
+  id: string;
+  channelId: string;
+  type: string;
+  agentId?: string | null;
+  /** ISO timestamp mapped from the relay DB createdAt field */
+  generatedAt: string;
+}
+
+/** @deprecated Use ReportListItem */
 export interface RelayReportListItem {
   id: string;
   type: string;
@@ -74,8 +85,12 @@ export class RelayClient {
     return res.json() as Promise<RelayHealthResponse>;
   }
 
-  /** Fetch reports since cursor. Returns array of ReportEnvelope. */
-  async getReports(since?: string): Promise<ReportEnvelope[]> {
+  /**
+   * Fetch report list since cursor. Returns ReportListItem[] with generatedAt mapped from DB createdAt.
+   * The relay GET list endpoint returns { id, channelId, type, agentId, createdAt } — not a full
+   * ReportEnvelope. generatedAt is mapped here so cursor advancement in RemoteAdapter works correctly.
+   */
+  async getReports(since?: string): Promise<ReportListItem[]> {
     const timeout = this.isFirstPoll ? 8000 : 5000;
     this.isFirstPoll = false;
     const params = new URLSearchParams();
@@ -83,8 +98,16 @@ export class RelayClient {
     const url = `/channels/${this.channelId}/reports${params.toString() ? '?' + params.toString() : ''}`;
     const res = await this.doFetch(url, { timeout });
     if (!res.ok) { throw new RelayError(res.status, await res.text()); }
-    const data = await res.json() as { reports?: ReportEnvelope[] } | ReportEnvelope[];
-    return (data as { reports?: ReportEnvelope[] }).reports ?? (data as ReportEnvelope[]);
+    const data = await res.json() as { reports?: Array<{ id: string; channelId: string; type: string; agentId?: string | null; createdAt: string }> };
+    const rows = data.reports ?? [];
+    // Map createdAt → generatedAt so cursor logic in RemoteAdapter reads the correct field
+    return rows.map(r => ({
+      id: r.id,
+      channelId: r.channelId,
+      type: r.type,
+      agentId: r.agentId,
+      generatedAt: r.createdAt,
+    }));
   }
 
   /** Fetch a single report by ID. */
