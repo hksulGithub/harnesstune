@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { IWorkspaceRegistry, WorkspaceRecord, WorkspaceRegistryData, BackendType, WorkspaceMode } from '../types/workspace';
+import { IWorkspaceRegistry, WorkspaceRecord, WorkspaceRegistryData, BackendType, WorkspaceMode, AgentIdentity } from '../types/workspace';
 
 export class WorkspaceRegistry implements IWorkspaceRegistry {
   private readonly registryUri: vscode.Uri;
@@ -29,10 +29,16 @@ export class WorkspaceRegistry implements IWorkspaceRegistry {
         // Persist migrated data as v2
         await this.persist();
       } else if (data.version === 2) {
+        // v2 → v3 migration: add agents: [] to all existing workspaces
         this.workspaces = data.workspaces.map(ws => ({
           ...ws,
           backendType: ws.backendType ?? 'claude-code',
+          agents: (ws as WorkspaceRecord).agents ?? [],
         }));
+        // Persist migrated data as v3
+        await this.persist();
+      } else if (data.version === 3) {
+        this.workspaces = data.workspaces;
       } else {
         throw new Error(`Unsupported registry version: ${(data as { version: number }).version}`);
       }
@@ -110,6 +116,7 @@ export class WorkspaceRegistry implements IWorkspaceRegistry {
       errorCount: 0,
       backendType: isRemote ? 'remote' : backendType,
       mode: options?.mode ?? 'local',
+      agents: [],
       ...(isRemote && {
         relayUrl: options?.relayUrl,
         channelId: options?.channelId,
@@ -143,7 +150,7 @@ export class WorkspaceRegistry implements IWorkspaceRegistry {
    */
   public async update(
     id: string,
-    changes: Partial<Pick<WorkspaceRecord, 'name' | 'status' | 'runningAgentCount' | 'errorCount' | 'backendType' | 'mode' | 'relayUrl' | 'pollInterval' | 'lastCursor' | 'lastMessageCursor'>>
+    changes: Partial<Pick<WorkspaceRecord, 'name' | 'status' | 'runningAgentCount' | 'errorCount' | 'backendType' | 'mode' | 'relayUrl' | 'pollInterval' | 'lastCursor' | 'lastMessageCursor' | 'agents'>>
   ): Promise<void> {
     const record = this.workspaces.find(ws => ws.id === id);
     if (!record) {
@@ -160,7 +167,7 @@ export class WorkspaceRegistry implements IWorkspaceRegistry {
     await vscode.workspace.fs.createDirectory(this.context.globalStorageUri);
 
     const data: WorkspaceRegistryData = {
-      version: 2,
+      version: 3,
       workspaces: this.workspaces,
     };
     const json = JSON.stringify(data, null, 2);
