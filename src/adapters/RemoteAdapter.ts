@@ -169,6 +169,12 @@ export class RemoteAdapter implements AgentBackendAdapter {
   async getTimelineItems(): Promise<{ items: TimelineItem[]; loopIterations: Record<string, RalphReportBody[]> }> {
     if (!this.client) { return { items: [], loopIterations: {} }; }
 
+    // WARNING: getTimelineItems() shares reportCursor and messageCursor with the poll() loop.
+    // Both advance the same instance cursors. If poll() and getTimelineItems() run concurrently
+    // (e.g., poll fires during a UI refresh), one call may consume events the other was about to
+    // process. The poll loop is the authoritative cursor owner; getTimelineItems() should only
+    // be called when the poll loop is idle or from the same async context.
+    // TODO: migrate getTimelineItems() to use a separate snapshot cursor in a future refactor.
     const [reports, messages] = await Promise.all([
       this.client.getReports(this.reportCursor),
       this.client.getMessages(this.messageCursor),
