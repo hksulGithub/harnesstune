@@ -429,11 +429,11 @@ Seven phases below constitute Milestone 3. Completion delivers a centralized con
 
 **Research Flag:** Standard patterns — skip research. Drizzle migration, type extension, REST endpoint addition are all well-established.
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 11-01-PLAN.md — RunReport shared type, relay schema (agents + agent_runs tables), relay endpoints (agents, runs, summary, reports agentId filter)
-- [ ] 11-02-PLAN.md — AgentIdentity type, registry v2→v3 migration, RelayClient agent/run/summary methods, RemoteAdapter agent polling
+- [x] 11-02-PLAN.md — AgentIdentity type, registry v2→v3 migration, RelayClient agent/run/summary methods, RemoteAdapter agent polling
 
 ---
 
@@ -623,7 +623,7 @@ Plans:
 | 8. Agent CLI + Daily Briefing Reports | 3/3 | Complete | 2026-04-19 |
 | 9. RemoteAdapter + Remote Workspace Management | 2/2 | Complete | 2026-04-19 |
 | 10. Report Timeline UI + Async Chat | 2/2 | Complete | 2026-04-21 |
-| 11. Multi-Agent Model + Relay Extensions | 1/2 | In Progress|  |
+| 11. Multi-Agent Model + Relay Extensions | 2/2 | Complete   | 2026-04-23 |
 | 12. Collector Daemon + Easy Setup | 0/? | Not started | - |
 | 13. Paperclip Adapter | 0/? | Not started | - |
 | 14. Claude Desktop + Claude Code Cron Adapters | 0/? | Not started | - |
