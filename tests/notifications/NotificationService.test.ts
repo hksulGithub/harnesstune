@@ -29,6 +29,7 @@ function makeRegistry(errorCount = 0, runningAgentCount = 1): IWorkspaceRegistry
     errorCount,
     backendType: 'claude-code' as const,
     mode: 'local' as const,
+    agents: [],
   };
 
   return {
