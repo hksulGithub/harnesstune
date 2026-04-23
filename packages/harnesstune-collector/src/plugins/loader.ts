@@ -3,18 +3,38 @@ import { PaperclipPlugin } from './stubs/paperclip.js';
 import { ClaudeDesktopPlugin } from './stubs/claude-desktop.js';
 import { ClaudeCodePlugin } from './stubs/claude-code.js';
 import { OpenClawPlugin } from './stubs/openclaw.js';
+import { readConfig } from '../config.js';
 
 /**
- * Static plugin registry — all 4 plugins compiled in.
- * No dynamic require(), no runtime discovery.
- * Enabled/disabled state is controlled by collector.json platforms[].enabled.
+ * Build the plugin registry with injected config.
+ *
+ * Reads collector.json to pass platform-specific config to plugins that
+ * need credentials at construction time (e.g., PaperclipPlugin needs
+ * serverUrl + apiKey to initialize its HTTP client).
+ *
+ * If config doesn't exist (pre-setup), all plugins get undefined config.
  */
-export const ALL_PLUGINS: PlatformPlugin[] = [
-  new PaperclipPlugin(),
-  new ClaudeDesktopPlugin(),
-  new ClaudeCodePlugin(),
-  new OpenClawPlugin(),
-];
+function buildPlugins(): PlatformPlugin[] {
+  let platformConfigs: Record<string, Record<string, unknown>> = {};
+  try {
+    const cfg = readConfig();
+    for (const p of cfg.platforms) {
+      platformConfigs[p.id] = p.config;
+    }
+  } catch {
+    // Config not yet written (pre-setup); plugins get no config
+  }
+
+  return [
+    new PaperclipPlugin(platformConfigs['paperclip']),
+    new ClaudeDesktopPlugin(),
+    new ClaudeCodePlugin(),
+    new OpenClawPlugin(),
+  ];
+}
+
+/** Static plugin registry — built once at module load with injected config */
+export const ALL_PLUGINS: PlatformPlugin[] = buildPlugins();
 
 /** Return all registered plugins */
 export function getAllPlugins(): PlatformPlugin[] {
