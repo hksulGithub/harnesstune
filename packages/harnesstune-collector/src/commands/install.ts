@@ -1,4 +1,4 @@
-import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync, chmodSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { execFile } from 'node:child_process';
@@ -38,6 +38,7 @@ export async function install(_args: string[]): Promise<void> {
   // Write plist
   mkdirSync(LAUNCH_AGENTS_DIR, { recursive: true });
   writeFileSync(PLIST_PATH, plistContent, 'utf-8');
+  chmodSync(PLIST_PATH, 0o600);
   console.log(`Plist written to: ${PLIST_PATH}`);
 
   // Unload first if already loaded (ignore errors)

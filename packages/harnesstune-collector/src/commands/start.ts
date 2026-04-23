@@ -1,43 +1,39 @@
 import { readConfig, writePid, removePid, readPid, writeStatus, resolveToken } from '../config.js';
-import { createClient } from '../client.js';
+import type { CollectorConfig, CollectorStatus } from '../config.js';
 import { RetryQueue } from '../queue.js';
+import { ALL_PLUGINS } from '../plugins/loader.js';
 import { sendHeartbeat } from '../daemon/heartbeat.js';
-import { PluginScheduler } from '../daemon/scheduler.js';
-import { getEnabledPlugins } from '../plugins/loader.js';
+import { runCycle } from '../daemon/scheduler.js';
+import type { PluginCursors } from '../daemon/scheduler.js';
 
 const BACKOFF_INITIAL = 1000;
 const BACKOFF_MAX = 5 * 60 * 1000;
+const JITTER_MAX_MS = 5000;
 
-export async function start(_args: string[], opts?: { dryRun?: boolean }): Promise<void> {
+export async function start(_args: string[], opts: { dryRun: boolean }): Promise<void> {
   const config = readConfig();
   const token = resolveToken(config);
-  const client = createClient(config.relayUrl, token);
-  const queue = new RetryQueue();
 
-  // --- Dry run mode ---
-  if (opts?.dryRun) {
-    console.log('Dry run: config loaded successfully');
-    console.log(`  relay URL:  ${config.relayUrl}`);
-    console.log(`  channel ID: ${config.channelId}`);
-    const enabled = config.platforms.filter(p => p.enabled).map(p => p.id);
-    console.log(`  enabled platforms: ${enabled.length ? enabled.join(', ') : '(none)'}`);
+  if (opts.dryRun) {
+    console.log('Dry run — validating config...');
+    console.log(`  Relay URL: ${config.relayUrl}`);
+    console.log(`  Channel ID: ${config.channelId}`);
+    console.log(`  Token: ${token.slice(0, 8)}...`);
+    console.log(`  Poll interval: ${config.pollInterval ?? 60000}ms`);
+    console.log(`  Heartbeat interval: ${config.heartbeatInterval ?? 300000}ms`);
+    console.log(`  Platforms: ${config.platforms.filter(p => p.enabled).map(p => p.id).join(', ') || '(none)'}`);
+
+    // Check relay reachability
     try {
-      const res = await client.get('/health');
-      if (res.ok) {
-        console.log('Dry run: relay reachable (GET /health OK)');
-      } else {
-        console.error(`Dry run: relay returned ${res.status} on GET /health`);
-        process.exit(1);
-      }
+      const res = await fetch(`${config.relayUrl.replace(/\/api$/, '')}/api/health`);
+      console.log(`  Relay health: ${res.ok ? 'OK' : res.status}`);
     } catch (err) {
-      console.error('Dry run: relay unreachable:', err);
-      process.exit(1);
+      console.error(`  Relay unreachable: ${err}`);
     }
-    console.log('Dry run complete — daemon not started');
-    process.exit(0);
+    return;
   }
 
-  // --- PID duplicate detection ---
+  // PID duplicate detection
   const existingPid = readPid();
   if (existingPid !== null) {
     try {
@@ -49,82 +45,84 @@ export async function start(_args: string[], opts?: { dryRun?: boolean }): Promi
       removePid();
     }
   }
-
-  // Write PID file
   writePid(process.pid);
 
-  const startedAt = new Date().toISOString();
+  const queue = new RetryQueue();
+  const cursors: PluginCursors = {};
+
+  // Filter to enabled plugins
+  const enabledIds = new Set(config.platforms.filter(p => p.enabled).map(p => p.id));
+  const enabledPlugins = ALL_PLUGINS.filter(p => enabledIds.has(p.id));
+
+  // Build initial plugin summary
+  function buildPluginSummary(): Record<string, { enabled: boolean; agentCount: number }> {
+    const summary: Record<string, { enabled: boolean; agentCount: number }> = {};
+    for (const p of ALL_PLUGINS) {
+      summary[p.id] = { enabled: enabledIds.has(p.id), agentCount: 0 };
+    }
+    return summary;
+  }
+
+  // Graceful shutdown
   let shuttingDown = false;
-  const heartbeatIntervalMs = config.heartbeatInterval ?? 300_000;
-  const pollIntervalMs = config.pollInterval ?? 60_000;
-
-  // Build enabled plugin list
-  const enabledIds = config.platforms.filter(p => p.enabled).map(p => p.id);
-  const enabledPlugins = getEnabledPlugins(enabledIds);
-  const scheduler = new PluginScheduler(enabledPlugins, client, config.channelId, queue);
-
-  // Initial plugin status map (0 agents until first poll)
-  let pluginStatus: Record<string, { enabled: boolean; agentCount: number }> = {};
-  for (const id of enabledIds) {
-    pluginStatus[id] = { enabled: true, agentCount: 0 };
-  }
-
-  // --- Status file writer ---
-  function updateStatusFile(lastPoll: string): void {
-    writeStatus({
-      pid: process.pid,
-      startedAt,
-      lastHeartbeat: new Date().toISOString(),
-      lastPoll,
-      plugins: pluginStatus,
-    });
-  }
-
-  // --- Graceful shutdown ---
   async function shutdown(): Promise<void> {
     if (shuttingDown) return;
     shuttingDown = true;
     console.log('Shutting down — sending disconnected heartbeat...');
-    await sendHeartbeat(client, config.channelId, queue, 'disconnected', pluginStatus);
+    await sendHeartbeat(config, queue, 'disconnected', buildPluginSummary());
     removePid();
     process.exit(0);
   }
-
   process.on('SIGTERM', () => { void shutdown(); });
-  process.on('SIGINT', () => { void shutdown(); });
-  process.on('SIGHUP', () => { void shutdown(); });
+  process.on('SIGINT',  () => { void shutdown(); });
+  process.on('SIGHUP',  () => { void shutdown(); });
 
-  // --- Initial connected heartbeat ---
-  await sendHeartbeat(client, config.channelId, queue, 'connected', pluginStatus);
-  console.log(`Collector started (PID ${process.pid}), channel ${config.channelId}`);
-  console.log(`Enabled platforms: ${enabledIds.length ? enabledIds.join(', ') : '(none)'}`);
+  // Send initial connected heartbeat
+  console.log(`Collector started (PID ${process.pid})`);
+  console.log(`  Relay: ${config.relayUrl}`);
+  console.log(`  Channel: ${config.channelId}`);
+  console.log(`  Enabled plugins: ${enabledPlugins.map(p => p.displayName).join(', ') || '(none)'}`);
+  console.log(`  Poll interval: ${config.pollInterval ?? 60000}ms`);
+  console.log(`  Heartbeat interval: ${config.heartbeatInterval ?? 300000}ms`);
 
-  updateStatusFile(new Date().toISOString());
+  await sendHeartbeat(config, queue, 'connected', buildPluginSummary());
 
-  // --- Heartbeat timer ---
+  // Heartbeat timer (every heartbeatInterval, default 5 min)
+  let lastPluginSummary = buildPluginSummary();
   const heartbeatTimer = setInterval(() => {
-    if (!shuttingDown) {
-      void sendHeartbeat(client, config.channelId, queue, 'connected', pluginStatus);
-      updateStatusFile(new Date().toISOString());
-    }
-  }, heartbeatIntervalMs);
+    if (!shuttingDown) void sendHeartbeat(config, queue, 'connected', lastPluginSummary);
+  }, config.heartbeatInterval ?? 300000);
   heartbeatTimer.unref();
 
-  // --- Plugin poll loop ---
+  // Poll loop with exponential backoff + jitter
   let currentBackoff = BACKOFF_INITIAL;
+
+  const startedAt = new Date().toISOString();
+
+  // Write initial status
+  writeStatus({
+    pid: process.pid,
+    startedAt,
+    lastHeartbeat: startedAt,
+    lastPoll: null as unknown as string,
+    plugins: buildPluginSummary(),
+  });
 
   async function pollLoop(): Promise<void> {
     if (shuttingDown) return;
-    const pollTime = new Date().toISOString();
     try {
-      pluginStatus = await scheduler.poll();
-      updateStatusFile(pollTime);
+      const result = await runCycle(enabledPlugins, config, queue, cursors);
+      lastPluginSummary = result.plugins;
 
-      // Queue replay on successful poll
-      const replayed = await queue.replay(client, config.channelId);
-      if (replayed > 0) {
-        console.log(`Replayed ${replayed} queued report(s)`);
-      }
+      // Write status file
+      const statusData: CollectorStatus = {
+        pid: process.pid,
+        startedAt: startedAt,
+        lastHeartbeat: new Date().toISOString(),
+        lastPoll: result.lastPoll,
+        plugins: result.plugins,
+      };
+      writeStatus(statusData);
 
       currentBackoff = BACKOFF_INITIAL;
     } catch (err) {
@@ -133,23 +131,19 @@ export async function start(_args: string[], opts?: { dryRun?: boolean }): Promi
     }
 
     if (!shuttingDown) {
-      const delay = currentBackoff === BACKOFF_INITIAL ? pollIntervalMs : currentBackoff;
-      setTimeout(() => { void pollLoop(); }, delay);
+      const baseDelay = currentBackoff === BACKOFF_INITIAL ? (config.pollInterval ?? 60000) : currentBackoff;
+      const jitter = Math.floor(Math.random() * JITTER_MAX_MS);
+      setTimeout(() => { void pollLoop(); }, baseDelay + jitter);
     }
   }
 
-  // Stagger first poll by up to pollInterval to prevent thundering herd
-  const firstPollDelay = Math.floor(Math.random() * pollIntervalMs);
-  console.log(`First poll in ${Math.round(firstPollDelay / 1000)}s`);
-  setTimeout(() => { void pollLoop(); }, firstPollDelay);
+  // Start first poll cycle
+  void pollLoop();
 
   // Keep process alive
   await new Promise<void>((resolve) => {
     const keepAlive = setInterval(() => {
-      if (shuttingDown) {
-        clearInterval(keepAlive);
-        resolve();
-      }
+      if (shuttingDown) { clearInterval(keepAlive); resolve(); }
     }, 1000);
     keepAlive.unref();
   });

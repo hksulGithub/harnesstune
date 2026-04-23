@@ -9,7 +9,7 @@ import { OpenClawPlugin } from './stubs/openclaw.js';
  * No dynamic require(), no runtime discovery.
  * Enabled/disabled state is controlled by collector.json platforms[].enabled.
  */
-const ALL_PLUGINS: PlatformPlugin[] = [
+export const ALL_PLUGINS: PlatformPlugin[] = [
   new PaperclipPlugin(),
   new ClaudeDesktopPlugin(),
   new ClaudeCodePlugin(),

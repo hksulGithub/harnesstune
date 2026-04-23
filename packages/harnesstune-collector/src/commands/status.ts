@@ -28,6 +28,14 @@ export async function status(_args: string[]): Promise<void> {
   // Read status file
   const statusData = readStatus();
 
+  if (running) {
+    console.log(`Collector is RUNNING (PID ${pid})`);
+  } else if (pid !== null) {
+    console.log(`Collector is NOT RUNNING (stale PID file for ${pid})`);
+  } else {
+    console.log('Collector is NOT RUNNING (no PID file)');
+  }
+
   console.log('');
   console.log('harnesstune-collector status');
   console.log('============================');
