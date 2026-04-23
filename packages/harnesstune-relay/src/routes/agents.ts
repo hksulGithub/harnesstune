@@ -30,6 +30,11 @@ agentsRouter.post('/', async (c) => {
     if (Object.keys(updates).length > 0) {
       await db.update(agents).set(updates)
         .where(and(eq(agents.channelId, channelId), eq(agents.agentId, body.agentId)));
+      // Return updated record rather than the pre-update snapshot
+      const updated = await db.select().from(agents)
+        .where(and(eq(agents.channelId, channelId), eq(agents.agentId, body.agentId)))
+        .limit(1);
+      return c.json(updated[0], 200);
     }
     return c.json(existing[0], 200);
   }
