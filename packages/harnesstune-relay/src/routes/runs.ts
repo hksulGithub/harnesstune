@@ -5,10 +5,14 @@ import { getDb } from '../db/client.js';
 import { agentRuns, agents } from '../db/schema.js';
 import type { AuthVariables } from '../middleware/auth.js';
 
+// POST-only router — mounted at /channels/:channelId/runs (no GET on this path)
+export const runsUploadRouter = new Hono<{ Variables: AuthVariables }>();
+
+// GET-only router — mounted at /channels/:channelId/agents/:agentId/runs (agentId required)
 export const runsRouter = new Hono<{ Variables: AuthVariables }>();
 
 // POST /channels/:channelId/runs — upload run report
-runsRouter.post('/', async (c) => {
+runsUploadRouter.post('/', async (c) => {
   const channelId = c.req.param('channelId');
   const authedChannelId = c.get('channelId');
   if (channelId !== authedChannelId) return c.json({ error: 'Forbidden' }, 403);
@@ -24,6 +28,21 @@ runsRouter.post('/', async (c) => {
     return c.json({ error: 'agentId, startedAt, finishedAt, and status are required' }, 400);
   }
 
+  // Validate durationMs is a non-negative number
+  if (typeof body.durationMs !== 'number' || isNaN(body.durationMs) || body.durationMs < 0) {
+    return c.json({ error: 'durationMs must be a non-negative number' }, 400);
+  }
+
+  // Validate date fields produce valid timestamps
+  const startedAtMs = new Date(body.startedAt).getTime();
+  const finishedAtMs = new Date(body.finishedAt).getTime();
+  if (isNaN(startedAtMs)) {
+    return c.json({ error: 'startedAt is not a valid ISO 8601 date string' }, 400);
+  }
+  if (isNaN(finishedAtMs)) {
+    return c.json({ error: 'finishedAt is not a valid ISO 8601 date string' }, 400);
+  }
+
   const db = getDb();
   const id = randomUUID();
   await db.insert(agentRuns).values({
@@ -31,7 +50,7 @@ runsRouter.post('/', async (c) => {
     startedAt: new Date(body.startedAt),
     finishedAt: new Date(body.finishedAt),
     status: body.status,
-    durationMs: body.durationMs ?? 0,
+    durationMs: body.durationMs,
     logExcerpt: body.logExcerpt ?? null,
     errorSummary: body.errorSummary ?? null,
     tokenUsage: body.tokenUsage ? JSON.stringify(body.tokenUsage) : null,
@@ -57,12 +76,17 @@ runsRouter.post('/', async (c) => {
 });
 
 // GET /channels/:channelId/agents/:agentId/runs — paginated run history
-// Note: mounted at /channels/:channelId/agents/:agentId/runs in app.ts
+// Note: mounted at /channels/:channelId/agents/:agentId/runs in app.ts (agentId always present)
 runsRouter.get('/', async (c) => {
   const channelId = c.req.param('channelId');
   const agentId = c.req.param('agentId');
   const authedChannelId = c.get('channelId');
   if (channelId !== authedChannelId) return c.json({ error: 'Forbidden' }, 403);
+
+  // Safety guard: agentId must be present (route is only mounted with :agentId param)
+  if (!agentId) {
+    return c.json({ error: 'agentId is required' }, 400);
+  }
 
   const since = c.req.query('since');
   const limit = Math.min(parseInt(c.req.query('limit') ?? '20', 10), 100);
