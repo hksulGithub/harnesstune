@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.0
-milestone_name: "Multi-Platform Agent Fleet Management"
-status: Milestone initialized — awaiting requirements and roadmap
-last_updated: "2026-04-22T00:00:00.000Z"
-last_activity: 2026-04-22 -- v3.0 milestone initialized
+milestone: v2.0
+milestone_name: milestone
+status: Phase 12 complete
+last_updated: "2026-04-23T05:00:00.000Z"
+last_activity: 2026-04-23 -- Phase 12 execution complete (2/2 plans)
 progress:
-  total_phases: 0
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_phases: 17
+  completed_phases: 6
+  total_plans: 16
+  completed_plans: 14
+  percent: 87
 ---
 
 # GSD State: HarnessTune
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-22)
 
 **Core value:** Engineers running multiple agent systems can see and control all their agents from one place inside VSCode.
-**Current focus:** v3.0 milestone setup
+**Current focus:** Phase 12 complete — ready for Phase 13
 
 ## Current Position
 
-Phase: 0 — Milestone initialized
-Plan: N/A
-Next: Define requirements and roadmap
-Last activity: 2026-04-22 -- v3.0 milestone initialized
+Phase: 12 (collector-daemon-easy-setup) — COMPLETE
+Plan: 2 of 2
+Next: `/gsd-discuss-phase 13` or `/gsd-plan-phase 13`
+Last activity: 2026-04-23 -- Phase 12 execution complete (2/2 plans)
 
 ## Progress
 
@@ -144,3 +144,5 @@ Last activity: 2026-04-22 -- v3.0 milestone initialized
 *Last updated: 2026-04-19 — Phase 09 Plan 02 paused at Task 3 human-verify checkpoint*
 
 - **2026-04-21**: Phase 10 execution complete. 2 plans across 2 waves. Plan 01: ReportPanel singleton, TimelineItem types, RelayClient timeline/message endpoints, RemoteAdapter timeline merging + chat routing, esbuild reports entrypoint. Plan 02: 11 React components (PanelHeader, FilterTabs, TimelineFeed, BriefingReportCard, RalphLoopReportCard, RalphLoopChart pure SVG, ChatBubble, MessageComposer, LoadMoreButton, EmptyState, App.tsx), 587-line CSS stylesheet with VSCode theme vars. Fixed plan typo: progressSummary→progress to match BriefingReportBody. v2.0 milestone complete.
+
+- **2026-04-23**: Phase 12 execution complete. 2 plans across 2 waves (worktree isolation). Plan 01: packages/harnesstune-collector scaffold — PlatformPlugin interface, 4 stub plugins, config module, retry queue, relay client, daemon heartbeat + scheduler. Plan 02: CLI entry point with 5 subcommands (setup, start, stop, status, install), daemon loop integration, launchd plist generator. 21 source files, build passes. Phase 12 complete.

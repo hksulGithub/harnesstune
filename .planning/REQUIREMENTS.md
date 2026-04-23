@@ -173,10 +173,10 @@
 
 ### Multi-Agent Workspace Model (MAWM)
 
-- [ ] **MAWM-01**: Workspace represents a platform instance on a specific machine (e.g., "Paperclip on Mac Mini"), not a single agent
-- [ ] **MAWM-02**: Each workspace contains multiple agents — an agent = one cron job, scheduled task, or heartbeat-driven process
-- [ ] **MAWM-03**: `WorkspaceRecord` extended with `agents: AgentIdentity[]` — each agent has `id`, `name`, `schedule` (cron expression or description), `platform`, `lastRunAt`, `status`
-- [ ] **MAWM-04**: Relay channel model extended — one channel per workspace, reports tagged with `agentId` field for per-agent attribution
+- [x] **MAWM-01**: Workspace represents a platform instance on a specific machine (e.g., "Paperclip on Mac Mini"), not a single agent
+- [x] **MAWM-02**: Each workspace contains multiple agents — an agent = one cron job, scheduled task, or heartbeat-driven process
+- [x] **MAWM-03**: `WorkspaceRecord` extended with `agents: AgentIdentity[]` — each agent has `id`, `name`, `schedule` (cron expression or description), `platform`, `lastRunAt`, `status`
+- [x] **MAWM-04**: Relay channel model extended — one channel per workspace, reports tagged with `agentId` field for per-agent attribution
 - [ ] **MAWM-05**: Agent discovery: collector auto-discovers agents (cron entries, Paperclip API, Claude Desktop `scheduled-tasks.json`) and registers them
 
 ### Collector Daemon (COLL)
@@ -240,10 +240,10 @@
 
 ### Relay Extensions (RLYX)
 
-- [ ] **RLYX-01**: Reports endpoint extended with `agentId` field — filter reports by agent within a channel
-- [ ] **RLYX-02**: `GET /channels/:id/agents` — returns discovered agent list for a channel
-- [ ] **RLYX-03**: `GET /channels/:id/agents/:agentId/runs` — paginated run history for a specific agent
-- [ ] **RLYX-04**: `GET /channels/:id/summary?days=N` — pre-aggregated summary (run counts, success rate, cost by agent) for dashboard
+- [x] **RLYX-01**: Reports endpoint extended with `agentId` field — filter reports by agent within a channel
+- [x] **RLYX-02**: `GET /channels/:id/agents` — returns discovered agent list for a channel
+- [x] **RLYX-03**: `GET /channels/:id/agents/:agentId/runs` — paginated run history for a specific agent
+- [x] **RLYX-04**: `GET /channels/:id/summary?days=N` — pre-aggregated summary (run counts, success rate, cost by agent) for dashboard
 
 ## Out of Scope (v3.0)
 
