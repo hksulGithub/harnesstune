@@ -1276,11 +1276,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }, 250);
   }
 
-  // Close the Welcome tab so we get a clean 2-column layout (Dashboard + Chat)
-  for (const group of vscode.window.tabGroups.all) {
-    for (const tab of group.tabs) {
-      if (tab.label === 'Welcome') {
-        vscode.window.tabGroups.close(tab);
+  // Close the Welcome tab only on first-run (no HT panels were serializer-restored).
+  // When VS Code restores a 2x2 layout, mutating tabs here destroys a quadrant.
+  const anyPanelRestored =
+    DashboardPanel.currentPanel ||
+    SchematicPanel.currentPanel ||
+    ChatPanel.currentPanel ||
+    ReportPanel.currentPanel;
+  if (!anyPanelRestored) {
+    for (const group of vscode.window.tabGroups.all) {
+      for (const tab of group.tabs) {
+        if (tab.label === 'Welcome') {
+          vscode.window.tabGroups.close(tab);
+        }
       }
     }
   }
