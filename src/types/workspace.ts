@@ -1,6 +1,24 @@
 /** Status of an agent workspace */
 export type WorkspaceStatus = 'running' | 'idle' | 'warning' | 'error' | 'stale' | 'relay_unreachable' | 'auth_error' | 'unknown';
 
+/** Extension-side cache of relay agent data — populated from GET /channels/:id/agents */
+export interface AgentIdentity {
+  /** Relay-assigned UUID */
+  id: string;
+  /** Platform-specific identifier (unique within channel) */
+  agentId: string;
+  /** Human-readable name, null if not yet set */
+  name: string | null;
+  /** Freeform platform string */
+  platform: string;
+  /** Cron expression or description, null if unknown */
+  schedule: string | null;
+  /** ISO 8601 timestamp of last completed run, null if no runs */
+  lastRunAt: string | null;
+  /** Current agent status */
+  status: string;
+}
+
 /** Backend adapter type for a workspace */
 export type BackendType = 'claude-code' | 'openclaw' | 'remote';
 

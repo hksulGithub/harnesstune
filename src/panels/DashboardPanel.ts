@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as crypto from 'crypto';
 import type { HostToWebviewMessage, WebviewToHostMessage } from '../types/messages';
+import type { FleetDataProvider } from '../providers/FleetDataProvider';
 
 export class DashboardPanel {
   public static readonly viewType = 'harnesstune.dashboard';
@@ -14,6 +15,12 @@ export class DashboardPanel {
 
   private readonly _onDidReceiveMessage = new vscode.EventEmitter<WebviewToHostMessage>();
   public readonly onDidReceiveMessage = this._onDidReceiveMessage.event;
+
+  private fleetProvider: FleetDataProvider | null = null;
+
+  public setFleetProvider(provider: FleetDataProvider): void {
+    this.fleetProvider = provider;
+  }
 
   public static createOrShow(extensionUri: vscode.Uri, viewColumn: vscode.ViewColumn = vscode.ViewColumn.One): DashboardPanel {
     if (DashboardPanel.currentPanel) {
@@ -69,11 +76,47 @@ export class DashboardPanel {
 
     this.panel.webview.onDidReceiveMessage(
       (msg: WebviewToHostMessage) => {
+        void this.handleFleetMessage(msg);
         this._onDidReceiveMessage.fire(msg);
       },
       null,
       this.disposables,
     );
+  }
+
+  private async handleFleetMessage(msg: WebviewToHostMessage): Promise<void> {
+    if (!this.fleetProvider) { return; }
+    switch (msg.type) {
+      case 'fleet:requestOverview': {
+        try {
+          const summaries = await this.fleetProvider.getWorkspaceSummaries(msg.days);
+          this.postMessage({ type: 'fleet:overview', summaries });
+        } catch (err) {
+          this.postMessage({ type: 'fleet:error', scope: 'fleet', message: String(err) });
+        }
+        break;
+      }
+      case 'fleet:requestWorkspaceDetail': {
+        try {
+          const detail = await this.fleetProvider.getWorkspaceDetail(msg.workspaceId, msg.days);
+          this.postMessage({ type: 'fleet:workspaceDetail', workspaceId: msg.workspaceId, detail });
+        } catch (err) {
+          this.postMessage({ type: 'fleet:error', scope: 'workspace', message: String(err) });
+        }
+        break;
+      }
+      case 'fleet:requestAgentDetail': {
+        try {
+          const detail = await this.fleetProvider.getAgentDetail(msg.workspaceId, msg.agentId, msg.days);
+          this.postMessage({ type: 'fleet:agentDetail', workspaceId: msg.workspaceId, agentId: msg.agentId, detail });
+        } catch (err) {
+          this.postMessage({ type: 'fleet:error', scope: 'agent', message: String(err) });
+        }
+        break;
+      }
+      default:
+        break;
+    }
   }
 
   public postMessage(message: HostToWebviewMessage): void {
