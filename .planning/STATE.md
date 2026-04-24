@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: Phase 15 complete
-last_updated: "2026-04-24T03:21:00.000Z"
-last_activity: 2026-04-24 -- Phase 15 complete (2 plans, 2 waves)
+status: Phase 16 complete
+last_updated: "2026-04-24T04:45:00.000Z"
+last_activity: 2026-04-24 -- Phase 16 executed (2 plans, 2 waves)
 progress:
   total_phases: 17
-  completed_phases: 7
-  total_plans: 23
-  completed_plans: 17
-  percent: 74
+  completed_phases: 8
+  total_plans: 25
+  completed_plans: 19
+  percent: 76
 ---
 
 # GSD State: HarnessTune
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-22)
 
 **Core value:** Engineers running multiple agent systems can see and control all their agents from one place inside VSCode.
-**Current focus:** Phase 16 — fleet-dashboard-historical-reporting-ui
+**Current focus:** Phase 17 — proactive-alerts
 
 ## Current Position
 
-Phase: 15 (openclaw-remote-adapter) — COMPLETE
-Plan: 2 of 2
-Next: `/gsd-plan-phase 16`
-Last activity: 2026-04-24 -- Phase 15 complete (2 plans, 2 waves)
+Phase: 17 (proactive-alerts) — DISCUSS COMPLETE
+Plan: not yet planned
+Next: `/gsd-plan-phase 17`
+Last activity: 2026-04-24 -- Phase 17 discuss-phase complete
 
 ## Progress
 
@@ -150,3 +150,7 @@ Last activity: 2026-04-24 -- Phase 15 complete (2 plans, 2 waves)
 - **2026-04-23**: Phase 14 execution complete. 3 plans across 2 waves. Plan 14-01: Claude Desktop types (ScheduledTask, SessionFile), mappers (mapScheduledTask, mapSessionToRunReport), reader (readScheduledTasks, scanSessions with mtime guard + staleness guard + scheduledTaskId filter). Plan 14-02: Claude Code Cron types (CronRunFile, CrontabEntry), mappers (mapCrontabEntry, mapCronRunFile), crontab parser (parseCrontab + readCrontab), wrapper script generator (atomic JSON write, exit code preservation). Plan 14-03: Full ClaudeDesktopPlugin (session path discovery, mtime guard, scheduled task correlation) and ClaudeCodePlugin (wrapper install, crontab discovery, run file scanning with 7-day cleanup), loader wiring with PlatformConfig passthrough. 10 files (7 new, 3 modified), 3 commits, build passes. Phase 14 complete.
 
 - **2026-04-24**: Phase 15 execution complete. 2 plans across 2 waves (worktree isolation). Plan 15-01: OpenClaw types (OpenClawEvent, OpenClawSession), JSONL reader (listAgentDirs, scanJsonlFiles with mtime + 30s staleness guards), session segmenter (5-min gap threshold, pure function). Plan 15-02: mappers (mapAgentDir, mapSessionToRunReport), OpenClawPlugin class (detect, setup with readline, discover, collectRuns with per-session error handling), stub replaced with re-export, loader wiring with PlatformConfig passthrough. 7 files (5 new, 2 modified), tsc passes clean. Phase 15 complete.
+
+- **2026-04-24**: Phase 16 execution complete. 2 plans across 2 waves (worktree isolation). Plan 16-01: Fleet data layer — FleetDataProvider interface, LocalFleetProvider (reads ~/.harnesstune/cron-runs/*.json, 3-consecutive-failure health threshold), RemoteFleetProvider (wraps RelayClient summary/runs/agents endpoints), fleet types (FleetWorkspaceSummary, FleetWorkspaceDetail, FleetAgentDetail), DashboardPanel fleet message handler, 7 new fleet message types in HostToWebviewMessage/WebviewToHostMessage. Plan 16-02: Fleet dashboard UI — 9 React components (FleetOverview, WorkspaceDrillDown, AgentDetail, HealthDot, DateRangeSelector, BreadcrumbBar, CostSummaryBar, RunLogExpander), App.tsx rewritten as 3-level navigation state machine (fleet→workspace→agent), fleet.css with VSCode theme vars, vscode.setState persistence. 3 merge conflicts resolved (RelayClient.ts, messages.ts, DashboardPanel.ts). Phase 16 complete.
+
+- **2026-04-24**: Phase 17 discuss-phase complete. 4 areas discussed (Alert Engine Design, Notification Delivery, Alert Configuration, Relay Alert State). 7 decisions captured in 17-CONTEXT.md. Key decisions: extension-side AlertEngine polling FleetDataProvider every 60s, stale detection via 2x cron interval with 24h fallback, in-memory state transition map for dedup, single summary toast + status bar badge, WorkspaceRecord.alertConfig field, quiet hours deferred, relay alert state extension-only (no API changes). Ready for `/gsd-plan-phase 17`.
