@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: Phase 16 complete
-last_updated: "2026-04-24T04:45:00.000Z"
-last_activity: 2026-04-24 -- Phase 16 executed (2 plans, 2 waves)
+status: Phase 17 complete
+last_updated: "2026-04-24T06:00:00.000Z"
+last_activity: 2026-04-24 -- Phase 17 execution complete
 progress:
   total_phases: 17
   completed_phases: 8
-  total_plans: 25
+  total_plans: 27
   completed_plans: 19
-  percent: 76
+  percent: 70
 ---
 
 # GSD State: HarnessTune
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-22)
 
 **Core value:** Engineers running multiple agent systems can see and control all their agents from one place inside VSCode.
-**Current focus:** Phase 17 — proactive-alerts
+**Current focus:** Phase 17 — proactive-alerts (complete)
 
 ## Current Position
 
-Phase: 17 (proactive-alerts) — PLAN COMPLETE
-Plan: 2 plans across 2 waves
-Next: `/gsd-execute-phase 17`
-Last activity: 2026-04-24 -- Phase 17 plan-phase complete (2 plans, 2 waves)
+Phase: 17 (proactive-alerts) — COMPLETE
+Plan: 2 of 2 (all done)
+Next: Next milestone or `/gsd-verify-work 17`
+Last activity: 2026-04-24 -- Phase 17 execution complete
 
 ## Progress
 
@@ -154,3 +154,5 @@ Last activity: 2026-04-24 -- Phase 17 plan-phase complete (2 plans, 2 waves)
 - **2026-04-24**: Phase 16 execution complete. 2 plans across 2 waves (worktree isolation). Plan 16-01: Fleet data layer — FleetDataProvider interface, LocalFleetProvider (reads ~/.harnesstune/cron-runs/*.json, 3-consecutive-failure health threshold), RemoteFleetProvider (wraps RelayClient summary/runs/agents endpoints), fleet types (FleetWorkspaceSummary, FleetWorkspaceDetail, FleetAgentDetail), DashboardPanel fleet message handler, 7 new fleet message types in HostToWebviewMessage/WebviewToHostMessage. Plan 16-02: Fleet dashboard UI — 9 React components (FleetOverview, WorkspaceDrillDown, AgentDetail, HealthDot, DateRangeSelector, BreadcrumbBar, CostSummaryBar, RunLogExpander), App.tsx rewritten as 3-level navigation state machine (fleet→workspace→agent), fleet.css with VSCode theme vars, vscode.setState persistence. 3 merge conflicts resolved (RelayClient.ts, messages.ts, DashboardPanel.ts). Phase 16 complete.
 
 - **2026-04-24**: Phase 17 discuss-phase complete. 4 areas discussed (Alert Engine Design, Notification Delivery, Alert Configuration, Relay Alert State). 7 decisions captured in 17-CONTEXT.md. Key decisions: extension-side AlertEngine polling FleetDataProvider every 60s, stale detection via 2x cron interval with 24h fallback, in-memory state transition map for dedup, single summary toast + status bar badge, WorkspaceRecord.alertConfig field, quiet hours deferred, relay alert state extension-only (no API changes). Ready for `/gsd-plan-phase 17`.
+
+- **2026-04-24**: Phase 17 execution complete. 2 plans across 2 waves. Plan 17-01: Alert types (AlertConfig, AlertState, AlertTransition, AlertCycleSummary, ALERT_DEFAULTS), alertConfig field on WorkspaceRecord, AlertEngine class with 60s polling, stale detection via cron-parser v5 (2x interval, 24h fallback), in-memory state transition Map for dedup. Plan 17-02: StatusBarManager alert badge (setAlertCount, clearAlertBadge, $(bell) codicon, warningBackground), CompositeFleetProvider (merges local + remote), AlertEngine wired into extension lifecycle, batched summary toast via showWarningMessage with "View Fleet Dashboard" action, badge clears on dashboard open, remote fleet clients registered/removed on connect/remove. 4 commits, 4 files modified, tsc passes clean. Phase 17 complete.
