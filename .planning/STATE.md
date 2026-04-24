@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: Ready to plan
-last_updated: "2026-04-23T10:46:28.166Z"
-last_activity: 2026-04-23
+status: Ready to execute
+last_updated: "2026-04-23T17:51:51.492Z"
+last_activity: 2026-04-24 -- Phase 16 discuss-phase complete
 progress:
   total_phases: 17
   completed_phases: 6
-  total_plans: 18
-  completed_plans: 14
-  percent: 78
+  total_plans: 23
+  completed_plans: 15
+  percent: 65
 ---
 
 # GSD State: HarnessTune
@@ -20,18 +20,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-22)
 
 **Core value:** Engineers running multiple agent systems can see and control all their agents from one place inside VSCode.
-**Current focus:** Phase 13 — paperclip-adapter
+**Current focus:** Phase 16 discuss-phase complete — ready for planning
 
 ## Current Position
 
-Phase: 14
-Plan: Not started
-Next: `/gsd-discuss-phase 13` or `/gsd-plan-phase 13`
-Last activity: 2026-04-23
+Phase: 16 — CONTEXT COMPLETE
+Plan: 0 of ?
+Next: `/gsd-plan-phase 16`
+Last activity: 2026-04-24 -- Phase 16 discuss-phase complete
 
 ## Progress
 
-[████████████] M1 complete | M2: Phase 6 complete (2/2 plans)
+[████████████] M1 complete | M3: Phase 14 complete (3/3 plans)
 
 ## Current Milestone
 
@@ -146,3 +146,5 @@ Last activity: 2026-04-23
 - **2026-04-21**: Phase 10 execution complete. 2 plans across 2 waves. Plan 01: ReportPanel singleton, TimelineItem types, RelayClient timeline/message endpoints, RemoteAdapter timeline merging + chat routing, esbuild reports entrypoint. Plan 02: 11 React components (PanelHeader, FilterTabs, TimelineFeed, BriefingReportCard, RalphLoopReportCard, RalphLoopChart pure SVG, ChatBubble, MessageComposer, LoadMoreButton, EmptyState, App.tsx), 587-line CSS stylesheet with VSCode theme vars. Fixed plan typo: progressSummary→progress to match BriefingReportBody. v2.0 milestone complete.
 
 - **2026-04-23**: Phase 12 execution complete. 2 plans across 2 waves (worktree isolation). Plan 01: packages/harnesstune-collector scaffold — PlatformPlugin interface, 4 stub plugins, config module, retry queue, relay client, daemon heartbeat + scheduler. Plan 02: CLI entry point with 5 subcommands (setup, start, stop, status, install), daemon loop integration, launchd plist generator. 21 source files, build passes. Phase 12 complete.
+
+- **2026-04-23**: Phase 14 execution complete. 3 plans across 2 waves. Plan 14-01: Claude Desktop types (ScheduledTask, SessionFile), mappers (mapScheduledTask, mapSessionToRunReport), reader (readScheduledTasks, scanSessions with mtime guard + staleness guard + scheduledTaskId filter). Plan 14-02: Claude Code Cron types (CronRunFile, CrontabEntry), mappers (mapCrontabEntry, mapCronRunFile), crontab parser (parseCrontab + readCrontab), wrapper script generator (atomic JSON write, exit code preservation). Plan 14-03: Full ClaudeDesktopPlugin (session path discovery, mtime guard, scheduled task correlation) and ClaudeCodePlugin (wrapper install, crontab discovery, run file scanning with 7-day cleanup), loader wiring with PlatformConfig passthrough. 10 files (7 new, 3 modified), 3 commits, build passes. Phase 14 complete.
