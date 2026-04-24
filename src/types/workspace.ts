@@ -1,3 +1,5 @@
+import type { AlertConfig } from './alerts.js';
+
 /** Status of an agent workspace */
 export type WorkspaceStatus = 'running' | 'idle' | 'warning' | 'error' | 'stale' | 'relay_unreachable' | 'auth_error' | 'unknown';
 
@@ -82,6 +84,8 @@ export interface WorkspaceRecord {
   lastMessageCursor?: string;
   /** Agents discovered for this workspace (remote only; local stays empty) */
   agents: AgentIdentity[];
+  /** Per-workspace alert configuration (defaults applied when undefined) */
+  alertConfig?: AlertConfig;
 }
 
 /** Shape of the registry JSON file stored at globalStorageUri */
@@ -96,7 +100,7 @@ export interface IWorkspaceRegistry {
   getById(id: string): WorkspaceRecord | undefined;
   add(name: string, rootPath: string, backendType?: BackendType, options?: { mode?: WorkspaceMode; relayUrl?: string; channelId?: string; pollInterval?: number }): Promise<WorkspaceRecord>;
   remove(id: string): Promise<void>;
-  update(id: string, changes: Partial<Pick<WorkspaceRecord, 'name' | 'status' | 'runningAgentCount' | 'errorCount' | 'backendType' | 'mode' | 'relayUrl' | 'pollInterval' | 'lastCursor' | 'lastMessageCursor' | 'agents'>>): Promise<void>;
+  update(id: string, changes: Partial<Pick<WorkspaceRecord, 'name' | 'status' | 'runningAgentCount' | 'errorCount' | 'backendType' | 'mode' | 'relayUrl' | 'pollInterval' | 'lastCursor' | 'lastMessageCursor' | 'agents' | 'alertConfig'>>): Promise<void>;
   onDidChange: import('vscode').Event<WorkspaceRecord[]>;
 }
 
