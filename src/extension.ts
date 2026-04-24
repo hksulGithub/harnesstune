@@ -15,6 +15,11 @@ import { AgentEventStore } from './database';
 import { AgentControlManager } from './controls';
 import { NotificationService } from './notifications';
 import { ScaffoldService } from './scaffold';
+import { AlertEngine } from './alerts';
+import { LocalFleetProvider } from './providers/LocalFleetProvider';
+import { RemoteFleetProvider } from './providers/RemoteFleetProvider';
+import type { FleetDataProvider } from './providers/FleetDataProvider';
+import type { AlertCycleSummary } from './types/alerts';
 // TerminalManager replaced by ChatManager (webview-based chat panels)
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -108,6 +113,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         const wsToRemove = registry.getById(selected.id);
         if (wsToRemove?.mode === 'remote') {
           await secretStore.deleteRelayToken(selected.id);
+          remoteFleetClients.delete(selected.id);
         }
 
         // Disconnect active adapter if running
@@ -312,6 +318,71 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const statusBarManager = new StatusBarManager(registry);
   context.subscriptions.push(statusBarManager);
 
+  // ── Phase 17: Fleet Data Provider (composite local + remote) ──────────────
+  const localFleetProvider = new LocalFleetProvider(registry);
+  const remoteFleetClients = new Map<string, RelayClient>();
+  const remoteFleetProvider = new RemoteFleetProvider(remoteFleetClients, registry);
+
+  const compositeFleetProvider: FleetDataProvider = {
+    async getWorkspaceSummaries(days: number) {
+      const [local, remote] = await Promise.all([
+        localFleetProvider.getWorkspaceSummaries(days),
+        remoteFleetProvider.getWorkspaceSummaries(days),
+      ]);
+      return [...local, ...remote];
+    },
+    async getWorkspaceDetail(workspaceId: string, days: number) {
+      const ws = registry.getById(workspaceId);
+      if (ws?.mode === 'remote') {
+        return remoteFleetProvider.getWorkspaceDetail(workspaceId, days);
+      }
+      return localFleetProvider.getWorkspaceDetail(workspaceId, days);
+    },
+    async getAgentDetail(workspaceId: string, agentId: string, days: number) {
+      const ws = registry.getById(workspaceId);
+      if (ws?.mode === 'remote') {
+        return remoteFleetProvider.getAgentDetail(workspaceId, agentId, days);
+      }
+      return localFleetProvider.getAgentDetail(workspaceId, agentId, days);
+    },
+  };
+
+  // ── Phase 17: Alert Engine ────────────────────────────────────────────────
+  const alertEngine = new AlertEngine(compositeFleetProvider, registry);
+
+  let activeAlertCount = 0;
+
+  const onAlerts = alertEngine.onDidDetectAlerts((summary: AlertCycleSummary) => {
+    activeAlertCount = Math.max(0, activeAlertCount + summary.problems.length - summary.recoveries.length);
+    statusBarManager.setAlertCount(activeAlertCount);
+
+    if (summary.problems.length > 0) {
+      const failingCount = summary.problems.filter(t => t.currentState === 'failing').length;
+      const staleCount = summary.problems.filter(t => t.currentState === 'stale').length;
+      const degradedCount = summary.problems.filter(t => t.currentState === 'degraded').length;
+
+      const parts: string[] = [];
+      if (failingCount > 0) { parts.push(`${failingCount} failing`); }
+      if (staleCount > 0) { parts.push(`${staleCount} stale`); }
+      if (degradedCount > 0) { parts.push(`${degradedCount} degraded`); }
+
+      const total = summary.problems.length;
+      const msg = `${total} agent${total === 1 ? '' : 's'} need${total === 1 ? 's' : ''} attention: ${parts.join(', ')}`;
+
+      vscode.window.showWarningMessage(`HarnessTune: ${msg}`, 'View Fleet Dashboard').then(action => {
+        if (action === 'View Fleet Dashboard') {
+          vscode.commands.executeCommand('harnesstune.showDashboard');
+          activeAlertCount = 0;
+          statusBarManager.clearAlertBadge();
+        }
+      });
+    }
+  });
+  context.subscriptions.push(onAlerts);
+
+  alertEngine.start();
+  context.subscriptions.push(alertEngine);
+
   // Expose services for use by later phases
   void secretStore; // referenced here so TypeScript doesn't warn; used in Phase 2+
 
@@ -432,6 +503,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         await adapter.connect(workspace.id, workspace.rootPath);
         activeAdapters.set(workspace.id, adapter);
         context.subscriptions.push(adapter);
+
+        // Register relay client for fleet data provider
+        const client = adapter.getClient();
+        if (client) {
+          remoteFleetClients.set(workspace.id, client);
+        }
       } catch (err) {
         console.error(`HarnessTune: Failed to connect remote workspace "${workspace.name}":`, err);
       }
@@ -489,6 +566,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // ── Phase 2: Dashboard message handler ──────────────────────────────────────
   let dashboardMsgHandler: vscode.Disposable | undefined;
   function wireDashboardMessageHandler(panel: DashboardPanel): void {
+    panel.setFleetProvider(compositeFleetProvider);
     dashboardMsgHandler?.dispose();
     dashboardMsgHandler = panel.onDidReceiveMessage((msg) => {
       switch (msg.type) {
@@ -522,6 +600,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     () => {
       const panel = DashboardPanel.createOrShow(context.extensionUri);
       wireDashboardMessageHandler(panel);
+      // Clear alert badge when user views dashboard
+      activeAlertCount = 0;
+      statusBarManager.clearAlertBadge();
     }
   );
   context.subscriptions.push(dashboardCmd);
