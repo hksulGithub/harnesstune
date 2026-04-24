@@ -2,6 +2,7 @@ import type { WorkspaceRecord, WorkspaceStatus } from './workspace';
 import type { AgentEvent, AgentSession } from './agent';
 import type { TopologyState, TopologyNode } from './topology';
 import type { ChatMessage, SessionState } from '../session';
+import type { FleetWorkspaceSummary, FleetWorkspaceDetail, FleetAgentDetail } from './fleet';
 
 /** Messages from extension host to webview */
 export type HostToWebviewMessage =
@@ -19,7 +20,11 @@ export type HostToWebviewMessage =
   | { type: 'chat:message'; message: ChatMessage }
   | { type: 'chat:stateChange'; state: SessionState }
   | { type: 'chat:history'; messages: ChatMessage[] }
-  | { type: 'chat:workspaceInfo'; workspaceId: string; workspaceName: string };
+  | { type: 'chat:workspaceInfo'; workspaceId: string; workspaceName: string }
+  | { type: 'fleet:overview'; summaries: FleetWorkspaceSummary[] }
+  | { type: 'fleet:workspaceDetail'; workspaceId: string; detail: FleetWorkspaceDetail }
+  | { type: 'fleet:agentDetail'; workspaceId: string; agentId: string; detail: FleetAgentDetail }
+  | { type: 'fleet:error'; scope: 'fleet' | 'workspace' | 'agent'; message: string };
 
 /** Messages from webview to extension host */
 export type WebviewToHostMessage =
@@ -36,4 +41,7 @@ export type WebviewToHostMessage =
   | { type: 'schematic:selectNode'; sessionId: string }
   | { type: 'chat:sendMessage'; text: string }
   | { type: 'chat:interrupt' }
-  | { type: 'chat:requestHistory' };
+  | { type: 'chat:requestHistory' }
+  | { type: 'fleet:requestOverview'; days: number }
+  | { type: 'fleet:requestWorkspaceDetail'; workspaceId: string; days: number }
+  | { type: 'fleet:requestAgentDetail'; workspaceId: string; agentId: string; days: number };
