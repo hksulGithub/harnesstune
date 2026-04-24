@@ -640,7 +640,7 @@ Plans:
 | 12. Collector Daemon + Easy Setup | 1/2 | In Progress|  |
 | 13. Paperclip Adapter | 0/2 | Complete    | 2026-04-23 |
 | 14. Claude Desktop + Claude Code Cron Adapters | 0/? | Not started | - |
-| 15. OpenClaw Remote Adapter | 0/? | Not started | - |
+| 15. OpenClaw Remote Adapter | 2/2 | Complete   | 2026-04-24 |
 | 16. Fleet Dashboard + Historical Reporting UI | 0/? | Not started | - |
 | 17. Proactive Alerts | 0/? | Not started | - |
 

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: Executing Phase 15
-last_updated: "2026-04-24T03:08:08.905Z"
-last_activity: 2026-04-24 -- Phase 15 execution started
+status: Phase 15 complete
+last_updated: "2026-04-24T03:21:00.000Z"
+last_activity: 2026-04-24 -- Phase 15 complete (2 plans, 2 waves)
 progress:
   total_phases: 17
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 23
-  completed_plans: 15
-  percent: 65
+  completed_plans: 17
+  percent: 74
 ---
 
 # GSD State: HarnessTune
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-22)
 
 **Core value:** Engineers running multiple agent systems can see and control all their agents from one place inside VSCode.
-**Current focus:** Phase 15 — openclaw-remote-adapter
+**Current focus:** Phase 16 — fleet-dashboard-historical-reporting-ui
 
 ## Current Position
 
-Phase: 15 (openclaw-remote-adapter) — EXECUTING
-Plan: 1 of 2
+Phase: 15 (openclaw-remote-adapter) — COMPLETE
+Plan: 2 of 2
 Next: `/gsd-plan-phase 16`
-Last activity: 2026-04-24 -- Phase 15 execution started
+Last activity: 2026-04-24 -- Phase 15 complete (2 plans, 2 waves)
 
 ## Progress
 
@@ -148,3 +148,5 @@ Last activity: 2026-04-24 -- Phase 15 execution started
 - **2026-04-23**: Phase 12 execution complete. 2 plans across 2 waves (worktree isolation). Plan 01: packages/harnesstune-collector scaffold — PlatformPlugin interface, 4 stub plugins, config module, retry queue, relay client, daemon heartbeat + scheduler. Plan 02: CLI entry point with 5 subcommands (setup, start, stop, status, install), daemon loop integration, launchd plist generator. 21 source files, build passes. Phase 12 complete.
 
 - **2026-04-23**: Phase 14 execution complete. 3 plans across 2 waves. Plan 14-01: Claude Desktop types (ScheduledTask, SessionFile), mappers (mapScheduledTask, mapSessionToRunReport), reader (readScheduledTasks, scanSessions with mtime guard + staleness guard + scheduledTaskId filter). Plan 14-02: Claude Code Cron types (CronRunFile, CrontabEntry), mappers (mapCrontabEntry, mapCronRunFile), crontab parser (parseCrontab + readCrontab), wrapper script generator (atomic JSON write, exit code preservation). Plan 14-03: Full ClaudeDesktopPlugin (session path discovery, mtime guard, scheduled task correlation) and ClaudeCodePlugin (wrapper install, crontab discovery, run file scanning with 7-day cleanup), loader wiring with PlatformConfig passthrough. 10 files (7 new, 3 modified), 3 commits, build passes. Phase 14 complete.
+
+- **2026-04-24**: Phase 15 execution complete. 2 plans across 2 waves (worktree isolation). Plan 15-01: OpenClaw types (OpenClawEvent, OpenClawSession), JSONL reader (listAgentDirs, scanJsonlFiles with mtime + 30s staleness guards), session segmenter (5-min gap threshold, pure function). Plan 15-02: mappers (mapAgentDir, mapSessionToRunReport), OpenClawPlugin class (detect, setup with readline, discover, collectRuns with per-session error handling), stub replaced with re-export, loader wiring with PlatformConfig passthrough. 7 files (5 new, 2 modified), tsc passes clean. Phase 15 complete.
