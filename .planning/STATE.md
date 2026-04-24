@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-04-22)
 
 ## Current Position
 
-Phase: 17 (proactive-alerts) — DISCUSS COMPLETE
-Plan: not yet planned
-Next: `/gsd-plan-phase 17`
-Last activity: 2026-04-24 -- Phase 17 discuss-phase complete
+Phase: 17 (proactive-alerts) — PLAN COMPLETE
+Plan: 2 plans across 2 waves
+Next: `/gsd-execute-phase 17`
+Last activity: 2026-04-24 -- Phase 17 plan-phase complete (2 plans, 2 waves)
 
 ## Progress
 
