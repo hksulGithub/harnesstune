@@ -531,6 +531,13 @@ Plans:
 
 **Research Flag:** Needs research — Claude Desktop session file format may vary across versions. Need to confirm `initialMessage` field reliability for task correlation. Also: `crontab -l` parsing edge cases (env vars, comments, special syntax).
 
+**Plans:** 3/3 plans complete
+
+Plans:
+- [x] 14-01-PLAN.md — Claude Desktop types, mappers, reader (file I/O utilities)
+- [x] 14-02-PLAN.md — Claude Code Cron types, mappers, crontab parser, wrapper script generator
+- [x] 14-03-PLAN.md — Full plugin implementations (ClaudeDesktopPlugin, ClaudeCodePlugin) + loader wiring
+
 ---
 
 ### Phase 15: OpenClaw Remote Adapter

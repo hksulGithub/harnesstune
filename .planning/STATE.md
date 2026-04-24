@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: Ready to execute
-last_updated: "2026-04-23T17:51:51.492Z"
-last_activity: 2026-04-24 -- Phase 16 discuss-phase complete
+status: Executing Phase 15
+last_updated: "2026-04-24T03:08:08.905Z"
+last_activity: 2026-04-24 -- Phase 15 execution started
 progress:
   total_phases: 17
   completed_phases: 6
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-22)
 
 **Core value:** Engineers running multiple agent systems can see and control all their agents from one place inside VSCode.
-**Current focus:** Phase 16 discuss-phase complete — ready for planning
+**Current focus:** Phase 15 — openclaw-remote-adapter
 
 ## Current Position
 
-Phase: 16 — CONTEXT COMPLETE
-Plan: 0 of ?
+Phase: 15 (openclaw-remote-adapter) — EXECUTING
+Plan: 1 of 2
 Next: `/gsd-plan-phase 16`
-Last activity: 2026-04-24 -- Phase 16 discuss-phase complete
+Last activity: 2026-04-24 -- Phase 15 execution started
 
 ## Progress
 
