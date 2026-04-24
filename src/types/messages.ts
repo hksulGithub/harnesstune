@@ -29,6 +29,7 @@ export type HostToWebviewMessage =
 /** Messages from webview to extension host */
 export type WebviewToHostMessage =
   | { type: 'workspace:connect'; name: string; rootPath: string }
+  | { type: 'workspace:configure'; workspaceId: string }
   | { type: 'workspace:remove'; workspaceId: string }
   | { type: 'workspace:open'; workspaceId: string }
   | { type: 'workspace:refresh' }
