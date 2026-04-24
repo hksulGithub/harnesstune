@@ -29,7 +29,7 @@ function buildPlugins(): PlatformPlugin[] {
     new PaperclipPlugin(platformConfigs['paperclip']),
     new ClaudeDesktopPlugin(platformConfigs['claude-desktop']),
     new ClaudeCodePlugin(platformConfigs['claude-code']),
-    new OpenClawPlugin(),
+    new OpenClawPlugin(platformConfigs['openclaw']),
   ];
 }
 
