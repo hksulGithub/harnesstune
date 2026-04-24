@@ -21,6 +21,8 @@ export type HostToWebviewMessage =
   | { type: 'chat:stateChange'; state: SessionState }
   | { type: 'chat:history'; messages: ChatMessage[] }
   | { type: 'chat:workspaceInfo'; workspaceId: string; workspaceName: string }
+  | { type: 'chat:triggerInterrupt' }
+  | { type: 'chat:setReadOnly'; reason: string }
   | { type: 'fleet:overview'; summaries: FleetWorkspaceSummary[] }
   | { type: 'fleet:workspaceDetail'; workspaceId: string; detail: FleetWorkspaceDetail }
   | { type: 'fleet:agentDetail'; workspaceId: string; agentId: string; detail: FleetAgentDetail }
@@ -31,6 +33,7 @@ export type WebviewToHostMessage =
   | { type: 'workspace:connect'; name: string; rootPath: string }
   | { type: 'workspace:remove'; workspaceId: string }
   | { type: 'workspace:open'; workspaceId: string }
+  | { type: 'workspace:configure'; workspaceId: string }
   | { type: 'workspace:refresh' }
   | { type: 'ready' }
   | { type: 'agent:pause'; sessionId: string }
