@@ -75,13 +75,25 @@ reportsRouter.post('/', async (c) => {
           summary?: unknown;
         };
 
-        if (typeof runData.agentId !== 'string' || runData.agentId.length === 0) continue;
-        if (typeof runData.status !== 'string' || runData.status.length === 0) continue;
-        if (typeof runData.durationMs !== 'number' || Number.isNaN(runData.durationMs)) continue;
+        if (typeof runData.agentId !== 'string' || runData.agentId.length === 0) {
+          console.warn('reports: skipping run with missing/invalid agentId', { value: runData.agentId });
+          continue;
+        }
+        if (typeof runData.status !== 'string' || runData.status.length === 0) {
+          console.warn('reports: skipping run with missing/invalid status', { agentId: runData.agentId, value: runData.status });
+          continue;
+        }
+        if (typeof runData.durationMs !== 'number' || Number.isNaN(runData.durationMs)) {
+          console.warn('reports: skipping run with missing/invalid durationMs', { agentId: runData.agentId, value: runData.durationMs });
+          continue;
+        }
 
         const startedAt = new Date(typeof runData.startedAt === 'string' ? runData.startedAt : '');
         const finishedAt = new Date(typeof runData.finishedAt === 'string' ? runData.finishedAt : '');
-        if (Number.isNaN(startedAt.getTime()) || Number.isNaN(finishedAt.getTime())) continue;
+        if (Number.isNaN(startedAt.getTime()) || Number.isNaN(finishedAt.getTime())) {
+          console.warn('reports: skipping run with invalid startedAt/finishedAt timestamps', { agentId: runData.agentId, startedAt: runData.startedAt, finishedAt: runData.finishedAt });
+          continue;
+        }
 
         await db.insert(agentRuns).values({
           id: randomUUID(),
@@ -98,19 +110,14 @@ reportsRouter.post('/', async (c) => {
           summary: runData.summary ? JSON.stringify(runData.summary) : null,
         }).onConflictDoNothing();
 
-        const existingAgent = await db.select().from(agents)
-          .where(and(eq(agents.channelId, channelId), eq(agents.agentId, runData.agentId)))
-          .limit(1);
-        if (existingAgent.length === 0) {
-          await db.insert(agents).values({
-            id: randomUUID(),
-            channelId,
-            agentId: runData.agentId,
-            platform: 'unknown',
-            name: null,
-            schedule: null,
-          });
-        }
+        await db.insert(agents).values({
+          id: randomUUID(),
+          channelId,
+          agentId: runData.agentId,
+          platform: 'unknown',
+          name: null,
+          schedule: null,
+        }).onConflictDoNothing();
 
         const previousLatest = latestFinishedAtByAgent.get(runData.agentId);
         if (!previousLatest || finishedAt > previousLatest) {
