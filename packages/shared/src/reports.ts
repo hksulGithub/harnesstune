@@ -39,6 +39,21 @@ export interface ReportEnvelope {
   agentId?: string;
 }
 
+export interface RunReportSummaryOk {
+  status: 'ok';
+  oneLineSummary: string;
+  bullets: string[];
+  tags: string[];
+  tokenCount: number;
+}
+
+export interface RunReportSummaryError {
+  status: 'error';
+  reason: string;
+}
+
+export type RunReportSummary = RunReportSummaryOk | RunReportSummaryError;
+
 /** Structured execution record from a collector/agent run — stored in agent_runs table, NOT a ReportEnvelope type */
 export interface RunReport {
   agentId: string;
@@ -53,6 +68,7 @@ export interface RunReport {
     outputTokens: number;
   };
   costCents?: number;
+  summary?: RunReportSummary;
 }
 
 export type RunStatus = RunReport['status'];
