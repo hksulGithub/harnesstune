@@ -33,12 +33,10 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [replyTo, setReplyTo] = useState<AppState['replyTo']>(null);
 
-  // Persist state
   useEffect(() => {
     vscode.setState({ items, loopIterations, filter, connectionStatus, workspaceName, workspaceId, hasMore });
   }, [items, loopIterations, filter, connectionStatus, workspaceName, workspaceId, hasMore]);
 
-  // Message handler
   useEffect(() => {
     const handler = (event: MessageEvent<HostToWebviewMessage>) => {
       const msg = event.data;
@@ -53,7 +51,7 @@ export default function App() {
           setLoopIterations(msg.loopIterations);
           break;
         case 'timeline:append':
-          setItems(prev => [...msg.items, ...prev]);
+          setItems((prev) => [...msg.items, ...prev]);
           break;
         case 'timeline:connectionStatus':
           setConnectionStatus(msg.status);
@@ -65,56 +63,36 @@ export default function App() {
       }
     };
     window.addEventListener('message', handler);
-    // Request initial data
     vscode.postMessage({ type: 'timeline:requestInitial', workspaceId: '' });
     return () => window.removeEventListener('message', handler);
   }, []);
 
-  // Filter items
-  const filteredItems = items.filter(item => {
+  const filteredItems = items.filter((item) => {
     if (filter === 'all') return true;
     if (filter === 'activity') return item.kind === 'activity';
-    if (filter === 'briefings') return item.kind === 'report' && item.data.type === 'briefing';
+    if (filter === 'briefings') return item.kind === 'report' && (item.data.type === 'briefing' || item.data.type === 'run_batch');
     if (filter === 'ralph') return item.kind === 'report' && item.data.type === 'ralph';
     if (filter === 'chat') return item.kind === 'message';
     return true;
   });
 
   const handleSend = useCallback((text: string) => {
-    // Optimistic append — show the message immediately
     const now = new Date().toISOString();
     const optimisticItem: TimelineItem = {
       kind: 'message',
       data: {
         id: `local-${Date.now()}`,
         channelId: '',
-        direction: 'to_agent' as const,
+        direction: 'to_agent',
         body: { text, sentAt: now, inReplyToReportId: replyTo?.reportId },
         createdAt: now,
       },
       at: now,
     };
-    setItems(prev => [optimisticItem, ...prev]);
-
-    vscode.postMessage({
-      type: 'timeline:sendMessage',
-      workspaceId,
-      text,
-      inReplyToReportId: replyTo?.reportId,
-    });
+    setItems((prev) => [optimisticItem, ...prev]);
+    vscode.postMessage({ type: 'timeline:sendMessage', workspaceId, text, inReplyToReportId: replyTo?.reportId });
     setReplyTo(null);
   }, [workspaceId, replyTo]);
-
-  const handleLoadMore = useCallback(() => {
-    const oldest = items[items.length - 1];
-    if (oldest) {
-      vscode.postMessage({ type: 'timeline:loadMore', workspaceId, before: oldest.at });
-    }
-  }, [items, workspaceId]);
-
-  const handleReply = useCallback((reportId: string, reportType: string, timestamp: string) => {
-    setReplyTo({ reportId, reportType, timestamp });
-  }, []);
 
   return (
     <div className="report-panel">
@@ -127,29 +105,15 @@ export default function App() {
             <span className="timeline-loading__dot" />
           </div>
         ) : filteredItems.length === 0 ? (
-          <EmptyState
-            connectionStatus={connectionStatus}
-            filter={filter}
-            hasItems={items.length > 0}
-          />
+          <EmptyState connectionStatus={connectionStatus} filter={filter} hasItems={items.length > 0} />
         ) : (
           <>
-            {hasMore && (
-              <LoadMoreButton onClick={handleLoadMore} loading={false} />
-            )}
-            <TimelineFeed
-              items={filteredItems}
-              loopIterations={loopIterations}
-              onReply={handleReply}
-            />
+            {hasMore && <LoadMoreButton onClick={() => undefined} loading={false} />}
+            <TimelineFeed items={filteredItems} loopIterations={loopIterations} onReply={(reportId, reportType, timestamp) => setReplyTo({ reportId, reportType, timestamp })} />
           </>
         )}
       </div>
-      <MessageComposer
-        onSend={handleSend}
-        replyTo={replyTo}
-        onCancelReply={() => setReplyTo(null)}
-      />
+      <MessageComposer onSend={handleSend} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} />
     </div>
   );
 }

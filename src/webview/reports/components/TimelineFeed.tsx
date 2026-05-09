@@ -4,6 +4,7 @@ import BriefingReportCard from './BriefingReportCard';
 import RalphLoopReportCard from './RalphLoopReportCard';
 import ChatBubble from './ChatBubble';
 import ActivityCard from './ActivityCard';
+import RunBatchReportCard from './RunBatchReportCard';
 
 interface TimelineFeedProps {
   items: TimelineItem[];
@@ -27,14 +28,10 @@ export default function TimelineFeed({ items, loopIterations, onReply }: Timelin
         if (item.data.type === 'ralph') {
           const body = item.data.body as RalphReportBody;
           const iterations = loopIterations[body.loopId] ?? [];
-          return (
-            <RalphLoopReportCard
-              key={`rpt-${item.data.reportId}`}
-              report={item.data}
-              loopIterations={iterations}
-              onReply={onReply}
-            />
-          );
+          return <RalphLoopReportCard key={`rpt-${item.data.reportId}`} report={item.data} loopIterations={iterations} onReply={onReply} />;
+        }
+        if (item.data.type === 'run_batch') {
+          return <RunBatchReportCard key={`rpt-${item.data.reportId}`} report={item.data} />;
         }
         return null;
       })}
