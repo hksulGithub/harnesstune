@@ -1,4 +1,4 @@
-import type { ReportEnvelope, RelayMessage } from '@harnesstune/shared';
+import type { ReportEnvelope, RelayMessage, RunReportSummary } from '@harnesstune/shared';
 import type { AgentIdentity } from '../types/workspace';
 
 export interface RelayClientConfig {
@@ -63,6 +63,7 @@ export interface RunRecord {
   errorSummary: string | null;
   tokenUsage: string | null;
   costCents: number | null;
+  summary?: RunReportSummary | null;
 }
 
 export class RelayClient {
