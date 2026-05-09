@@ -2,14 +2,13 @@ import { Hono } from 'hono';
 import { randomUUID } from 'node:crypto';
 import { eq, gt, desc, and } from 'drizzle-orm';
 import { getDb } from '../db/client.js';
-import { reports } from '../db/schema.js';
+import { reports, agentRuns, agents } from '../db/schema.js';
 import type { AuthVariables } from '../middleware/auth.js';
 
-const MAX_REPORT_SIZE = 2 * 1024 * 1024; // 2MB
+const MAX_REPORT_SIZE = 2 * 1024 * 1024;
 
 export const reportsRouter = new Hono<{ Variables: AuthVariables }>();
 
-// POST /channels/:channelId/reports — upload report
 reportsRouter.post('/', async (c) => {
   const channelId = c.req.param('channelId');
   const authedChannelId = c.get('channelId');
@@ -17,7 +16,6 @@ reportsRouter.post('/', async (c) => {
     return c.json({ error: 'Forbidden' }, 403);
   }
 
-  // Check content-length header as a fast pre-flight check (may be absent — not authoritative)
   const contentLength = parseInt(c.req.header('Content-Length') ?? '0', 10);
   if (contentLength > MAX_REPORT_SIZE) {
     return c.json({
@@ -32,7 +30,6 @@ reportsRouter.post('/', async (c) => {
     return c.json({ error: 'type and body are required' }, 400);
   }
 
-  // Enforce body size limit on actual parsed content (Content-Length header may be absent or spoofed)
   const serializedBodySize = JSON.stringify(body.body).length;
   if (serializedBodySize > MAX_REPORT_SIZE) {
     return c.json({
@@ -54,10 +51,85 @@ reportsRouter.post('/', async (c) => {
     agentId,
   });
 
+  try {
+    const runs = body.type === 'run_batch' && Array.isArray(body.body.runs)
+      ? body.body.runs
+      : [];
+
+    if (runs.length > 0) {
+      const latestFinishedAtByAgent = new Map<string, Date>();
+
+      for (const run of runs) {
+        if (!run || typeof run !== 'object') continue;
+
+        const runData = run as {
+          agentId?: unknown;
+          startedAt?: unknown;
+          finishedAt?: unknown;
+          status?: unknown;
+          durationMs?: unknown;
+          logExcerpt?: unknown;
+          errorSummary?: unknown;
+          tokenUsage?: unknown;
+          costCents?: unknown;
+          summary?: unknown;
+        };
+
+        if (typeof runData.agentId !== 'string' || runData.agentId.length === 0) continue;
+        if (typeof runData.status !== 'string' || runData.status.length === 0) continue;
+        if (typeof runData.durationMs !== 'number' || Number.isNaN(runData.durationMs)) continue;
+
+        const startedAt = new Date(typeof runData.startedAt === 'string' ? runData.startedAt : '');
+        const finishedAt = new Date(typeof runData.finishedAt === 'string' ? runData.finishedAt : '');
+        if (Number.isNaN(startedAt.getTime()) || Number.isNaN(finishedAt.getTime())) continue;
+
+        await db.insert(agentRuns).values({
+          id: randomUUID(),
+          channelId,
+          agentId: runData.agentId,
+          startedAt,
+          finishedAt,
+          status: runData.status,
+          durationMs: runData.durationMs,
+          logExcerpt: typeof runData.logExcerpt === 'string' ? runData.logExcerpt : null,
+          errorSummary: typeof runData.errorSummary === 'string' ? runData.errorSummary : null,
+          tokenUsage: runData.tokenUsage ? JSON.stringify(runData.tokenUsage) : null,
+          costCents: typeof runData.costCents === 'number' ? runData.costCents : null,
+          summary: runData.summary ? JSON.stringify(runData.summary) : null,
+        }).onConflictDoNothing();
+
+        const existingAgent = await db.select().from(agents)
+          .where(and(eq(agents.channelId, channelId), eq(agents.agentId, runData.agentId)))
+          .limit(1);
+        if (existingAgent.length === 0) {
+          await db.insert(agents).values({
+            id: randomUUID(),
+            channelId,
+            agentId: runData.agentId,
+            platform: 'unknown',
+            name: null,
+            schedule: null,
+          });
+        }
+
+        const previousLatest = latestFinishedAtByAgent.get(runData.agentId);
+        if (!previousLatest || finishedAt > previousLatest) {
+          latestFinishedAtByAgent.set(runData.agentId, finishedAt);
+        }
+      }
+
+      for (const [batchAgentId, latestFinishedAt] of latestFinishedAtByAgent) {
+        await db.update(agents).set({ lastRunAt: latestFinishedAt })
+          .where(and(eq(agents.channelId, channelId), eq(agents.agentId, batchAgentId)));
+      }
+    }
+  } catch (error) {
+    console.error('Failed to fan out run_batch report into agent_runs:', error);
+  }
+
   return c.json({ id, channelId, type: body.type, createdAt: new Date().toISOString() }, 201);
 });
 
-// GET /channels/:channelId/reports — paginated metadata list (?since= cursor, ?agentId= filter)
 reportsRouter.get('/', async (c) => {
   const channelId = c.req.param('channelId');
   const authedChannelId = c.get('channelId');
@@ -65,13 +137,11 @@ reportsRouter.get('/', async (c) => {
     return c.json({ error: 'Forbidden' }, 403);
   }
 
-  const since = c.req.query('since');  // ISO 8601 timestamp cursor
-  const agentId = c.req.query('agentId');  // optional agent filter
+  const since = c.req.query('since');
+  const agentId = c.req.query('agentId');
   const limit = Math.min(parseInt(c.req.query('limit') ?? '20', 10), 100);
 
   const db = getDb();
-
-  // Build where conditions
   const conditions = [eq(reports.channelId, channelId)];
   if (since) conditions.push(gt(reports.createdAt, new Date(since)));
   if (agentId) conditions.push(eq(reports.agentId, agentId));
@@ -82,15 +152,11 @@ reportsRouter.get('/', async (c) => {
     type: reports.type,
     agentId: reports.agentId,
     createdAt: reports.createdAt,
-    // body intentionally excluded — metadata only (RLAY-10)
-  }).from(reports).where(
-    and(...conditions)
-  ).orderBy(desc(reports.createdAt)).limit(limit);
+  }).from(reports).where(and(...conditions)).orderBy(desc(reports.createdAt)).limit(limit);
 
   return c.json({ reports: rows, count: rows.length });
 });
 
-// GET /channels/:channelId/reports/:reportId — full body
 reportsRouter.get('/:reportId', async (c) => {
   const channelId = c.req.param('channelId');
   const reportId = c.req.param('reportId');
@@ -101,14 +167,13 @@ reportsRouter.get('/:reportId', async (c) => {
 
   const db = getDb();
   const rows = await db.select().from(reports).where(
-    and(eq(reports.id, reportId), eq(reports.channelId, channelId))
+    and(eq(reports.id, reportId), eq(reports.channelId, channelId)),
   ).limit(1);
 
   if (rows.length === 0) {
     return c.json({ error: 'Report not found' }, 404);
   }
 
-  // Parse the stored JSON body back to object
   const report = rows[0];
   return c.json({
     ...report,

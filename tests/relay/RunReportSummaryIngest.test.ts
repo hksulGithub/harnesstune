@@ -21,3 +21,16 @@ describe('relay schema includes run summary persistence', () => {
     expect(journal).toContain('"tag": "0001_r1_add_run_summary"');
   });
 });
+
+describe('reports route persists optional run summaries', () => {
+  it('stores summary JSON for run_batch rows and keeps legacy uploads working', () => {
+    const routeSource = fs.readFileSync(
+      path.join(process.cwd(), 'packages/harnesstune-relay/src/routes/reports.ts'),
+      'utf-8',
+    );
+
+    expect(routeSource).toContain('summary?: unknown');
+    expect(routeSource).toContain("summary: runData.summary ? JSON.stringify(runData.summary) : null");
+    expect(routeSource).toContain('const runs = body.type === \'run_batch\'');
+  });
+});
