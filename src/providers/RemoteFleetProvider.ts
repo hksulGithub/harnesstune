@@ -77,6 +77,7 @@ export class RemoteFleetProvider implements FleetDataProvider {
           agentCount,
           errorRatePct,
           lastActivityTs,
+          analytics: [],
         });
       } catch {
         summaries.push({
@@ -87,6 +88,7 @@ export class RemoteFleetProvider implements FleetDataProvider {
           agentCount: 0,
           errorRatePct: 0,
           lastActivityTs: 0,
+          analytics: [],
         });
       }
     }
@@ -97,7 +99,7 @@ export class RemoteFleetProvider implements FleetDataProvider {
   async getWorkspaceDetail(workspaceId: string, days: number): Promise<FleetWorkspaceDetail> {
     const relayClient = this.clients.get(workspaceId);
     if (!relayClient) {
-      return { agents: [], cost: { totalCostUsd: 0, totalTokens: 0, trend: 'flat' } };
+      return { agents: [], cost: { totalCostUsd: 0, totalTokens: 0, trend: 'flat' }, analytics: [] };
     }
 
     const [channelSummary, agentIdentities] = await Promise.all([
@@ -120,6 +122,7 @@ export class RemoteFleetProvider implements FleetDataProvider {
         lastRunTs,
         costUsd: agentSummary.totalCostCents / 100,
         costTrend: 'flat' as CostTrend,
+        analytics: [],
       };
     });
 
@@ -130,13 +133,13 @@ export class RemoteFleetProvider implements FleetDataProvider {
       trend: 'flat',
     };
 
-    return { agents, cost };
+    return { agents, cost, analytics: [] };
   }
 
   async getAgentDetail(workspaceId: string, agentId: string, days: number): Promise<FleetAgentDetail> {
     const relayClient = this.clients.get(workspaceId);
     if (!relayClient) {
-      return { runs: [], cost: { totalCostUsd: 0, totalTokens: 0, trend: 'flat' } };
+      return { runs: [], cost: { totalCostUsd: 0, totalTokens: 0, trend: 'flat' }, analytics: [] };
     }
 
     const cutoffMs = Date.now() - days * 86400000;
@@ -161,6 +164,6 @@ export class RemoteFleetProvider implements FleetDataProvider {
       trend: 'flat',
     };
 
-    return { runs, cost };
+    return { runs, cost, analytics: [] };
   }
 }

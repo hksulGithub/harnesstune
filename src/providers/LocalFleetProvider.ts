@@ -105,6 +105,7 @@ export class LocalFleetProvider implements FleetDataProvider {
         agentCount: agentNames.size,
         errorRatePct,
         lastActivityTs,
+        analytics: [],
       } satisfies FleetWorkspaceSummary;
     });
   }
@@ -138,6 +139,7 @@ export class LocalFleetProvider implements FleetDataProvider {
         lastRunTs,
         costUsd: 0,
         costTrend: 'flat',
+        analytics: [],
       });
     }
 
@@ -148,7 +150,7 @@ export class LocalFleetProvider implements FleetDataProvider {
     };
 
     void workspaceId; // local provider aggregates all runs regardless of workspace
-    return { agents, cost };
+    return { agents, cost, analytics: [] };
   }
 
   async getAgentDetail(workspaceId: string, agentId: string, days: number): Promise<FleetAgentDetail> {
@@ -175,6 +177,6 @@ export class LocalFleetProvider implements FleetDataProvider {
     };
 
     void workspaceId;
-    return { runs, cost };
+    return { runs, cost, analytics: [] };
   }
 }
