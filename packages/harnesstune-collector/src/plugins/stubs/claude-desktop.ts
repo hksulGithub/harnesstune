@@ -1,13 +1,15 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import { createInterface } from 'node:readline/promises';
+import { createInterface, type Interface as ReadlineInterface } from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import type { RunReport } from '@harnesstune/shared';
 import type { PlatformPlugin, PlatformConfig } from '../interface.js';
 import type { AgentIdentity } from '../../types.js';
 import { mapScheduledTask, mapSessionToRunReport } from '../claude-desktop/mappers.js';
 import { readScheduledTasks, scanSessions, getScheduledTasksMtime } from '../claude-desktop/reader.js';
+import { parseSummaryMode, shouldSummarizeRun } from '../../summaries/policy.js';
+import { summarizeTranscript } from '../../summaries/summarizer.js';
 
 const DEFAULT_SESSIONS_BASE = join(
   homedir(),
@@ -39,42 +41,30 @@ export class ClaudeDesktopPlugin implements PlatformPlugin {
       join(homedir(), 'Applications', 'Claude.app'),
       join(homedir(), 'Library', 'Application Support', 'Claude'),
     ];
-    return markers.some(p => existsSync(p));
+    return markers.some((p) => existsSync(p));
   }
 
-  async setup(existing?: PlatformConfig): Promise<PlatformConfig> {
-    const rl = createInterface({ input, output });
+  async setup(existing?: PlatformConfig, injectedRl?: ReadlineInterface): Promise<PlatformConfig> {
+    const rl = injectedRl ?? createInterface({ input, output });
+    const ownsRl = !injectedRl;
     try {
       const paths = this.discoverSessionPaths();
-
       if (paths.length === 0) {
         const defaultDir = (existing?.['sessionsDir'] as string | undefined) ?? DEFAULT_SESSIONS_BASE;
-        const sessionsDir = (
-          await rl.question(`Claude Desktop sessions directory [${defaultDir}]: `)
-        ).trim() || defaultDir;
-
-        if (!existsSync(join(sessionsDir, 'scheduled-tasks.json'))) {
-          console.warn(`Warning: scheduled-tasks.json not found at ${sessionsDir}`);
-        }
-        return { sessionsDir };
+        const sessionsDir = (await rl.question(`Claude Desktop sessions directory [${defaultDir}]: `)).trim() || defaultDir;
+        return { sessionsDir, summaries: 'on' };
       }
-
       if (paths.length === 1) {
-        console.log(`Found Claude Desktop sessions at: ${paths[0]}`);
-        return { sessionsDir: paths[0] };
+        return { sessionsDir: paths[0], summaries: 'on' };
       }
-
-      console.log('\nMultiple Claude Desktop session directories found:');
-      paths.forEach((p, i) => console.log(`  ${i + 1}. ${p}`));
       const choice = await rl.question(`Select directory [1-${paths.length}]: `);
       const idx = parseInt(choice.trim(), 10) - 1;
       if (idx < 0 || idx >= paths.length) {
         throw new Error('Invalid selection.');
       }
-      console.log(`Selected: ${paths[idx]}`);
-      return { sessionsDir: paths[idx] };
+      return { sessionsDir: paths[idx], summaries: 'on' };
     } finally {
-      rl.close();
+      if (ownsRl) rl.close();
     }
   }
 
@@ -96,15 +86,25 @@ export class ClaudeDesktopPlugin implements PlatformPlugin {
     if (!this.sessionsDir) return [];
 
     const tasks = readScheduledTasks(this.sessionsDir);
-    const taskIds = new Set(tasks.map(t => t.id));
+    const taskIds = new Set(tasks.map((t) => t.id));
     const sessions = scanSessions(this.sessionsDir, since);
+    const summaryMode = parseSummaryMode(this.platformConfig?.['summaries']);
 
     const runs: RunReport[] = [];
+    let seenRunNumber = 0;
+
     for (const session of sessions) {
       if (!session.scheduledTaskId || !taskIds.has(session.scheduledTaskId)) continue;
 
       try {
-        runs.push(mapSessionToRunReport(session, session.scheduledTaskId));
+        const report = mapSessionToRunReport(session, session.scheduledTaskId);
+        seenRunNumber += 1;
+
+        if (session.transcriptPath && shouldSummarizeRun(summaryMode, seenRunNumber)) {
+          report.summary = await summarizeTranscript(session.transcriptPath, { timeoutMs: 15_000 });
+        }
+
+        runs.push(report);
       } catch (err) {
         console.error(`Failed to map session ${session.sessionId}:`, (err as Error).message);
       }
@@ -121,12 +121,12 @@ export class ClaudeDesktopPlugin implements PlatformPlugin {
       const orgDirs = readdirSync(DEFAULT_SESSIONS_BASE);
       for (const orgDir of orgDirs) {
         if (!UUID_PATTERN.test(orgDir)) continue;
-
         const orgPath = join(DEFAULT_SESSIONS_BASE, orgDir);
         try {
           if (!statSync(orgPath).isDirectory()) continue;
-        } catch { continue; }
-
+        } catch {
+          continue;
+        }
         const userDirs = readdirSync(orgPath);
         for (const userDir of userDirs) {
           const userPath = join(orgPath, userDir);
@@ -136,9 +136,7 @@ export class ClaudeDesktopPlugin implements PlatformPlugin {
           }
         }
       }
-    } catch {
-      // Base dir unreadable
-    }
+    } catch {}
 
     return paths;
   }
