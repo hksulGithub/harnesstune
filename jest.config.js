@@ -10,5 +10,9 @@ module.exports = {
   transformIgnorePatterns: [
     '/node_modules/(?!(d3-hierarchy)/)',
   ],
-  moduleNameMapper: { '^vscode$': '<rootDir>/tests/__mocks__/vscode.ts' },
+  moduleNameMapper: {
+    '^vscode$': '<rootDir>/tests/__mocks__/vscode.ts',
+    // Strip `.js` extension on relative imports so ts-jest can resolve TS sources.
+    '^(\\.{1,2}/.*)\\.js$': '$1',
+  },
 };
