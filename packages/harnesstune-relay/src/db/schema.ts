@@ -58,7 +58,11 @@ export const agentRuns = sqliteTable('agent_runs', {
   errorSummary: text('error_summary'),         // nullable
   tokenUsage: text('token_usage'),             // JSON string, nullable
   costCents: integer('cost_cents'),            // nullable
-});
+  summary: text('summary'),                    // nullable LLM-generated run summary
+}, (table) => ({
+  channelAgentStartedUniq: uniqueIndex('agent_runs_channel_agent_started_uniq')
+    .on(table.channelId, table.agentId, table.startedAt),
+}));
 
 export const rateLimits = sqliteTable('rate_limits', {
   tokenId: text('token_id').notNull(),
