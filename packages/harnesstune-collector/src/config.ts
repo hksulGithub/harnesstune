@@ -1,12 +1,14 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync, chmodSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { parseSummaryMode, stringifySummaryMode } from './summaries/policy.js';
+import type { SummaryModeString } from './summaries/types.js';
 
 /** Per-platform entry in collector.json */
 export interface PlatformEntry {
   id: string;
   enabled: boolean;
-  config: Record<string, unknown>;
+  config: Record<string, unknown> & { summaries?: SummaryModeString };
 }
 
 /** Collector daemon config — machine-level, stored at ~/.harnesstune/collector.json */
@@ -38,17 +40,25 @@ const QUEUE_DIR = join(COLLECTOR_DIR, 'queue');
 
 /** Default platform entries (all disabled until setup enables them) */
 const DEFAULT_PLATFORMS: PlatformEntry[] = [
-  { id: 'paperclip', enabled: false, config: {} },
-  { id: 'claude-desktop', enabled: false, config: {} },
-  { id: 'claude-code', enabled: false, config: {} },
-  { id: 'openclaw', enabled: false, config: {} },
+  { id: 'paperclip', enabled: false, config: { summaries: 'on' } },
+  { id: 'claude-desktop', enabled: false, config: { summaries: 'on' } },
+  { id: 'claude-code', enabled: false, config: { summaries: 'on' } },
+  { id: 'openclaw', enabled: false, config: { summaries: 'on' } },
 ];
 
 export function readConfig(): CollectorConfig {
   if (!existsSync(CONFIG_FILE)) {
     throw new Error('No collector config found. Run: harnesstune-collector setup');
   }
-  return JSON.parse(readFileSync(CONFIG_FILE, 'utf-8')) as CollectorConfig;
+  const parsed = JSON.parse(readFileSync(CONFIG_FILE, 'utf-8')) as CollectorConfig;
+  parsed.platforms = parsed.platforms.map((platform) => ({
+    ...platform,
+    config: {
+      ...platform.config,
+      summaries: stringifySummaryMode(parseSummaryMode(platform.config?.summaries)),
+    },
+  }));
+  return parsed;
 }
 
 export function writeConfig(config: CollectorConfig): void {
