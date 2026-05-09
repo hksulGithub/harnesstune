@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, unlinkSync, mkdirSync, writeFileSync, chmodSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { createHash } from 'node:crypto';
 import type { RunReport } from '@harnesstune/shared';
 import type { PlatformPlugin, PlatformConfig } from '../interface.js';
 import type { AgentIdentity } from '../../types.js';
@@ -11,6 +12,12 @@ import { generateWrapperScript } from '../claude-code/wrapper.js';
 import { COLLECTOR_DIR } from '../../config.js';
 import { parseSummaryMode, shouldSummarizeRun } from '../../summaries/policy.js';
 import { summarizeTranscript } from '../../summaries/summarizer.js';
+
+function deterministicRunIndex(agentName: string, startedAt: string): number {
+  const hash = createHash('sha256').update(`${agentName}|${startedAt}`).digest();
+  // Read first 4 bytes as big-endian uint32
+  return hash.readUInt32BE(0);
+}
 
 const DEFAULT_WRAPPER_PATH = join(COLLECTOR_DIR, 'bin', 'harnesstune-wrap');
 const DEFAULT_CRON_RUNS_DIR = join(COLLECTOR_DIR, 'cron-runs');
@@ -48,6 +55,15 @@ export class ClaudeCodePlugin implements PlatformPlugin {
     writeFileSync(DEFAULT_WRAPPER_PATH, script, 'utf-8');
     chmodSync(DEFAULT_WRAPPER_PATH, 0o755);
 
+    console.log(`\nWrapper script installed: ${DEFAULT_WRAPPER_PATH}`);
+    console.log('\nTo use with cron, update your crontab entries:');
+    console.log(`  crontab -e`);
+    console.log(`\nReplace direct claude calls with the wrapper:`);
+    console.log(`  Before: 0 9 * * * claude -p 'Generate the daily report'`);
+    console.log(`  After:  0 9 * * * ${DEFAULT_WRAPPER_PATH} --name 'daily-report' claude -p 'Generate the daily report'`);
+    console.log(`\nOr add ${binDir} to your PATH and use:`);
+    console.log(`  0 9 * * * harnesstune-wrap --name 'daily-report' claude -p 'Generate the daily report'`);
+
     return {
       wrapperPath: DEFAULT_WRAPPER_PATH,
       cronRunsDir: DEFAULT_CRON_RUNS_DIR,
@@ -66,6 +82,7 @@ export class ClaudeCodePlugin implements PlatformPlugin {
     const sinceMs = since.getTime();
     const nowMs = Date.now();
     const runs: RunReport[] = [];
+    // parseSummaryMode tolerates unknown / malformed values, defaulting to 'on'
     const summaryMode = parseSummaryMode(this.platformConfig?.['summaries']);
 
     let entries: string[];
@@ -74,8 +91,6 @@ export class ClaudeCodePlugin implements PlatformPlugin {
     } catch {
       return [];
     }
-
-    let seenRunNumber = 0;
 
     for (const entry of entries) {
       const filePath = join(this.cronRunsDir, entry);
@@ -102,13 +117,17 @@ export class ClaudeCodePlugin implements PlatformPlugin {
         }
 
         const report = mapCronRunFile(runFile);
-        seenRunNumber += 1;
+        const runIndex = deterministicRunIndex(runFile.agentName, runFile.startedAt);
 
         if (
           runFile.transcriptPath &&
-          shouldSummarizeRun(summaryMode, seenRunNumber)
+          shouldSummarizeRun(summaryMode, runIndex)
         ) {
           report.summary = await summarizeTranscript(runFile.transcriptPath, { timeoutMs: 15_000 });
+        }
+
+        if (runFile.transcriptPath) {
+          try { unlinkSync(runFile.transcriptPath); } catch {}
         }
 
         runs.push(report);
