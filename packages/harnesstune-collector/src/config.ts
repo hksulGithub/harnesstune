@@ -51,13 +51,16 @@ export function readConfig(): CollectorConfig {
     throw new Error('No collector config found. Run: harnesstune-collector setup');
   }
   const parsed = JSON.parse(readFileSync(CONFIG_FILE, 'utf-8')) as CollectorConfig;
-  parsed.platforms = parsed.platforms.map((platform) => ({
-    ...platform,
-    config: {
-      ...platform.config,
-      summaries: stringifySummaryMode(parseSummaryMode(platform.config?.summaries)),
-    },
-  }));
+  parsed.platforms = parsed.platforms.map((platform) => {
+    const cfg = platform.config ?? {};
+    return {
+      ...platform,
+      config: {
+        ...cfg,
+        summaries: stringifySummaryMode(parseSummaryMode(cfg.summaries)),
+      },
+    };
+  });
   return parsed;
 }
 
