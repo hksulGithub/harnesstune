@@ -7,33 +7,18 @@ import { BreadcrumbBar } from './components/BreadcrumbBar.js';
 import { FleetOverview } from './components/FleetOverview.js';
 import { WorkspaceDrillDown } from './components/WorkspaceDrillDown.js';
 import { AgentDetail } from './components/AgentDetail.js';
+import { AnalyticsPanel } from './components/AnalyticsPanel.js';
 
 type ViewLevel = 'fleet' | 'workspace' | 'agent';
-
-interface NavigationState {
-  level: ViewLevel;
-  workspaceId?: string;
-  workspaceName?: string;
-  agentId?: string;
-  agentName?: string;
-}
-
-interface PersistedState {
-  nav: NavigationState;
-  days: number;
-}
-
+interface NavigationState { level: ViewLevel; workspaceId?: string; workspaceName?: string; agentId?: string; agentName?: string; }
+interface PersistedState { nav: NavigationState; days: number; }
 function restoreState(): PersistedState {
   const saved = vscode.getState() as PersistedState | null;
-  return {
-    nav: saved?.nav ?? { level: 'fleet' },
-    days: saved?.days ?? 7,
-  };
+  return { nav: saved?.nav ?? { level: 'fleet' }, days: saved?.days ?? 7 };
 }
 
 export default function App(): React.ReactElement {
   const initial = restoreState();
-
   const [nav, setNav] = useState<NavigationState>(initial.nav);
   const [days, setDays] = useState<number>(initial.days);
   const [summaries, setSummaries] = useState<FleetWorkspaceSummary[]>([]);
@@ -42,38 +27,21 @@ export default function App(): React.ReactElement {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Persist nav + days state on every change
-  useEffect(() => {
-    vscode.setState({ nav, days } satisfies PersistedState);
-  }, [nav, days]);
+  useEffect(() => { vscode.setState({ nav, days } satisfies PersistedState); }, [nav, days]);
 
-  // Request data from extension host whenever nav level or days changes
   useEffect(() => {
     setLoading(true);
     setError(null);
-
     if (nav.level === 'fleet') {
       const msg: WebviewToHostMessage = { type: 'fleet:requestOverview', days };
       vscode.postMessage(msg);
     } else if (nav.level === 'workspace' && nav.workspaceId !== undefined) {
-      const msg: WebviewToHostMessage = {
-        type: 'fleet:requestWorkspaceDetail',
-        workspaceId: nav.workspaceId,
-        days,
-      };
-      vscode.postMessage(msg);
+      vscode.postMessage({ type: 'fleet:requestWorkspaceDetail', workspaceId: nav.workspaceId, days });
     } else if (nav.level === 'agent' && nav.workspaceId !== undefined && nav.agentId !== undefined) {
-      const msg: WebviewToHostMessage = {
-        type: 'fleet:requestAgentDetail',
-        workspaceId: nav.workspaceId,
-        agentId: nav.agentId,
-        days,
-      };
-      vscode.postMessage(msg);
+      vscode.postMessage({ type: 'fleet:requestAgentDetail', workspaceId: nav.workspaceId, agentId: nav.agentId, days });
     }
   }, [nav.level, nav.workspaceId, nav.agentId, days]);
 
-  // Listen for messages from extension host
   useEffect(() => {
     function handler(event: MessageEvent): void {
       const msg = event.data as HostToWebviewMessage;
@@ -96,36 +64,18 @@ export default function App(): React.ReactElement {
           break;
       }
     }
-
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
   }, []);
 
-  // Navigation handlers
   function handleSelectWorkspace(id: string): void {
     const ws = summaries.find((s) => s.id === id);
-    const workspaceName = ws?.name ?? id;
-    setNav({ level: 'workspace', workspaceId: id, workspaceName });
+    setNav({ level: 'workspace', workspaceId: id, workspaceName: ws?.name ?? id });
   }
 
   function handleSelectAgent(id: string): void {
     const agent = workspaceDetail?.agents.find((a) => a.id === id);
-    const agentName = agent?.name ?? id;
-    setNav({
-      level: 'agent',
-      workspaceId: nav.workspaceId,
-      workspaceName: nav.workspaceName,
-      agentId: id,
-      agentName,
-    });
-  }
-
-  function handleNavigateFleet(): void {
-    setNav({ level: 'fleet' });
-  }
-
-  function handleNavigateWorkspace(): void {
-    setNav({ level: 'workspace', workspaceId: nav.workspaceId, workspaceName: nav.workspaceName });
+    setNav({ level: 'agent', workspaceId: nav.workspaceId, workspaceName: nav.workspaceName, agentId: id, agentName: agent?.name ?? id });
   }
 
   return (
@@ -134,36 +84,33 @@ export default function App(): React.ReactElement {
       <BreadcrumbBar
         workspaceName={nav.level !== 'fleet' ? nav.workspaceName : undefined}
         agentName={nav.level === 'agent' ? nav.agentName : undefined}
-        onNavigateFleet={handleNavigateFleet}
-        onNavigateWorkspace={handleNavigateWorkspace}
+        onNavigateFleet={() => setNav({ level: 'fleet' })}
+        onNavigateWorkspace={() => setNav({ level: 'workspace', workspaceId: nav.workspaceId, workspaceName: nav.workspaceName })}
       />
       {nav.level === 'fleet' && (
-        <FleetOverview
-          summaries={summaries}
-          loading={loading}
-          error={error}
-          onSelectWorkspace={handleSelectWorkspace}
-        />
+        <>
+          <AnalyticsPanel
+            title="Workspace Analytics"
+            windows={summaries[0]?.analytics ?? [
+              { label: '24h', runCount: 0, averageDurationMs: 0, successRatePct: 0 },
+              { label: '7d', runCount: 0, averageDurationMs: 0, successRatePct: 0 },
+              { label: '30d', runCount: 0, averageDurationMs: 0, successRatePct: 0 },
+            ]}
+          />
+          <FleetOverview summaries={summaries} loading={loading} error={error} onSelectWorkspace={handleSelectWorkspace} />
+        </>
       )}
       {nav.level === 'workspace' && workspaceDetail && (
-        <WorkspaceDrillDown
-          workspaceName={nav.workspaceName!}
-          agents={workspaceDetail.agents}
-          cost={workspaceDetail.cost}
-          loading={loading}
-          error={error}
-          onSelectAgent={handleSelectAgent}
-        />
+        <>
+          <AnalyticsPanel title="Workspace Analytics" windows={workspaceDetail.analytics} />
+          <WorkspaceDrillDown workspaceName={nav.workspaceName!} agents={workspaceDetail.agents} cost={workspaceDetail.cost} loading={loading} error={error} onSelectAgent={handleSelectAgent} />
+        </>
       )}
       {nav.level === 'agent' && agentDetail && (
-        <AgentDetail
-          agentName={nav.agentName!}
-          workspaceName={nav.workspaceName!}
-          runs={agentDetail.runs}
-          cost={agentDetail.cost}
-          loading={loading}
-          error={error}
-        />
+        <>
+          <AnalyticsPanel title="Agent Analytics" windows={agentDetail.analytics} />
+          <AgentDetail agentName={nav.agentName!} workspaceName={nav.workspaceName!} runs={agentDetail.runs} cost={agentDetail.cost} loading={loading} error={error} />
+        </>
       )}
     </div>
   );
