@@ -47,6 +47,27 @@ export const STATUS_INDICATORS: Record<import('./workspace').WorkspaceStatus, St
     label: 'Unknown',
     svgPath: 'M4 4h16v16H4z',                            // square
   },
+  stale: {
+    status: 'stale',
+    color: 'var(--vscode-editorWarning-foreground)',
+    shape: 'circle',
+    label: 'Stale',
+    svgPath: 'M12 4a8 8 0 100 16 8 8 0 000-16z',         // outline circle (stroke only)
+  },
+  relay_unreachable: {
+    status: 'relay_unreachable',
+    color: 'var(--vscode-errorForeground)',
+    shape: 'triangle',
+    label: 'Relay Unreachable',
+    svgPath: 'M12 2L2 22h20L12 2z',                      // triangle
+  },
+  auth_error: {
+    status: 'auth_error',
+    color: 'var(--vscode-errorForeground)',
+    shape: 'diamond',
+    label: 'Auth Error',
+    svgPath: 'M12 2l10 10-10 10L2 12 12 2z',             // diamond
+  },
 };
 
 export type AgentStatus = import('./workspace').WorkspaceStatus;

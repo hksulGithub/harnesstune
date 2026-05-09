@@ -13,17 +13,12 @@ interface WorkspaceTabsProps {
 }
 
 export function WorkspaceTabs({ workspaces, activeWorkspaceId, onSelectWorkspace }: WorkspaceTabsProps): React.ReactElement {
+  // Only show tabs when there are multiple workspaces with sessions
+  if (workspaces.length <= 1) {
+    return <></>;
+  }
   return (
     <div className="tab-bar" role="tablist" aria-label="Workspaces">
-      {/* "All Workspaces" tab is always first */}
-      <button
-        className={`tab${activeWorkspaceId === null ? ' active' : ''}`}
-        role="tab"
-        aria-selected={activeWorkspaceId === null}
-        onClick={() => onSelectWorkspace(null)}
-      >
-        All Workspaces
-      </button>
       {workspaces.map(ws => (
         <button
           key={ws.id}

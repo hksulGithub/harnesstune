@@ -6,6 +6,7 @@ import { vscode } from './vscodeApi';
 
 export function App() {
   const [workspaces, setWorkspaces] = useState<WorkspaceRecord[]>([]);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent<HostToWebviewMessage>) => {
@@ -19,6 +20,7 @@ export function App() {
           break;
         case 'workspace:removed':
           setWorkspaces(prev => prev.filter(ws => ws.id !== msg.workspaceId));
+          if (activeWorkspaceId === msg.workspaceId) setActiveWorkspaceId(null);
           break;
         case 'workspace:statusChanged':
           setWorkspaces(prev =>
@@ -28,6 +30,9 @@ export function App() {
                 : ws
             )
           );
+          break;
+        case 'workspace:setActive':
+          setActiveWorkspaceId(msg.workspaceId);
           break;
       }
     };
@@ -46,7 +51,13 @@ export function App() {
           className="connect-button"
           onClick={() => vscode.postMessage({ type: 'workspace:connect', name: '', rootPath: '' })}
         >
-          Connect Workspace
+          Connect Local Workspace
+        </button>
+        <button
+          className="connect-button connect-button-remote"
+          onClick={() => vscode.postMessage({ type: 'workspace:addRemote', relayUrl: '', token: '' })}
+        >
+          Add Remote Workspace
         </button>
       </div>
     );
@@ -54,13 +65,19 @@ export function App() {
 
   return (
     <div>
-      <WorkspaceList workspaces={workspaces} />
+      <WorkspaceList workspaces={workspaces} activeWorkspaceId={activeWorkspaceId} />
       <div className="connect-section">
         <button
           className="connect-button"
           onClick={() => vscode.postMessage({ type: 'workspace:connect', name: '', rootPath: '' })}
         >
-          + Connect Workspace
+          + Connect Local Workspace
+        </button>
+        <button
+          className="connect-button connect-button-remote"
+          onClick={() => vscode.postMessage({ type: 'workspace:addRemote', relayUrl: '', token: '' })}
+        >
+          + Add Remote Workspace
         </button>
       </div>
     </div>

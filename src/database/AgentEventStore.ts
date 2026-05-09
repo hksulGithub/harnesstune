@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import initSqlJs, { Database } from 'sql.js';
 import type { AgentEvent } from '../types/agent';
+import type { TimelineItem, ReportEnvelope, RalphReportBody, ActivityItem } from '@harnesstune/shared';
 
 export interface SessionSummary {
   totalEvents: number;
@@ -86,6 +87,11 @@ export class AgentEventStore {
   insertEvent(event: AgentEvent): void {
     if (!event.id || !event.workspaceId || !event.sessionId || !event.agentId) {
       throw new Error('AgentEvent missing required fields: id, workspaceId, sessionId, agentId');
+    }
+
+    // Guard: timestamp is NOT NULL in the schema. Fall back to now if missing/NaN.
+    if (event.timestamp == null || Number.isNaN(event.timestamp)) {
+      event.timestamp = Date.now();
     }
 
     this.db.run(
@@ -186,6 +192,64 @@ export class AgentEventStore {
     }
     stmt.free();
     return { totalEvents: 0, toolUses: 0, errors: 0, totalInputTokens: 0, totalOutputTokens: 0, totalCacheReadTokens: 0 };
+  }
+
+  /** Extract timeline items from local event store — remote reports + local activity */
+  getTimelineItems(workspaceId: string, limit = 50): { items: TimelineItem[]; loopIterations: Record<string, RalphReportBody[]> } {
+    const items: TimelineItem[] = [];
+    const loopMap: Record<string, RalphReportBody[]> = {};
+
+    // 1. Remote report events (if any were stored locally)
+    const rStmt = this.db.prepare(
+      `SELECT raw, timestamp FROM agent_events
+       WHERE workspace_id = ? AND event_type = 'RemoteReport'
+       ORDER BY timestamp DESC LIMIT ?`
+    );
+    rStmt.bind([workspaceId, limit]);
+    while (rStmt.step()) {
+      const row = rStmt.getAsObject() as Record<string, unknown>;
+      try {
+        const raw = typeof row['raw'] === 'string' ? JSON.parse(row['raw'] as string) as Record<string, unknown> : row['raw'] as Record<string, unknown>;
+        if (raw && raw['type'] === 'remote_report' && raw['report']) {
+          const report = raw['report'] as ReportEnvelope;
+          if (report.type === 'heartbeat') { continue; }
+          items.push({ kind: 'report', data: report, at: report.generatedAt });
+          if (report.type === 'ralph') {
+            const body = report.body as RalphReportBody;
+            if (!loopMap[body.loopId]) { loopMap[body.loopId] = []; }
+            loopMap[body.loopId].push(body);
+          }
+        }
+      } catch { /* skip malformed */ }
+    }
+    rStmt.free();
+
+    // 2. Local hook events as activity items
+    const aStmt = this.db.prepare(
+      `SELECT event_type, tool_name, model, error, input_tokens, output_tokens, session_id, timestamp
+       FROM agent_events
+       WHERE workspace_id = ? AND event_type != 'RemoteReport'
+       ORDER BY timestamp DESC LIMIT ?`
+    );
+    aStmt.bind([workspaceId, limit]);
+    while (aStmt.step()) {
+      const row = aStmt.getAsObject() as Record<string, unknown>;
+      const activity: ActivityItem = {
+        eventType: String(row['event_type']),
+        toolName: row['tool_name'] ? String(row['tool_name']) : undefined,
+        model: row['model'] ? String(row['model']) : undefined,
+        error: row['error'] ? String(row['error']) : undefined,
+        inputTokens: row['input_tokens'] ? Number(row['input_tokens']) : undefined,
+        outputTokens: row['output_tokens'] ? Number(row['output_tokens']) : undefined,
+        sessionId: String(row['session_id']),
+      };
+      items.push({ kind: 'activity', data: activity, at: new Date(Number(row['timestamp'])).toISOString() });
+    }
+    aStmt.free();
+
+    // Sort combined items newest-first
+    items.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+    return { items: items.slice(0, limit), loopIterations: loopMap };
   }
 
   flush(): void {

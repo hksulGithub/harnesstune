@@ -78,6 +78,26 @@
         "command": "harnesstune.interruptChat",
         "title": "Interrupt Chat Session",
         "category": "HarnessTune"
+      },
+      {
+        "command": "harnesstune.addRemoteWorkspace",
+        "title": "Add Remote Workspace",
+        "category": "HarnessTune"
+      },
+      {
+        "command": "harnesstune.messageAgent",
+        "title": "Message Agent",
+        "category": "HarnessTune"
+      },
+      {
+        "command": "harnesstune.configureRemoteWorkspace",
+        "title": "Configure Remote Workspace",
+        "category": "HarnessTune"
+      },
+      {
+        "command": "harnesstune.openReports",
+        "title": "Open Reports",
+        "category": "HarnessTune"
       }
     ],
     "keybindings": [
@@ -104,6 +124,12 @@
       },
       {
         "viewType": "harnesstune.schematic"
+      },
+      {
+        "viewType": "harnesstune.reports"
+      },
+      {
+        "viewType": "harnesstune.chat"
       }
     ],
     "viewsContainers": {
@@ -126,7 +152,8 @@
     }
   },
   "scripts": {
-    "build": "node esbuild.mjs",
+    "build:packages": "tsc --build packages/shared packages/harnesstune-relay packages/harnesstune-agent",
+    "build": "pnpm run build:packages && node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
     "package": "vsce package",
     "test": "jest --passWithNoTests"
@@ -145,7 +172,9 @@
     "typescript": "^5.6.0"
   },
   "dependencies": {
+    "@harnesstune/shared": "workspace:*",
     "chokidar": "^4.0.3",
+    "cron-parser": "^5.5.0",
     "d3-hierarchy": "^3.1.2",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",

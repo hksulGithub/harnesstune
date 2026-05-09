@@ -1,281 +1,209 @@
-# Research Summary: HarnessTune
+# Research Summary: HarnessTune v2.0 — Remote Agent Management
 
-**Project:** HarnessTune — VSCode Extension for Agent Harness Engineering
-**Domain:** IDE extension / multi-agent observability / developer tooling
-**Researched:** 2026-04-16
-**Confidence:** HIGH (core VSCode API + Claude Code hooks); MEDIUM (adapter ecosystem, visualization tradeoffs)
+**Project:** HarnessTune v2.0 — Remote Agent Management
+**Domain:** Remote relay communication + async agent reporting + CLI sidecar daemon added to a v1.0 local-first VSCode extension
+**Researched:** 2026-04-19
+**Confidence:** HIGH
 
 ---
 
 ## Executive Summary
 
-HarnessTune occupies a genuine whitespace in the 2026 tooling landscape. Every competing agent observability platform (LangSmith, AgentOps, Langfuse, Helicone) is a browser-based cloud dashboard requiring a separate account and infrastructure. None of them are embedded in the IDE, none reconstruct live agent topology, and none operate without a cloud dependency. HarnessTune's core proposition — real-time, topology-first, zero-infrastructure monitoring inside VSCode — is technically feasible and has no direct competitor. The research across all four areas confirms this is buildable with well-understood VSCode APIs and a clear integration path via Claude Code's hooks system.
+HarnessTune v2.0 extends the existing local agent dashboard into a remote command center using a relay/mailbox pattern — a well-established async messaging architecture used by Azure, AWS, and purpose-built agent management tools like AgentMail. The pattern requires three new deployable units: a stateless relay API (Vercel serverless + Turso SQLite), an agent CLI sidecar that runs on each remote machine alongside the AI agent, and a RemoteAdapter inside the existing extension. The extension's v1.0 adapter interface, workspace registry, sidebar, and SecretStore are all designed in a way that makes remote integration additive — no rewrites required, only targeted extensions.
 
-The recommended build approach is: Claude Code HTTP hooks as the primary data source (they emit 24 lifecycle events including SubagentStart/SubagentStop, which are the backbone of topology reconstruction), a local HTTP server in the extension host to receive those hooks, a typed adapter layer to normalize events from multiple backends, and React-based WebviewPanels for the dashboard and schematic. The agent graph should use D3.js v7 with d3-force for live rendering (not Mermaid — Mermaid cannot dynamically add/remove nodes without full re-render and flicker, which disqualifies it for live topology). Internally, research converges on React Flow as an alternative worth evaluating for the schematic panel given its built-in drag, zoom, minimap, and edge routing.
+The recommended build order is strictly determined by dependencies: relay API first (everything else depends on it), then agent CLI (enables report upload and message polling), then extension type changes and RemoteAdapter, then the sidebar add-remote flow, then the ReportPanel UI. The relay must be designed right on the first pass — its API contract (pagination, `X-Agent-Version` header, paginated endpoints) is hard to retrofit without breaking deployed agents. The agent CLI and relay together form the "spine" of v2.0; the extension UI is the "face." Build the spine before the face.
 
-The primary risks are: (1) extension memory pressure from multiple simultaneous WebviewPanels — each is a full browser iframe consuming 80–150MB; mitigate by lazy-creating panels and disposing them aggressively. (2) node-pty / native binary packaging if an embedded PTY terminal is required — defer this to v2 and use VSCode's native Pseudoterminal API for v1. (3) data model fragility if the internal event schema is built without alignment to OpenTelemetry GenAI semantic conventions — align from day one so HarnessTune can export to external tools later. All three risks are avoidable with deliberate architectural choices in Phase 1.
+The dominant risks are operational and security, not architectural. Vercel Hobby plan's 100K monthly invocation cap is reachable in days with aggressive polling intervals. Token comparison must use `crypto.timingSafeEqual` from day one. Two existing TypeScript types — `BackendType` (defined in two files) and `WorkspaceRecord` (no local/remote discriminant) — must be consolidated before any feature work begins. These are pre-work items, not phase items. Missing them causes silent runtime failures and TypeScript blind spots that compound across all subsequent phases.
 
 ---
 
 ## Key Findings
 
-### Stack Decisions
+### Stack Additions
 
-All four researchers converge on the same core stack. No conflicts.
+v2.0 adds a narrow, well-chosen dependency surface. No new libraries are needed in the extension — RemoteAdapter uses Node.js built-in `fetch` and the existing SecretStore. All new packages live in the two new monorepo packages.
 
-**Extension host (Node.js):**
-- **TypeScript** with separate `tsconfig.extension.json` (no DOM) and `tsconfig.webview.json` (with DOM) — mandatory, not optional, because extension host and webview are different runtimes
-- **esbuild** for bundling, not webpack — 50x faster build times, critical for the dev loop; dual entry point: CJS for extension host, ESM per webview bundle
-- **`sql.js`** for SQLite (NOT `better-sqlite3`) — `better-sqlite3` requires native C++ compiled against VSCode's specific Electron version; `sql.js` uses WebAssembly, zero compilation issues
+**Core technologies:**
+- **Hono `^4.12.14`** — HTTP framework for the relay; serverless-native, zero-config Vercel deployment, built-in bearer auth middleware, smaller bundle than Express.
+- **@libsql/client `^0.17.2`** — Turso database client required by Drizzle ORM; use `./http` subpath for Vercel Node.js runtime compatibility.
+- **drizzle-orm `^0.45.2` + drizzle-kit `^0.31.10`** — type-safe schema and migrations; critical for managing relay DB schema across multi-machine deployments without manual SQL.
+- **zod `^4.3.6`** — request body validation at the relay boundary; native Hono integration.
+- **commander `^14.0.3`** — CLI entry point for `npx harnesstune-agent`; industry standard, zero runtime deps.
+- **node-cron `^4.2.1`** — scheduling report uploads and message polling cycles within the CLI daemon.
+- **chokidar** (existing v1.0 dep) — file watching on remote machines; reused in agent CLI without adding a new dep.
+- **Node.js built-in crypto** — token generation (`randomBytes`) and constant-time comparison (`timingSafeEqual`); no external auth library.
 
-**Webview UI (browser sandbox):**
-- **React 18** via `webview-ui/` directory, one React app per panel type (dashboard, schematic, chat, sidebar)
-- **D3.js v7 + d3-force + dagre** for the agent schematic — D3 supports reactive node/edge updates without full re-render; Mermaid does not
-- **React Flow** as alternative to raw D3 for schematic — evaluate in Phase 2; higher-level API, built-in minimap and controls, MIT licensed (verify commercial terms for HarnessTune's distribution model)
-- **VSCode CSS variables** for all theming — never hardcode colors; use `--vscode-sideBar-background`, `--vscode-list-activeSelectionBackground`, etc.
-- No `@vscode/webview-ui-toolkit` — officially deprecated January 2025; use VSCode Elements (community-maintained) or plain CSS with VSCode variables
+**Explicitly rejected:** Express, JWT/jsonwebtoken, PM2/forever, axios/got, Prisma, socket.io/ws. All rejections have clear rationale in STACK.md.
 
-**Messaging:**
-- **Typed message contracts** (`HostToWebviewMessage` / `WebviewToHostMessage` union types) with UUID correlation IDs for request/response pairs
-- **`vscode-messenger`** (TypeFox) as drop-in RPC library rather than building the correlation layer from scratch
-
-**State & persistence:**
-- **`globalStorageUri`** (filesystem) for workspace registry JSON and `sql.js` SQLite database
-- **`workspaceState`** (VSCode Memento) for active panel/selection state
-- **`context.secrets`** for API keys — never `globalState`
-- **`getState/setState` + `WebviewPanelSerializer`** for webview persistence across hide/show and VSCode restarts
-
-**Integration:**
-- **Claude Code HTTP hooks** — primary data intake; hooks POST to `localhost:PORT` on all 24 lifecycle events; auto-inject hook config into `~/.claude/settings.json` on adapter connect, remove on disconnect
-- **OTel GenAI semantic conventions** — align internal `AgentEvent` schema to these from day one
-- **`RelativePattern`** for all file watchers — string glob patterns only watch inside the current VSCode workspace folder; `RelativePattern` with absolute base path works anywhere
+Full source: `.planning/research/STACK.md`
 
 ---
 
-### Expected Features
+### Feature Landscape
 
-**Must-have (table stakes — Phase 1):**
-- Workspace registry: add/remove/list agent workspaces with sidebar list
-- Status badges per agent (traffic light: running/idle/warning/error/unknown) — always pair color with icon, never color alone
-- Agent detail panel: role, status, recent actions (last 5–10), config excerpt
-- Pause/Resume/Stop controls per agent — safety requirement; without these users have no recourse for runaway agents
-- Status bar summary (running count + error badge)
-- Error notifications: toast for warnings/errors, status bar badge for informational events
-- Command Palette integration: all actions reachable via `HarnessTune:` prefix
-- File watcher pipeline: watch agent directories → debounce → refresh health display
+The relay/mailbox is the dependency anchor — without it, nothing else in v2.0 is buildable. The MVP is a complete end-to-end loop: agent registers → uploads briefing → extension reads it → engineer can reply. Ralph loop reports and full async chat are v2.0-completeable but can trail the MVP.
 
-**Should-have (Phase 2 differentiators):**
-- Interactive agent schematic (D3/React Flow webview): live topology with node click-to-inspect, edge animation for message-in-flight, dagre hierarchical layout
-- Live event stream panel (bottom panel area): timestamped cross-agent events, color-coded by type, filterable
-- Sparklines in agent list rows (60–80px, 20–24px tall, trend-only, no axis labels)
-- Budget/cost display per agent (wallet icon + running total + cap inline in agent header)
-- Decision ledger / audit log per agent (searchable: what was done, why allowed, what it cost)
-- Claude Code adapter: HTTP hook server + auto settings.json injection
-- OpenClaw adapter: JSONL file tailing via `chokidar` or `fs.watch`
+**Must have (table stakes — cannot ship without):**
+- Relay API: document store (channels + messages + reports), token-based auth with `?since=` cursor pagination, health check endpoint, one-command Vercel deploy
+- Agent CLI: `npx` zero-install entry, registration, briefing report upload, message polling with exponential backoff, heartbeat, `--dry-run` flag, config file management
+- Daily briefing report: goals / progress / blockers / next steps / metrics snapshot — universally applicable regardless of AI agent framework
+- Remote workspace management: "Add Remote Workspace" command, sidebar integration alongside local workspaces, connection error states (network vs 401 vs stale)
+- Report Timeline UI: chronological feed, briefing cards with blocker call-out, message composer, type filtering
 
-**Defer to v2+:**
-- Embedded xterm.js PTY terminal in webview (requires `node-pty` native binaries — complex VSIX packaging; defer until explicitly required)
-- Policy studio / guardrail editor (use config files initially)
-- Anomaly detection with user-configurable thresholds (needs baseline data before meaningful detection)
-- Paperclip adapter (polling-based, low priority)
-- OpenCode ACP adapter (requires user to start OpenCode with ACP enabled)
-- Mermaid "export as diagram" (static export only; not for live rendering)
-- Multi-model selector in chat
+**Should have (differentiators):**
+- Ralph loop progress reports with convergence chart (D3 line chart, iteration × metric) — no prior art in agent management IDEs
+- Blocker highlighting badge in sidebar (non-null `blockers` triggers red indicator)
+- Stale report indicator (workspace dims if last briefing >48h old)
+- Slash command routing (`/pause`, `/resume`, `/stop`) from async chat to local agent session
+- `npx harnesstune-agent report` for on-demand report uploads
+- Message TTL / auto-expiry to prevent unbounded Turso growth
+
+**Defer to v2.1 without blocking v2.0:**
+- Auto-synthesize briefing from log files (agent CLI parsing transcripts without AI cooperation)
+- Multi-workspace morning summary rollup
+- Loop comparison (A vs B)
+- Inline report commenting with `in_reply_to_report_id` routing
+- Framework auto-detection (Claude Code vs OpenClaw vs generic)
+- Self-host LAN relay script
+
+**Hard anti-features to enforce:** WebSocket/SSE on relay (Vercel cannot hold persistent connections), relay-side message schema validation (keep relay dumb), inbound HTTP server on agent machine (breaks outbound-only networking), token in settings.json (use SecretStore or local 0600 file).
+
+Full source: `.planning/research/FEATURES.md`
 
 ---
 
-### Architecture Approach
+### Architecture
 
-The extension has two runtimes that must never be conflated: the **extension host** (Node.js, full VSCode API access, runs the HTTP hook server and file watchers) and the **webview sandbox** (browser iframe, no Node.js, communicates only via `postMessage`). Every architectural decision follows from this boundary. The sidebar uses a `WebviewView` (always-on, registered via `registerWebviewViewProvider`) because the workspace list needs custom health indicators that TreeView cannot render. Each workspace opens a set of `WebviewPanel` instances in the editor area, managed in a `Map<workspaceId, WebviewPanel>` with `onDidDispose` cleanup. State flows one direction: extension host is source of truth; webviews hold display state only.
+The integration is fully additive. v1.0 local workspace behavior is entirely unchanged. `AgentBackendAdapter` interface: no modification. `AdapterRegistry`, `handleEvent()`, `SecretStore`, `HookServer`, `SchematicPanel`: zero changes. All modified components accept additive field additions only.
 
-**Major components:**
+**Major components and responsibilities:**
 
-1. **Extension Host Core** — activation, storage (JSON registry + sql.js SQLite), file watcher pipeline, HTTP hook server, adapter registry
-2. **Adapter Layer** — one `AgentBackendAdapter` implementation per backend (ClaudeCodeHookAdapter, OpenClawAdapter, etc.); all normalize to the shared `AgentEvent` schema (OTel-aligned)
-3. **Panel Manager** — manages lifecycle of `WebviewPanel` instances per workspace (dashboard, schematic, chat); handles `WebviewPanelSerializer` for cross-restart persistence
-4. **Sidebar WebviewView** — always-visible workspace list with health indicators; acts as the persistent state hub so panels can be disposed and recreated cheaply
-5. **Webview React Apps** — one per panel type; communicate with host via typed `postMessage`; persist UI state via `getState/setState`
-6. **D3/React Flow Schematic** — runs entirely in webview; receives `AgentEvent` stream via postMessage; reconstructs topology from `SubagentStart/SubagentStop` + `parent_tool_use_id`
+1. **harnesstune-relay** — stateless Vercel serverless REST API; dumb document store only. Endpoints: channels (registration), reports (upload/list/fetch), messages (post/poll/ack). Turso schema: 4 tables (channels, tokens, reports, messages). Token stored as SHA-256 hash only; raw token shown once at registration.
+
+2. **harnesstune-agent** — Node.js CLI daemon on remote machine. Internal modules: RegistrationClient, LocalAdapterDelegate, ReportScheduler, MessagePoller, InstructionRouter (stub acceptable for v2.0). Config in `~/.harnesstune-agent/<channel-id>.json`. PID file required for orphan detection.
+
+3. **RemoteAdapter** — new implementation of `AgentBackendAdapter`; polling loop with `setInterval`; emits synthetic `AgentEvent` objects derived from report data into the existing `handleEvent()` pipeline. Uses `RelayClient` (thin fetch wrapper). No new npm deps in the extension.
+
+4. **ReportPanel** — new `WebviewPanel` (separate from DashboardPanel); chronological report timeline, convergence chart (D3), MessageComposer. Opened via `harnesstune.showReports` command.
+
+**Key patterns:**
+- Two separate databases: extension's local sql.js (unchanged) and Turso (remote reports/messages). No schema coupling.
+- Remote report data fetched on demand and cached in-memory in RemoteAdapter — not locally persisted in v2.0.
+- `authToken` never in workspaces.json — SecretStore keyed by `workspaceId`.
+- Report JSON payload typed by `report_type` field; relay stores opaque blob; clients own validation.
+
+**Build order (dependency-driven):**
+1. Relay API → 2. Agent CLI → 3. Extension type changes → 4. RemoteAdapter → 5. Sidebar add-remote flow → 6. ReportPanel UI → 7. End-to-end test
+
+Full source: `.planning/research/ARCHITECTURE.md`
 
 ---
 
 ### Critical Pitfalls
 
-1. **Calling `acquireVsCodeApi()` more than once per webview script** — throws on the second call. Store the return value in module scope immediately on script load. This is the single most common webview bug.
+Six pitfalls rise to "must address" severity (causes rewrite or security incident):
 
-2. **Using `retainContextWhenHidden: true` on all panels** — each retained panel holds a full browser context in memory (80–150MB). With 3+ workspaces open this becomes visible memory pressure. Use `getState/setState` for data panels; only retain the chat/terminal panel where PTY reconnect is genuinely complex.
+1. **BackendType defined in two files** — adding `'remote'` to one without the other compiles but silently fails at runtime. Fix: consolidate to single canonical source before any v2.0 code.
 
-3. **`node-pty` in v1** — requires native C++ binaries compiled per platform (win32/darwin/linux, arm64/x64). Has bitten many extensions at VSIX publish time. Use VSCode's native `Pseudoterminal` API instead; defer embedded xterm.js to v2.
+2. **WorkspaceRecord has no local/remote discriminant** — optional field proliferation without `mode: 'local' | 'remote'` breaks TypeScript narrowing throughout. Fix: add discriminant, migrate registry JSON to version 2. Pre-work, not a phase item.
 
-4. **Not registering `WebviewPanelSerializer`** — panels will not reopen after VSCode restart. Required activation event: `"onWebviewPanel:harnesstune.<panelType>"` in `package.json`. Known VSCode bug (#240207) means state sometimes persists without a serializer — do not rely on this; implement the serializer explicitly.
+3. **Vercel Hobby 100K invocation cap** — 10 agents × 1-min interval × 30 days = 432,000 invocations (4.3x cap). Fix: enforce minimum 5-min interval in CLI defaults; jitter every poll cycle by `+Math.random() * 60s`; document the math in setup guide.
 
-5. **Mermaid.js for live topology** — Mermaid cannot dynamically add/remove nodes without clearing the DOM and re-running `mermaid.init()`, causing flicker on every update. Click events have a known bug history. Its `securityLevel: 'loose'` mode (required for click handlers) introduces CSP concerns in the webview context. Use D3.js for live graph; use Mermaid only for static text export.
+4. **Vercel 4.5MB payload limit** — large briefings or long Ralph loops will exceed it. Fix: paginated report list API (metadata-only on list, full body on `/reports/:id`) must be in v2.0.0 contract — retrofitting breaks deployed agents.
 
-6. **Storing agent `rootPath` as a relative path** — VSCode opens in different working directories depending on how it's launched. Relative paths silently resolve to wrong locations. Always store absolute paths in the workspace registry.
+5. **Token comparison using string equality** — short-circuits and leaks timing information. Fix: `crypto.timingSafeEqual` everywhere in relay auth; length-normalize buffers. Non-negotiable before public deployment.
 
-7. **String glob patterns in FileSystemWatcher** — only watch paths inside the current VSCode workspace folder. Agent directories are typically outside the open workspace (`~/.claude/`, `/Users/...`). Always use `RelativePattern` with an absolute base path.
+6. **Token leakage in logs** — Hono logger and agent fetch wrapper log `Authorization` header. Fix: `sanitizeHeaders` middleware on relay; `Bearer [REDACTED]` in agent CLI logs; never use token as query parameter.
 
-8. **`@vscode/webview-ui-toolkit`** — deprecated January 2025. Do not use. Switch to VSCode Elements or plain CSS with VSCode CSS variables.
+Additional moderate pitfalls: orphaned agent processes (PID file + signal handlers), cold start latency (8s timeout + "connecting" state), unbounded local retry queue (cap at 48 reports, disk-persist), Turso stale connection on warm starts (initialize client per-request), npx version drift vs relay API (`X-Agent-Version` header from day one), webview message contract versioning (add `version` field to all message types).
+
+Full source: `.planning/research/PITFALLS.md`
 
 ---
 
 ## Implications for Roadmap
 
-### Phase 1: Foundation — Registry, Watchers, Sidebar
+### Pre-Work: Monorepo + Type Consolidation
 
-**Rationale:** Everything else in HarnessTune depends on knowing which workspaces and agents exist. The workspace registry + file watcher pipeline + sidebar are the prerequisite for every subsequent panel and feature. WORKSPACE.md explicitly recommends this sequencing: "Registry first. Everything else depends on it."
-
-**Delivers:**
-- Extension scaffolding with esbuild dual-target build (extension host CJS + sidebar webview ESM)
-- Workspace registry JSON schema and CRUD at `globalStorageUri`
-- File watcher pipeline (RelativePattern → debounce → health refresh)
-- Sidebar WebviewView with React: workspace list, status badges, agent tree
-- Status bar item (running count + error badge)
-- Command Palette registration (`HarnessTune:` prefix)
-- `context.secrets` storage for API keys
-- `workspaceState` persistence for active selection
-
-**Addresses:** Agent list tree view, status badges, status bar summary, Command Palette integration (all UX must-haves)
-
-**Avoids:** RetainContextWhenHidden overuse, relative path storage, missing WebviewPanelSerializer
-
-**Research flag:** Standard patterns — skip research-phase. VSCode API is HIGH confidence; esbuild setup is well-documented.
+**Rationale:** Two TypeScript issues cause silent failures in every subsequent phase if not resolved first. Monorepo structure must also precede cross-package imports.
+**Delivers:** `BackendType` consolidated to single definition with `'remote'` added; `mode: 'local' | 'remote'` discriminant on `WorkspaceRecord`; registry migrated to version 2; monorepo structure (`packages/harnesstune-relay`, `packages/harnesstune-agent`, root extension); TypeScript project references.
+**Avoids:** Pitfalls 1 and 2 (BackendType duplication, local/remote state mixing), Pitfall 15 (monorepo build order).
+**Research flag:** SKIP — standard TypeScript patterns.
 
 ---
 
-### Phase 2: Claude Code Adapter + Dashboard Panel
+### Phase 1: Relay API
 
-**Rationale:** Claude Code is the first and deepest integration target. Its hooks system provides 24 lifecycle events via HTTP POST — this is the primary data source for all monitoring features. The dashboard panel gives users their first real view of agent health beyond the sidebar tree. Build the adapter layer and dashboard together so the data pipeline is testable end-to-end.
-
-**Delivers:**
-- Local HTTP server in extension host to receive Claude Code hook POSTs
-- `ClaudeCodeHookAdapter` implementing `AgentBackendAdapter` interface
-- Auto-inject / auto-remove hook config in `~/.claude/settings.json`
-- Shared `AgentEvent` schema aligned with OTel GenAI semantic conventions
-- `sql.js` SQLite database for token events and agent events tables
-- Dashboard `WebviewPanel` with React: summary cards (total/running/error/cost), agent grid, agent detail panel
-- Pause/Resume/Stop controls wired to Claude Code session management
-- Agent detail panel: role, model, current task, recent actions, config excerpt
-- `WebviewPanelSerializer` for dashboard persistence across restarts
-- Toast notification logic: errors → toast; informational → status bar only
-
-**Addresses:** Claude Code as first adapter, agent detail panel, pause/resume/stop controls, error notifications, budget display (basic), decision ledger foundation
-
-**Avoids:** Full-page refresh for live updates (patch components via postMessage), modal dialogs for routine actions, toasts for every event
-
-**Research flag:** The hooks auto-injection pattern (writing to `~/.claude/settings.json` programmatically) needs validation — confirm the settings.json schema accepts runtime additions without corrupting user config. Known bug in `claude-agent-sdk-python` (#573) where subprocess inherits `CLAUDECODE=1` env var; HTTP hooks avoid this but should be tested.
+**Rationale:** Every v2.0 feature depends on a callable relay. The relay's API contract (pagination shape, `X-Agent-Version` header, auth pattern) is taken as a dependency by all downstream packages — changing it after the fact breaks deployed agents. Design it right once.
+**Delivers:** Live Vercel deployment; Turso schema (channels, tokens, reports, messages); full REST endpoint set; SHA-256 token hash auth with `crypto.timingSafeEqual`; paginated report list; `GET /health`; `X-Agent-Version` rejection; header sanitization in logger.
+**Uses:** Hono, @libsql/client (./http), drizzle-orm + drizzle-kit, zod, @hono/node-server (dev only).
+**Avoids:** Pitfalls 3 (invocation cap), 4 (payload limit — pagination in contract from day one), 5 (timing attack), 6 (token log leakage), 11 (Turso stale connection), 13 (version drift), 14 (10s timeout — dumb mailbox pattern).
+**Research flag:** SKIP — Turso + Vercel + Hono officially documented with integration guides.
 
 ---
 
-### Phase 3: Agent Schematic (Live Topology Graph)
+### Phase 2: Agent CLI (harnesstune-agent)
 
-**Rationale:** The schematic is HarnessTune's visual differentiator — no competitor offers IDE-embedded live topology. It depends on Phase 2's adapter pipeline (needs `SubagentStart/SubagentStop` events from the Claude Code adapter) and on Phase 1's panel manager infrastructure. Building it third allows the graph reconstruction algorithm to be tested against real hook data rather than mocks.
-
-**Delivers:**
-- Schematic `WebviewPanel` with React + D3.js v7 / d3-force / dagre
-- Multi-agent topology reconstruction from `SubagentStart`, `SubagentStop`, `parent_tool_use_id`
-- Node types: orchestrator, agent, tool call, data source, human checkpoint
-- Live edge animation (traveling dot on message-in-flight)
-- Click-to-inspect: clicking node opens agent detail in sidebar, diagram stays visible
-- Hover tooltips: name, status, last action, response time (under 220px wide)
-- Zoom/pan, "Fit to view" (Cmd+Shift+F), minimap for large graphs
-- Layout toggle: dagre hierarchical (default) / force-directed (exploration mode)
-- Schematic state persistence via `getState/setState`
-
-**Addresses:** Interactive agent graph, live event stream (basic version), multi-agent flow visualization
-
-**Avoids:** Mermaid for live rendering, D3 main-thread blocking on large graphs (use Web Worker for layout computation if graph exceeds 20 nodes)
-
-**Research flag:** Needs research-phase for React Flow vs. raw D3 decision. React Flow's commercial licensing terms need verification before committing to it for HarnessTune's distribution model. Also evaluate `d3-dag` vs `dagre` for hierarchical layout — `dagre` is unmaintained (last commit 2021); `d3-dag` is the maintained replacement.
+**Rationale:** The CLI is the agent's voice. Build against the live staging relay from Phase 1 for real integration testing.
+**Delivers:** `npx harnesstune-agent` entry point; registration flow; daily briefing report upload; message polling (60s default + jitter); heartbeat; PID file + SIGTERM/SIGINT/SIGHUP handlers; `stop` subcommand; bounded local retry queue (48-report cap, disk-persisted); `--dry-run` flag.
+**Uses:** commander, node-cron, chokidar (existing); Node.js built-in fetch + crypto.
+**Implements:** RegistrationClient, LocalAdapterDelegate, ReportScheduler, MessagePoller (InstructionRouter stub acceptable for v2.0).
+**Avoids:** Pitfalls 6 (token log leakage in agent), 7 (orphaned processes), 9 (unbounded queue), 10 (thundering herd), 16 (agent cannot force reports — watch well-known dir + heartbeat fallback).
+**Research flag:** SKIP — sidecar daemon pattern is established; Commander and node-cron are standard.
 
 ---
 
-### Phase 4: Event Stream + Sparklines + Audit Log
+### Phase 3: Extension Types + RemoteAdapter
 
-**Rationale:** These features add depth to monitoring without requiring new infrastructure — they consume the same `AgentEvent` stream already established in Phase 2. Building them fourth means they can be developed against real data and with real agents running, making UX validation meaningful.
-
-**Delivers:**
-- Event stream panel in VSCode bottom Panel area: timestamped cross-agent events, color-coded, filterable by agent/event type
-- Sparklines in agent list rows (D3 mini line charts, 60–80px wide, trend-only)
-- Decision ledger: searchable per-agent audit log (what, why, cost, result)
-- Anomaly display in dedicated Alerts view (tree view or webview table); status bar badge increment, not toasts
-- Budget meter: wallet icon + running total + cap in agent header
-- "Stale data" dimming: visually dim components with no update for >30s, show "last seen" timestamp
-
-**Addresses:** Live event stream, sparklines, decision ledger/audit log, anomaly display, cost awareness
-
-**Research flag:** Standard patterns — skip research-phase. Canvas-based rendering (reference: disler's implementation) is the highest-performance option for high-frequency events; evaluate whether the React-based event stream meets performance requirements or needs a canvas fallback.
+**Rationale:** Lock TypeScript message contracts before building UI components — type churn after UI is written is expensive. RemoteAdapter enables sidebar and ReportPanel to be integration-tested against real relay data.
+**Delivers:** New `HostToWebviewMessage` and `WebviewToHostMessage` variants (with `version` field); `ReportDocument`, `DailyBriefingReport`, `RalphLoopReport` types; `RemoteAdapter` with polling loop + synthetic `AgentEvent` emission; `RelayClient` fetch wrapper; `'remote'` registered in `AdapterRegistry`; lazy report body fetching (metadata on poll, full body on demand).
+**Avoids:** Pitfall 2 (webview message versioning), 8 (cold start — 8s timeout + "connecting" state), 18 (report memory pressure — lazy fetch).
+**Research flag:** SKIP — adapter interface pattern established in v1.0 codebase.
 
 ---
 
-### Phase 5: Additional Adapters (OpenClaw, Workspace Scaffolding)
+### Phase 4: Remote Workspace Management (Sidebar)
 
-**Rationale:** Once the core monitoring loop works for Claude Code, adding more adapters is incremental. OpenClaw is the second-highest priority adapter (JSONL tailing, no API keys needed, low friction). Workspace scaffolding (template-based new-workspace creation) is a quality-of-life feature that requires the registry to be stable first.
-
-**Delivers:**
-- `OpenClawAdapter`: tail `~/.openclaw/agents/<agentId>/sessions/*.jsonl` via `chokidar`; parse nd-JSON incrementally
-- Workspace scaffolding: template-based creation of `CLAUDE.md`, `.claude/settings.json`, `context/`, `work-log/` directories
-- Template variables: `{{AGENT_NAME}}`, `{{AGENT_ROLE}}`, `{{CREATED_DATE}}`, `{{MODEL}}`
-- Post-scaffold validation: verify all files created, register workspace, add FileSystemWatcher, open dashboard panel
-- `WorkspaceRecord.tags` and `archived` field for workspace management
-
-**Addresses:** Multi-backend normalization, workspace templates, agent identity convention (named agents vs. parallel instances)
-
-**Research flag:** Agent identity vs. instance — if HarnessTune must handle multiple parallel instances of the same agent type, the tree view and graph need a naming/grouping convention. Define this before Phase 5 scaffolding; it affects the `AgentRecord.id` schema.
+**Rationale:** Once RemoteAdapter can fetch data, expose the user-facing flow to add and manage remote workspaces. Makes remote workspaces first-class citizens in the sidebar alongside local ones.
+**Delivers:** `harnesstune.addRemoteWorkspace` command (relay URL + token QuickInput, channel verification, SecretStore storage, registry.add); `WorkspaceRegistry.add()` extended for remote fields; `SidebarViewProvider` handler for `workspace:addRemote`; sidebar "Add Remote Workspace" UI path; status indicators (running/idle/error/stale); last-seen timestamp in sidebar row; relay URL grouping.
+**Avoids:** Pitfall 17 (token rotation — design rotation endpoint alongside add-workspace flow).
+**Research flag:** SKIP — workspace registry extension is a standard additive change; sidebar patterns established in v1.0.
 
 ---
 
-### Phase 6: Embedded Terminal / Chat Command Surface
+### Phase 5: Report Timeline UI + Async Chat
 
-**Rationale:** Deferred to last because it has the highest implementation complexity and the least dependency from other phases. Use VSCode's native `Pseudoterminal` API (not node-pty) for v1. The chat panel is not a coding assistant — it is a command-and-control surface. Design the UX accordingly: command-console feel, structured output rendering (JSON/tables), persistent session context per agent.
+**Rationale:** Build the UI last — it depends on stable types (Phase 3) and a working data source (RemoteAdapter). Report Timeline and Async Chat share the same WebviewPanel and timeline feed, so they are more efficient built together than separately.
+**Delivers:** `ReportPanel` WebviewPanel with serializer; `ReportTimeline` React component (chronological feed, type filtering); `BriefingReportCard` with blocker call-out box; `RalphLoopReportCard` with +/- delta rendering; `RalphLoopChart` (D3 line chart, iteration × metric); `MessageComposer`; interleaved chat + reports in one timeline; inline reply on report cards; `harnesstune.showReports` command; paginated load (last 20, "Load more").
+**Research flag:** MEDIUM confidence — convergence chart in a VSCode webview has no confirmed prior art. D3 in a sandboxed webview context may require specific CSP configuration. Prototype the chart component before committing full Phase 5 scope.
 
-**Delivers:**
-- Pseudoterminal per workspace (`Agent: <workspace-name>`) via VSCode native API
-- Bash integration: `terminal.shellIntegration.executeCommand()` and `onDidEndTerminalShellExecution` for tracking agent task outcomes
-- Chat/command panel WebviewView: slash commands (`/pause`, `/log`, `/config`), streaming token output, structured output rendering
-- `retainContextWhenHidden: true` for chat panel only (PTY reconnect complexity justifies the memory cost)
-- Keybindings: `Cmd+Shift+H` (open sidebar), `Cmd+.` (pause agent), `Cmd+L` (open agent log)
+---
 
-**Addresses:** Embedded terminal chat, per-agent command surface, keyboard accessibility
+### Phase 6: Polish + Operational Hardening
 
-**Avoids:** node-pty in v1, wizard flows inside webview, modal dialogs for chat actions
-
-**Research flag:** If users require the terminal to appear inline within the schematic panel (not in the VSCode panel area), this requires Approach B (xterm.js + node-pty). That is a v2 decision requiring explicit user research to justify the packaging complexity.
+**Rationale:** Close operational gaps before v2.0 ships. Plant seeds for v2.1 (framework auto-detection stub, report synthesis from logs).
+**Delivers:** Message TTL / auto-expiry per channel type; invocation math documented in setup guide; multi-workspace morning digest command; blocker badge in sidebar; stale workspace dimming (>48h); `version` field audit across all webview message types; end-to-end integration test pass (remote machine → relay → extension round trip).
+**Research flag:** SKIP — all operational patterns have clear prior art.
 
 ---
 
 ### Phase Ordering Rationale
 
-- Phase 1 before everything: the workspace registry is the shared data model; panels, adapters, and watchers all depend on it
-- Phase 2 before Phase 3: the schematic needs real event data to reconstruct topology; building the schematic against mocks risks designing for the wrong data shape
-- Phase 4 after Phase 2: event stream and sparklines consume the same pipeline; build the pipeline first, enrich visualization second
-- Phase 5 after Phase 2: additional adapters are incremental once the adapter interface is proven with Claude Code
-- Phase 6 last: highest complexity, lowest cross-dependency, can be deferred without blocking any other phase
+- **Relay before everything:** The relay API contract is the only cross-package contract. Define it precisely, deploy it, and treat changes as breaking. Every other component takes it as a dependency.
+- **Agent CLI before extension UI:** The extension UI can only be meaningfully tested with real data arriving from a real agent. Build the data producer before the data consumer.
+- **Types before UI:** WebviewPanel message contracts are the inner contract within the extension. Changing them after components are built causes ripple rewrites.
+- **Sidebar before ReportPanel:** Users reach ReportPanel by clicking a workspace in the sidebar. The entry point must exist before the destination.
+- **Ralph loop reports trail briefings within phases:** Daily briefing reports are universally applicable. Ralph loop reports require agents running improvement loops. Build briefings first; add ralph loop support in Phase 5 alongside the convergence chart.
 
 ---
 
 ### Research Flags
 
-**Needs research-phase during planning:**
-- Phase 3: React Flow vs. raw D3 commercial licensing; `dagre` (unmaintained) vs `d3-dag` for hierarchical layout
-- Phase 2: Hook auto-injection safety — test that programmatic writes to `~/.claude/settings.json` do not corrupt user config; validate HTTP hook behavior under `CLAUDECODE=1` subprocess env var bug
-- Phase 5: Agent identity vs. parallel instance naming convention — must be defined before registry schema is finalized
+Phases needing deeper research during planning:
+- **Phase 5 (ReportPanel — convergence chart):** D3 in a sandboxed VSCode webview for iterative line charts has no confirmed prior art. Prototype before committing scope. CSP configuration for D3 in this context may require adjustment.
 
-**Standard patterns (skip research-phase):**
-- Phase 1: esbuild dual-target, WebviewView sidebar, RelativePattern watchers — all HIGH confidence, well-documented
-- Phase 4: Event stream and sparklines — consume existing pipeline; no novel architecture
-- Phase 6: Pseudoterminal API — HIGH confidence, official docs, used by multiple major extensions
-
----
-
-## Conflicts and Tensions Between Researchers
-
-| Topic | TECHNICAL.md | ECOSYSTEM.md | UX.md | Resolution |
-|-------|-------------|--------------|-------|------------|
-| Sidebar: TreeView vs WebviewView | WebviewView (custom health indicators exceed TreeView) | Not addressed | TreeView recommended for agent list | **WebviewView wins** — UX.md's TreeView recommendation does not account for sparklines and custom badge shapes; TECHNICAL.md and WORKSPACE.md both recommend WebviewView for the sidebar once health indicators are in scope |
-| Schematic library | Mermaid for v1, D3 for v2 | D3 recommended (Mermaid flicker/click bug disqualifies it) | React Flow / Cytoscape.js | **D3 or React Flow directly** — ECOSYSTEM.md's detailed analysis of Mermaid's re-render limitations overrides TECHNICAL.md's conservative v1 recommendation; evaluate React Flow in Phase 3 planning |
-| Terminal approach | Native Pseudoterminal for v1 | Not addressed | Persistent sidebar chat panel | **Native Pseudoterminal** confirmed — both researchers agree on deferring node-pty |
-| Panel sidebar persistence | getState/setState + Serializer | Not addressed | workspaceState for active workspace | **Both**: webview getState/setState for UI state; workspaceState for active selection — not in conflict, different layers |
+Phases with standard patterns (skip research-phase):
+- Pre-Work, Phase 1, Phase 2, Phase 3, Phase 4, Phase 6 — all patterns are well-documented, officially sourced, or established in v1.0 codebase.
 
 ---
 
@@ -283,68 +211,56 @@ The extension has two runtimes that must never be conflated: the **extension hos
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| VSCode Extension API (layout, webviews, panels, watchers) | HIGH | Official docs; confirmed by Cline/other production extensions |
-| Claude Code hooks integration | HIGH | Official hooks documentation; 24 events verified |
-| Build tooling (esbuild, tsconfig split) | HIGH | Verified benchmarks; pattern used by multiple extensions |
-| State persistence (getState/setState, Serializer) | HIGH | Official docs; known bug (#240207) documented and mitigated |
-| D3.js for live schematic | HIGH | D3 data binding is the right fit; specific implementation detail (dagre vs d3-dag) needs validation |
-| sql.js vs better-sqlite3 | MEDIUM | Community consensus; native module issues confirmed by multiple reports but not officially documented |
-| Adapter ecosystem (OpenClaw, Paperclip, OpenCode) | MEDIUM | Architectures inferred from changelogs and docs; internal event formats not fully documented |
-| React Flow licensing | MEDIUM | MIT for open source; commercial terms need verification for HarnessTune's distribution model |
-| Agent identity / parallel instances | LOW | No established convention; HarnessTune-specific design decision needed |
-| OTel GenAI semantic conventions adoption timeline | LOW | Direction is clear; specific convention stability for 2026 tools needs monitoring |
+| Stack | HIGH | All packages verified against npm 2026-04-19; official Turso + Hono + Vercel + Drizzle integration guides exist |
+| Features | HIGH | Relay/mailbox is well-established; Ralph loop has active open-source ecosystem; async chat is standard request-reply |
+| Architecture | HIGH | Based on direct v1.0 codebase inspection; all integration points identified; additive changes confirmed |
+| Pitfalls | HIGH (Vercel/security) / MEDIUM (CLI daemon) | Vercel limits and timing attacks confirmed from official docs; orphaned process patterns from community sources |
 
-**Overall confidence: HIGH** — the core VSCode extension architecture is well-understood and the Claude Code hooks system is well-documented. The main uncertainties are ecosystem-level (adapter internals, library licensing) and product-level (agent identity convention), neither of which blocks Phase 1 or 2.
+**Overall confidence: HIGH**
 
 ### Gaps to Address
 
-- **React Flow commercial licensing**: Confirm before committing to it in Phase 3. If commercial license is required, use D3.js directly.
-- **`dagre` maintainability**: Last commit 2021. Evaluate `d3-dag` (maintained) or `elkjs` (ELK layout engine, actively maintained, used by Eclipse and VSCode itself for diagram layout) as the hierarchical layout algorithm.
-- **Claude Code settings.json write safety**: Before Phase 2, test that auto-injecting hook config into `~/.claude/settings.json` does not clobber existing user config. Use JSON merge (not overwrite); add a schema validation step.
-- **Agent identity convention**: Define before Phase 5 registry schema is finalized. If parallel instances are possible (multiple Ethans running), the `AgentRecord.id` format and graph node identity must account for it.
-- **AG-UI / A2UI protocol monitoring**: Microsoft and Google are developing agent-to-UI communication protocols. Monitor; may affect event stream architecture in Phase 4.
+- **InstructionRouter design:** Routing received messages to the local agent (Claude Code stdin, SIGCONT, task queue file) is framework-specific. Stub is acceptable for v2.0; validate against Claude Code's actual control interface during Phase 2 before specifying full routing behavior.
+
+- **Convergence chart CSP in VSCode webview:** D3 in a sandboxed webview has no confirmed prior art. May require `<meta http-equiv="Content-Security-Policy">` adjustments. Prototype before Phase 5 scope is committed.
+
+- **Report quality without AI agent cooperation:** If the AI agent on the remote machine doesn't write structured reports to the well-known directory, the CLI can only produce heartbeat reports from observable signals. Report quality depends on CLAUDE.md instructions being followed. This is a documentation/convention gap, not a code gap.
+
+- **Turso free tier query limits:** Vercel invocation count is the more likely bottleneck, but Turso's free tier has query limits too. Validate against current Turso pricing during Phase 1 to confirm 5-minute polling with up to 10 agents stays within the free tier.
 
 ---
 
 ## Sources
 
-### Primary (HIGH confidence)
-- [VSCode Webview API](https://code.visualstudio.com/api/extension-guides/webview)
-- [VSCode UX Guidelines](https://code.visualstudio.com/api/ux-guidelines/overview)
-- [VSCode Tree View API](https://code.visualstudio.com/api/extension-guides/tree-view)
-- [VSCode Bundling Extensions](https://code.visualstudio.com/api/working-with-extensions/bundling-extension)
-- [VSCode Shell Integration](https://code.visualstudio.com/docs/terminal/shell-integration)
-- [Claude Agent SDK Overview](https://code.claude.com/docs/en/agent-sdk/overview)
-- [Claude Code Hooks Reference](https://code.claude.com/docs/en/hooks)
-- [VSCode Common Capabilities](https://code.visualstudio.com/api/extension-capabilities/common-capabilities)
-- [IBM Carbon Design System — Status Indicators](https://carbondesignsystem.com/patterns/status-indicator-pattern/)
-- [React Flow](https://codingcops.com/react-flow/)
+### Primary (HIGH confidence — official documentation)
+- [Hono docs — Vercel deployment](https://hono.dev/docs/getting-started/vercel)
+- [Hono bearer auth middleware](https://hono.dev/docs/middleware/builtin/bearer-auth)
+- [Turso + Drizzle integration guide](https://docs.turso.tech/sdk/ts/orm/drizzle)
+- [Turso + Hono integration guide](https://docs.turso.tech/sdk/ts/guides/hono)
+- [Vercel Functions Limitations](https://vercel.com/docs/functions/limitations) — 4.5MB payload, 10s Hobby timeout
+- [Vercel Hobby Plan](https://vercel.com/docs/plans/hobby) — 100K invocation limit
+- [Vercel Fluid Compute — Scale to One](https://vercel.com/blog/scale-to-one-how-fluid-solves-cold-starts)
+- [Node.js crypto.timingSafeEqual](https://nodejs.org/api/crypto.html#cryptotimingsafeequalbuf1-buf2)
+- npm registry — all package versions verified 2026-04-19
+- Direct v1.0 codebase inspection: `src/types/workspace.ts`, `src/types/messages.ts`, `src/adapters/`, `src/registry/WorkspaceRegistry.ts`, `src/secrets/SecretStore.ts`
 
-### Secondary (MEDIUM confidence)
-- [Cline Extension WebviewProvider Architecture (DeepWiki)](https://deepwiki.com/cline/cline/2.4-webviewprovider)
-- [vscode-messenger RPC library — TypeFox](https://github.com/TypeFox/vscode-messenger)
-- [disler/claude-code-hooks-multi-agent-observability](https://github.com/disler/claude-code-hooks-multi-agent-observability)
-- [Langfuse Trace Graph View (Feb 2025)](https://langfuse.com/changelog/2025-02-14-trace-graph-view)
-- [AgentOps Dashboard Documentation](https://docs.agentops.ai/v1/usage/dashboard-info)
-- [OpenTelemetry AI Agent Observability (2025)](https://opentelemetry.io/blog/2025/ai-agent-observability/)
-- [VSCode Agent Observability Issue #293225](https://github.com/microsoft/vscode/issues/293225)
-- [better-sqlite3 vs sql.js — PkgPulse 2026](https://www.pkgpulse.com/blog/better-sqlite3-vs-libsql-vs-sql-js-sqlite-nodejs-2026)
-- [cmux GitHub](https://github.com/manaflow-ai/cmux)
-- [Paperclip GitHub](https://github.com/paperclipai/paperclip)
-- [OpenClaw Architecture (ppaolo Substack)](https://ppaolo.substack.com/p/openclaw-system-architecture-overview)
-- [Adapter Pattern in TypeScript (Refactoring Guru)](https://refactoring.guru/design-patterns/adapter/typescript/example)
-- [Smashing Magazine — Real-Time Dashboard UX](https://www.smashingmagazine.com/2025/09/ux-strategies-real-time-dashboards/)
-- [Cambridge Intelligence — Graph Visualization UX](https://cambridge-intelligence.com/graph-visualization-ux-how-to-avoid-wrecking-your-graph-visualization/)
-- [esbuild for VSCode — datho7561](http://datho7561.dev/blog/vscode-webpack-to-esbuild/)
-- [VSCode Copilot Chat Agent Monitoring](https://github.com/microsoft/vscode-copilot-chat/blob/main/docs/monitoring/agent_monitoring.md)
-
-### Tertiary (LOW confidence / needs validation)
-- [Paperclip Review 2026](https://vibecoding.app/blog/paperclip-review) — Paperclip internal API surface not officially documented
-- [OpenCode Agents Documentation](https://opencode.ai/docs/agents/) — ACP server monitoring surface inferred, not confirmed
-- [Claude Code Hooks Production Patterns (Pixelmojo)](https://www.pixelmojo.io/blogs/claude-code-hooks-production-quality-ci-cd-patterns) — settings.json auto-injection safety unconfirmed
-- AG-UI / A2UI protocol — mentioned in UX research; specification not yet stable
+### Secondary (MEDIUM confidence — community / multiple sources)
+- [HTTP Mailbox — Asynchronous RESTful Communication (ODU, 2013)](https://digitalcommons.odu.edu/cgi/viewcontent.cgi?article=1026&context=computerscience_etds)
+- [Asynchronous Request-Reply Pattern — Azure Architecture Center](https://learn.microsoft.com/en-us/azure/architecture/patterns/asynchronous-request-reply)
+- [Sidecar Pattern — System Design Newsletter](https://newsletter.systemdesign.one/p/sidecar-pattern)
+- [Ralph Loop — Alibaba Cloud Community](https://www.alibabacloud.com/blog/from-react-to-ralph-loop-a-continuous-iteration-paradigm-for-ai-agents_602799)
+- [ralph — snarktank GitHub](https://github.com/snarktank/ralph)
+- [ralph-loop — PageAI-Pro GitHub](https://github.com/PageAI-Pro/ralph-loop)
+- [vercel-labs/ralph-loop-agent](https://github.com/vercel-labs/ralph-loop-agent)
+- [AgentMail — Email Inbox API for AI Agents](https://www.agentmail.to/)
+- [Thundering herd mitigation patterns](https://medium.com/@venkteshsubramaniam/the-thundering-herd-distributed-systems-rate-limiting-9128d20e1f00)
+- [Vercel Hobby invocation limit — community thread](https://community.vercel.com/t/vercel-hobby-plan-function-invocation-limit-discrepancy-1-million-vs-100k-notification/32767)
+- [Turso Serverless JavaScript Driver](https://turso.tech/blog/introducing-turso-serverless-javascript-driver)
+- [Timing Attacks in Node.js](https://dev.to/silentwatcher_95/timing-attacks-in-nodejs-4pmb)
+- [AI Agent Authentication Methods — Stytch](https://stytch.com/blog/ai-agent-authentication-methods/)
 
 ---
 
-*Research completed: 2026-04-16*
+*Research completed: 2026-04-19*
+*Milestone: v2.0 Remote Agent Management*
 *Ready for roadmap: yes*

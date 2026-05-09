@@ -1,6 +1,7 @@
 import type { AgentBackendAdapter } from './AgentBackendAdapter';
+import type { BackendType } from '../types/workspace';
 
-export type BackendType = 'claude-code' | 'openclaw';
+export type { BackendType } from '../types/workspace';
 
 export interface WorkspaceConnectionConfig {
   backendType: BackendType;

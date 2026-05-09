@@ -1,0 +1,9 @@
+{
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/health", "destination": "/api" }
+  ],
+  "framework": null,
+  "installCommand": "pnpm install",
+  "buildCommand": "pnpm run build && mkdir -p public && echo '{}' > public/.keep"
+}

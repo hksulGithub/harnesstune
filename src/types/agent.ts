@@ -2,7 +2,8 @@ export type AgentEventType =
   | 'SessionStart' | 'SessionEnd'
   | 'SubagentStart' | 'SubagentStop'
   | 'PreToolUse' | 'PostToolUse' | 'PostToolUseFailure'
-  | 'Stop' | 'StopFailure';
+  | 'Stop' | 'StopFailure'
+  | 'RemoteReport';
 
 export interface AgentTokenUsage {
   inputTokens?: number;      // gen_ai.usage.input_tokens

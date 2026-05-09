@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { IWorkspaceRegistry, WorkspaceRecord, WorkspaceRegistryData, BackendType } from '../types/workspace';
+import { IWorkspaceRegistry, WorkspaceRecord, WorkspaceRegistryData, BackendType, WorkspaceMode, AgentIdentity } from '../types/workspace';
 
 export class WorkspaceRegistry implements IWorkspaceRegistry {
   private readonly registryUri: vscode.Uri;
@@ -19,13 +19,34 @@ export class WorkspaceRegistry implements IWorkspaceRegistry {
       const raw = await vscode.workspace.fs.readFile(this.registryUri);
       const text = Buffer.from(raw).toString('utf-8');
       const data: WorkspaceRegistryData = JSON.parse(text);
-      if (data.version !== 1) {
-        throw new Error(`Unsupported registry version: ${data.version}`);
+      const version = (data as { version: number }).version;
+      if (version < 1) {
+        throw new Error(`Unsupported registry version: ${version} (must be 1, 2, or 3)`);
+      } else if (data.version === 1) {
+        // v1 → v2 migration: add mode: 'local' to all existing records
+        this.workspaces = data.workspaces.map(ws => ({
+          ...ws,
+          backendType: ws.backendType ?? 'claude-code',
+          mode: 'local' as const,
+        }));
+        // Persist migrated data as v2
+        await this.persist();
+      } else if (data.version === 2) {
+        // v2 → v3 migration: add agents: [] to all existing workspaces
+        // Note: ws here is a v2 record; the cast is intentional to check for a pre-existing agents field
+        this.workspaces = data.workspaces.map(ws => ({
+          ...ws,
+          backendType: ws.backendType ?? 'claude-code',
+          agents: (ws as WorkspaceRecord).agents ?? [],
+        }));
+        // Persist migrated data as v3
+        await this.persist();
+      } else if (data.version === 3) {
+        this.workspaces = data.workspaces;
+      } else {
+        // version > 3 — written by a newer extension, refuse to overwrite
+        throw new Error(`Unsupported registry version: ${version} (this extension supports up to v3)`);
       }
-      this.workspaces = data.workspaces.map(ws => ({
-        ...ws,
-        backendType: ws.backendType ?? 'claude-code',
-      }));
     } catch (err: unknown) {
       // If file doesn't exist (FileNotFound), initialize with empty state
       if (
@@ -57,33 +78,55 @@ export class WorkspaceRegistry implements IWorkspaceRegistry {
 
   /**
    * Add a new workspace to the registry.
-   * Validates that rootPath is an absolute path.
-   * Rejects duplicates by rootPath.
+   * Validates that rootPath is an absolute path (skipped for remote workspaces).
+   * Rejects duplicates by rootPath (skipped for remote workspaces).
    */
-  public async add(name: string, rootPath: string, backendType: BackendType = 'claude-code'): Promise<WorkspaceRecord> {
-    // Validate absolute path: starts with '/' (macOS/Linux) or drive letter (Windows)
-    const isAbsolute = /^\//.test(rootPath) || /^[a-zA-Z]:\\/.test(rootPath);
-    if (!isAbsolute) {
-      throw new Error(`rootPath must be an absolute path, got: ${rootPath}`);
-    }
+  public async add(
+    name: string,
+    rootPath: string,
+    backendType: BackendType = 'claude-code',
+    options?: { mode?: WorkspaceMode; relayUrl?: string; channelId?: string; pollInterval?: number }
+  ): Promise<WorkspaceRecord> {
+    const isRemote = options?.mode === 'remote';
 
-    // Check for duplicate rootPath
-    const existing = this.workspaces.find(ws => ws.rootPath === rootPath);
-    if (existing) {
-      throw new Error(`Workspace at path "${rootPath}" is already registered as "${existing.name}"`);
+    if (!isRemote) {
+      // Validate absolute path: starts with '/' (macOS/Linux) or drive letter (Windows)
+      const isAbsolute = /^\//.test(rootPath) || /^[a-zA-Z]:\\/.test(rootPath);
+      if (!isAbsolute) {
+        throw new Error(`rootPath must be an absolute path, got: ${rootPath}`);
+      }
+
+      // Check for duplicate rootPath (local workspaces only)
+      const existing = this.workspaces.find(ws => ws.rootPath === rootPath);
+      if (existing) {
+        throw new Error(`Workspace at path "${rootPath}" is already registered as "${existing.name}"`);
+      }
     }
 
     const now = new Date().toISOString();
+
+    // For remote workspaces, derive a sentinel rootPath from channelId
+    const resolvedRootPath = isRemote
+      ? 'remote://' + (options?.channelId ?? name)
+      : rootPath;
+
     const record: WorkspaceRecord = {
       id: crypto.randomUUID(),
       name,
-      rootPath,
+      rootPath: resolvedRootPath,
       status: 'unknown',
       addedAt: now,
       lastUpdatedAt: now,
       runningAgentCount: 0,
       errorCount: 0,
-      backendType,
+      backendType: isRemote ? 'remote' : backendType,
+      mode: options?.mode ?? 'local',
+      agents: [],
+      ...(isRemote && {
+        relayUrl: options?.relayUrl,
+        channelId: options?.channelId,
+        pollInterval: options?.pollInterval,
+      }),
     };
 
     this.workspaces.push(record);
@@ -112,7 +155,7 @@ export class WorkspaceRegistry implements IWorkspaceRegistry {
    */
   public async update(
     id: string,
-    changes: Partial<Pick<WorkspaceRecord, 'status' | 'runningAgentCount' | 'errorCount' | 'backendType'>>
+    changes: Partial<Pick<WorkspaceRecord, 'name' | 'status' | 'runningAgentCount' | 'errorCount' | 'backendType' | 'mode' | 'relayUrl' | 'pollInterval' | 'lastCursor' | 'lastMessageCursor' | 'agents'>>
   ): Promise<void> {
     const record = this.workspaces.find(ws => ws.id === id);
     if (!record) {
@@ -129,7 +172,7 @@ export class WorkspaceRegistry implements IWorkspaceRegistry {
     await vscode.workspace.fs.createDirectory(this.context.globalStorageUri);
 
     const data: WorkspaceRegistryData = {
-      version: 1,
+      version: 3,
       workspaces: this.workspaces,
     };
     const json = JSON.stringify(data, null, 2);

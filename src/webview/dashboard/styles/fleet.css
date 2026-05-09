@@ -1,0 +1,557 @@
+/* HarnessTune Fleet Dashboard — fleet-specific styles */
+/* All colors use VSCode CSS custom properties. No hex values. */
+/* Spacing scale: xs=4px, sm=8px, md=12px, lg=16px, xl=24px */
+
+/* ============================================================
+   Date Range Selector
+   ============================================================ */
+
+.date-range-strip {
+  display: flex;
+  align-items: center;
+  background: var(--vscode-sideBar-background);
+  border-bottom: 1px solid var(--vscode-panel-border);
+  padding: 8px 12px;
+}
+
+.date-range-tab {
+  padding: 4px 8px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--vscode-descriptionForeground);
+  font-family: var(--vscode-font-family);
+}
+
+.date-range-tab:hover {
+  color: var(--vscode-foreground);
+}
+
+.date-range-tab:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+}
+
+.date-range-tab.active {
+  color: var(--vscode-foreground);
+  font-weight: 600;
+  border-bottom-color: var(--vscode-focusBorder);
+}
+
+/* ============================================================
+   Breadcrumb Bar
+   ============================================================ */
+
+.breadcrumb-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--vscode-sideBar-background);
+  padding: 8px 12px;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.breadcrumb-ancestor {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+  font-family: var(--vscode-font-family);
+  padding: 0;
+  text-decoration: none;
+}
+
+.breadcrumb-ancestor:hover {
+  color: var(--vscode-foreground);
+  text-decoration: underline;
+}
+
+.breadcrumb-ancestor:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+}
+
+.breadcrumb-separator {
+  color: var(--vscode-descriptionForeground);
+  margin: 0 2px;
+}
+
+.breadcrumb-current {
+  color: var(--vscode-foreground);
+  font-weight: 600;
+  border-bottom: 2px solid var(--vscode-focusBorder);
+  padding-bottom: 2px;
+}
+
+/* ============================================================
+   Fleet Overview
+   ============================================================ */
+
+.fleet-header {
+  padding: 12px 12px 8px 12px;
+}
+
+.fleet-header-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+  margin: 0;
+}
+
+.fleet-header-sub {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--vscode-descriptionForeground);
+  margin: 0;
+}
+
+.workspace-card {
+  background: var(--vscode-sideBar-background);
+  border-bottom: 1px solid var(--vscode-panel-border);
+  padding: 12px;
+  cursor: pointer;
+}
+
+.workspace-card:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.workspace-card:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.workspace-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.workspace-card-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.workspace-card-right {
+  flex: 0 0 auto;
+  margin-left: 8px;
+}
+
+.workspace-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-card-platform {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.workspace-card-metrics {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.metric-value {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.metric-label {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.metric-error {
+  color: var(--vscode-errorForeground);
+}
+
+.workspace-card-cta {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  text-align: right;
+  margin-top: 8px;
+}
+
+.workspace-card-cta:hover {
+  color: var(--vscode-foreground);
+  text-decoration: underline;
+}
+
+/* ============================================================
+   Health Dot
+   ============================================================ */
+
+.health-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.health-dot.healthy {
+  background: var(--vscode-terminal-ansiGreen);
+}
+
+.health-dot.degraded {
+  background: var(--vscode-terminal-ansiYellow);
+}
+
+.health-dot.failing {
+  background: var(--vscode-errorForeground);
+}
+
+.health-dot.no-data {
+  background: var(--vscode-descriptionForeground);
+}
+
+/* ============================================================
+   Cost Summary Bar
+   ============================================================ */
+
+.cost-summary-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--vscode-sideBar-background);
+  border-bottom: 1px solid var(--vscode-panel-border);
+  padding: 8px 12px;
+}
+
+.cost-label {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.cost-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+}
+
+.cost-trend {
+  font-size: 11px;
+}
+
+.cost-trend.up {
+  color: var(--vscode-errorForeground);
+}
+
+.cost-trend.down {
+  color: var(--vscode-terminal-ansiGreen);
+}
+
+.cost-trend.flat {
+  color: var(--vscode-descriptionForeground);
+}
+
+.cost-tokens {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+
+/* ============================================================
+   Workspace Drill-Down
+   ============================================================ */
+
+.workspace-header {
+  padding: 12px 12px 8px 12px;
+}
+
+.workspace-header-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+  margin: 0;
+}
+
+.workspace-header-sub {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--vscode-descriptionForeground);
+  margin: 0;
+}
+
+.agent-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  cursor: pointer;
+}
+
+.agent-row:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.agent-row:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+}
+
+.agent-row-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.agent-row-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-row-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 0 0 auto;
+  margin-left: 8px;
+}
+
+.agent-row-success {
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.agent-row-success.high {
+  color: var(--vscode-terminal-ansiGreen);
+}
+
+.agent-row-success.mid {
+  color: var(--vscode-terminal-ansiYellow);
+}
+
+.agent-row-success.low {
+  color: var(--vscode-errorForeground);
+}
+
+.agent-row-lastrun {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.agent-row-cost {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+
+/* ============================================================
+   Agent Detail
+   ============================================================ */
+
+.agent-detail-header {
+  padding: 12px 12px 8px 12px;
+}
+
+.agent-detail-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+  margin: 0;
+}
+
+.agent-detail-sub {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--vscode-descriptionForeground);
+  margin: 0;
+}
+
+/* ============================================================
+   Run History Table
+   ============================================================ */
+
+.run-table {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.run-table-header {
+  display: table-row;
+  background: var(--vscode-sideBar-background);
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.run-table-header-cell {
+  display: table-cell;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--vscode-descriptionForeground);
+}
+
+.run-table-header-cell.col-timestamp {
+  width: 35%;
+}
+
+.run-table-header-cell.col-duration {
+  width: 20%;
+}
+
+.run-table-header-cell.col-status {
+  width: 25%;
+}
+
+.run-table-header-cell.col-cost {
+  width: 15%;
+}
+
+.run-table-header-cell.col-expand {
+  width: 5%;
+  min-width: 24px;
+}
+
+.run-row {
+  display: table-row;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.run-row:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.run-row:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+}
+
+.run-cell {
+  display: table-cell;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--vscode-foreground);
+  vertical-align: middle;
+}
+
+.run-cell.col-timestamp {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.run-cell.col-status {
+  font-size: 11px;
+}
+
+.run-cell .status-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.expand-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--vscode-descriptionForeground);
+  font-size: 13px;
+  font-family: var(--vscode-font-family);
+  padding: 0;
+}
+
+.expand-toggle:hover {
+  color: var(--vscode-foreground);
+}
+
+.expand-toggle:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+}
+
+.run-log-section {
+  background: var(--vscode-editor-background);
+  border-bottom: 1px solid var(--vscode-panel-border);
+  padding: 8px 12px 8px 24px;
+}
+
+.run-log-text {
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--vscode-descriptionForeground);
+  white-space: pre-wrap;
+  max-height: 200px;
+  overflow-y: auto;
+  margin: 0;
+}
+
+/* ============================================================
+   Fleet Empty / Error States
+   ============================================================ */
+
+.fleet-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  gap: 8px;
+}
+
+.fleet-empty h2 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+  margin: 0;
+}
+
+.fleet-empty p {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--vscode-descriptionForeground);
+  margin: 0;
+  text-align: center;
+}
+
+.fleet-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--vscode-errorForeground);
+  text-align: center;
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+
+@media (max-width: 359px) {
+  .workspace-card-top,
+  .agent-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .workspace-card-right,
+  .agent-row-right {
+    margin-left: 0;
+    margin-top: 4px;
+  }
+
+  .run-cell.col-cost {
+    display: none;
+  }
+}

@@ -1,36 +1,37 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
+milestone: v2.0
 milestone_name: milestone
-status: Complete
-last_updated: "2026-04-19T12:00:00.000Z"
+status: Phase 17 complete
+last_updated: "2026-04-24T06:00:00.000Z"
+last_activity: 2026-04-24 -- Phase 17 execution complete
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 15
-  completed_plans: 15
-  percent: 100
+  total_phases: 17
+  completed_phases: 8
+  total_plans: 27
+  completed_plans: 19
+  percent: 70
 ---
 
 # GSD State: HarnessTune
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-16)
+See: .planning/PROJECT.md (updated 2026-04-22)
 
 **Core value:** Engineers running multiple agent systems can see and control all their agents from one place inside VSCode.
-**Current focus:** Phase 05 — workspace-scaffolding-openclaw-adapter
+**Current focus:** Phase 17 — proactive-alerts (complete)
 
 ## Current Position
 
-Phase: 05 (workspace-scaffolding-openclaw-adapter) — COMPLETE
-Plan: 3 of 3 (all done)
-**Last Completed:** Phase 5 — Workspace scaffolding, OpenClaw adapter, configure/remove, context menu
-**Next:** Milestone v1.0 complete
+Phase: 17 (proactive-alerts) — COMPLETE
+Plan: 2 of 2 (all done)
+Next: Next milestone or `/gsd-verify-work 17`
+Last activity: 2026-04-24 -- Phase 17 execution complete
 
 ## Progress
 
-[████████████] 100% (Phases 1-4 complete, Phase 5 not started)
+[████████████] M1 complete | M3: Phase 14 complete (3/3 plans)
 
 ## Current Milestone
 
@@ -62,6 +63,14 @@ Plan: 3 of 3 (all done)
 - [Phase 05]: Unit tests focus on substitute() pure function; vscode.workspace.fs methods tested via build
 - [Phase 05]: configureWorkspace disconnects old adapter before registry update to prevent stale connections
 - [Phase 05]: Used chokidar v4 for JSONL file watching; ChatManager routes by backendType for multi-backend support
+- [Phase 06-01]: assertNeverBackendType as standalone function in types/workspace.ts for reuse across codebase
+- [Phase 06-01]: v1 registry migration auto-persists on first load to avoid repeated migration checks
+- [Phase 06-02]: Root package included as workspace member via '.' in pnpm-workspace.yaml
+- [Phase 06-02]: build:packages script chains tsc --build in dependency order before esbuild
+- [Phase 09-01]: res.json() returns unknown in strict TS — relay response bodies cast via 'as Promise<Type>' pattern in RelayClient
+- [Phase 09-01]: @harnesstune/shared added as workspace:* dep to root package.json — was missing despite pnpm monorepo config
+- [Phase 09-01]: Sentinel rootPath 'remote://{channelId}' used for remote workspaces to bypass absolute path validation in registry
+- [Phase 09-01]: RemoteReport AgentEvent: eventType='RemoteReport', raw = { type: 'remote_report', report: ReportEnvelope } — uniform event pipeline for local + remote
 
 ## Performance Metrics
 
@@ -75,6 +84,11 @@ Plan: 3 of 3 (all done)
 | Phase 04 P02 | 1 min | 1 task (of 2) | 4 files |
 | Phase 05 P02 | 4 min | 3 tasks | 14 files |
 | Phase 05 P03 | 4min | 2 tasks | 9 files |
+| Phase 06 P01 | 2 min | 2 tasks | 6 files |
+| Phase 06 P02 | 1 min | 2 tasks | 13 files |
+| Phase 08 P03 | 2min | 2 tasks | 2 files |
+| Phase 09 P01 | 25min | 2 tasks | 13 files |
+| Phase 09 P02 | 90min | 2 tasks (of 4) | 9 files |
 
 ## Session Log
 
@@ -103,4 +117,42 @@ Plan: 3 of 3 (all done)
 - **2026-04-19**: Phase 5 execution complete. All 3 plans executed. Human verification passed: create workspace (scaffold), connect workspace (auto-name), configure workspace (context menu + backend picker), remove workspace (context menu), chat routing (claude-code). Bug fixes during verification: removed auto-open dashboard on create, auto-naming from folder basename, context menu rewrite (was destructive right-click), configureWorkspace accepts optional workspaceId. Milestone v1.0 complete.
 
 ---
-*Last updated: 2026-04-19 — Milestone v1.0 complete, all 5 phases done*
+- **2026-04-19**: v2.0 milestone initialized. Research complete (4 parallel agents). Requirements defined (57 v2.0 REQ-IDs across 8 categories). Roadmap created (5 phases: 6–10). User feedback incorporated: RLAY-14 (rate limiting), ACLI-06 heartbeat specifics (5-min heartbeat, 15-min stale), Phase 6 package manager lock, Phase 10 research flag downgraded to skip, poll interval reframed as configurable default. Ready for `/gsd-plan-phase 6`.
+
+- **2026-04-19**: Phase 6 Plan 01 executed (type consolidation + registry v2). 2 tasks, 6 files. BackendType consolidated with 'remote', WorkspaceMode discriminant added, registry v1-to-v2 migration, exhaustive switch in AdapterRegistry. Ready for Plan 02 (monorepo).
+
+- **2026-04-19**: Phase 6 Plan 02 executed (pnpm monorepo + TS project references). 2 tasks, 13 files. pnpm workspaces with 4 members, TypeScript project references, full build verified. Phase 6 complete. Ready for Phase 7.
+
+- **2026-04-19**: Phase 7 discuss-phase complete. 3 areas discussed (Hono + Vercel Structure, Turso + Drizzle Patterns, Rate Limiting in Serverless). 3 decisions captured in 07-CONTEXT.md. Ready for `/gsd-plan-phase 7`.
+
+- **2026-04-19**: Phase 7 execution complete. Relay API deployed to Vercel with Turso DB. Root cause of @libsql/client "Invalid URL" error: trailing newline in Vercel env var — fixed with .trim(). All 4 endpoints verified live (health, channel registration, authenticated GET, 401 rejection). Phase 7 complete. Ready for Phase 8.
+
+- **2026-04-19**: Phase 8 discuss-phase complete. 3 areas discussed (CLI Architecture & UX, Heartbeat & Lifecycle, Report Schemas). 12 decisions captured in 08-CONTEXT.md. MCP-as-delegate deferred to backlog. Ready for `/gsd-plan-phase 8`.
+
+- **2026-04-19**: Phase 8 execution complete. All 3 plans executed (3 waves, sequential). Shared report types (BriefingReportBody, RalphReportBody, HeartbeatReportBody, ReportEnvelope) in @harnesstune/shared. Agent CLI with 4 subcommands: register (readline + flags), start (foreground sidecar with 5-min heartbeat, message polling with jitter, claude CLI routing, retry queue), stop (PID-based SIGTERM), report (file/stdin upload with envelope metadata). RetryQueue: disk-persisted, 48-entry cap, 5s rate-limited replay. --dry-run validates without uploading. Build passes. Ready for Phase 9.
+
+- **2026-04-19**: Phase 9 discuss-phase complete. 2 areas discussed (RemoteAdapter Polling, Add Remote Workspace Flow). 8 decisions captured in 09-CONTEXT.md. Key decisions: 30s polling with exponential backoff, synthetic 'remote_report' AgentEvent, 3-step QuickInput flow, per-workspace SecretStore tokens, mixed sidebar with cloud badge. Ready for `/gsd-plan-phase 9`.
+
+- **2026-04-19**: Phase 9 Plan 02 Tasks 1-2 complete. RemoteAdapter wired into extension.ts with full lifecycle (connect, token fetch, status sync, cursor persist, disconnect on remove). addRemoteWorkspace command: 2-step QuickInput (relay URL + token), auto health-check + discoverChannelId, token stored in SecretStore. Sidebar UI: cloud badge, relay hostname subtitle, stale hint, Message Agent context menu, Add Remote Workspace button, CSS classes. Paused at Task 3 human-verify checkpoint.
+
+- **[09-02]**: 3-step QuickInput flow: relay URL then token (password), auto health-check + discoverChannelId — no manual channelId prompt
+- **[09-02]**: sentinel rootPath 'remote://{channelId}' avoids empty-string conflicts for remote workspaces in registry
+- **[09-02]**: per-workspace token key 'harnesstune.relay.{workspaceId}' scoped to SecretStore
+- **[09-02]**: openWorkspace deferred for remote mode with informational message (Phase 10)
+- **[09-02]**: configureRemoteWorkspace Rename sub-command uses registry.update({name}) requiring 'name' added to update() Pick type
+
+*Last updated: 2026-04-19 — Phase 09 Plan 02 paused at Task 3 human-verify checkpoint*
+
+- **2026-04-21**: Phase 10 execution complete. 2 plans across 2 waves. Plan 01: ReportPanel singleton, TimelineItem types, RelayClient timeline/message endpoints, RemoteAdapter timeline merging + chat routing, esbuild reports entrypoint. Plan 02: 11 React components (PanelHeader, FilterTabs, TimelineFeed, BriefingReportCard, RalphLoopReportCard, RalphLoopChart pure SVG, ChatBubble, MessageComposer, LoadMoreButton, EmptyState, App.tsx), 587-line CSS stylesheet with VSCode theme vars. Fixed plan typo: progressSummary→progress to match BriefingReportBody. v2.0 milestone complete.
+
+- **2026-04-23**: Phase 12 execution complete. 2 plans across 2 waves (worktree isolation). Plan 01: packages/harnesstune-collector scaffold — PlatformPlugin interface, 4 stub plugins, config module, retry queue, relay client, daemon heartbeat + scheduler. Plan 02: CLI entry point with 5 subcommands (setup, start, stop, status, install), daemon loop integration, launchd plist generator. 21 source files, build passes. Phase 12 complete.
+
+- **2026-04-23**: Phase 14 execution complete. 3 plans across 2 waves. Plan 14-01: Claude Desktop types (ScheduledTask, SessionFile), mappers (mapScheduledTask, mapSessionToRunReport), reader (readScheduledTasks, scanSessions with mtime guard + staleness guard + scheduledTaskId filter). Plan 14-02: Claude Code Cron types (CronRunFile, CrontabEntry), mappers (mapCrontabEntry, mapCronRunFile), crontab parser (parseCrontab + readCrontab), wrapper script generator (atomic JSON write, exit code preservation). Plan 14-03: Full ClaudeDesktopPlugin (session path discovery, mtime guard, scheduled task correlation) and ClaudeCodePlugin (wrapper install, crontab discovery, run file scanning with 7-day cleanup), loader wiring with PlatformConfig passthrough. 10 files (7 new, 3 modified), 3 commits, build passes. Phase 14 complete.
+
+- **2026-04-24**: Phase 15 execution complete. 2 plans across 2 waves (worktree isolation). Plan 15-01: OpenClaw types (OpenClawEvent, OpenClawSession), JSONL reader (listAgentDirs, scanJsonlFiles with mtime + 30s staleness guards), session segmenter (5-min gap threshold, pure function). Plan 15-02: mappers (mapAgentDir, mapSessionToRunReport), OpenClawPlugin class (detect, setup with readline, discover, collectRuns with per-session error handling), stub replaced with re-export, loader wiring with PlatformConfig passthrough. 7 files (5 new, 2 modified), tsc passes clean. Phase 15 complete.
+
+- **2026-04-24**: Phase 16 execution complete. 2 plans across 2 waves (worktree isolation). Plan 16-01: Fleet data layer — FleetDataProvider interface, LocalFleetProvider (reads ~/.harnesstune/cron-runs/*.json, 3-consecutive-failure health threshold), RemoteFleetProvider (wraps RelayClient summary/runs/agents endpoints), fleet types (FleetWorkspaceSummary, FleetWorkspaceDetail, FleetAgentDetail), DashboardPanel fleet message handler, 7 new fleet message types in HostToWebviewMessage/WebviewToHostMessage. Plan 16-02: Fleet dashboard UI — 9 React components (FleetOverview, WorkspaceDrillDown, AgentDetail, HealthDot, DateRangeSelector, BreadcrumbBar, CostSummaryBar, RunLogExpander), App.tsx rewritten as 3-level navigation state machine (fleet→workspace→agent), fleet.css with VSCode theme vars, vscode.setState persistence. 3 merge conflicts resolved (RelayClient.ts, messages.ts, DashboardPanel.ts). Phase 16 complete.
+
+- **2026-04-24**: Phase 17 discuss-phase complete. 4 areas discussed (Alert Engine Design, Notification Delivery, Alert Configuration, Relay Alert State). 7 decisions captured in 17-CONTEXT.md. Key decisions: extension-side AlertEngine polling FleetDataProvider every 60s, stale detection via 2x cron interval with 24h fallback, in-memory state transition map for dedup, single summary toast + status bar badge, WorkspaceRecord.alertConfig field, quiet hours deferred, relay alert state extension-only (no API changes). Ready for `/gsd-plan-phase 17`.
+
+- **2026-04-24**: Phase 17 execution complete. 2 plans across 2 waves. Plan 17-01: Alert types (AlertConfig, AlertState, AlertTransition, AlertCycleSummary, ALERT_DEFAULTS), alertConfig field on WorkspaceRecord, AlertEngine class with 60s polling, stale detection via cron-parser v5 (2x interval, 24h fallback), in-memory state transition Map for dedup. Plan 17-02: StatusBarManager alert badge (setAlertCount, clearAlertBadge, $(bell) codicon, warningBackground), CompositeFleetProvider (merges local + remote), AlertEngine wired into extension lifecycle, batched summary toast via showWarningMessage with "View Fleet Dashboard" action, badge clears on dashboard open, remote fleet clients registered/removed on connect/remove. 4 commits, 4 files modified, tsc passes clean. Phase 17 complete.

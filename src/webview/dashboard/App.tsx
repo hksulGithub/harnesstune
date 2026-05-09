@@ -1,193 +1,117 @@
 import React, { useEffect, useState } from 'react';
-import type { AgentSession, AgentEvent } from '../../types/agent';
-import type { HostToWebviewMessage } from '../../types/messages';
-import vscode from './vscodeApi';
-import { WorkspaceTabs } from './components/WorkspaceTabs';
-import { SummaryBar } from './components/SummaryBar';
-import { AgentCard } from './components/AgentCard';
-import { AgentDetailPanel } from './components/AgentDetailPanel';
-import { ControlButtons } from './components/ControlButtons';
+import type { FleetWorkspaceSummary, FleetWorkspaceDetail, FleetAgentDetail } from '../../types/fleet.js';
+import type { HostToWebviewMessage, WebviewToHostMessage } from '../../types/messages.js';
+import vscode from './vscodeApi.js';
+import { DateRangeSelector } from './components/DateRangeSelector.js';
+import { BreadcrumbBar } from './components/BreadcrumbBar.js';
+import { FleetOverview } from './components/FleetOverview.js';
+import { WorkspaceDrillDown } from './components/WorkspaceDrillDown.js';
+import { AgentDetail } from './components/AgentDetail.js';
+import { AnalyticsPanel } from './components/AnalyticsPanel.js';
 
-interface SummaryData {
-  totalAgents: number;
-  running: number;
-  paused: number;
-  errors: number;
-  estimatedCost: number;
-}
-
-interface PersistedState {
-  activeWorkspaceId: string | null;
-  selectedSessionId: string | null;
-}
-
+type ViewLevel = 'fleet' | 'workspace' | 'agent';
+interface NavigationState { level: ViewLevel; workspaceId?: string; workspaceName?: string; agentId?: string; agentName?: string; }
+interface PersistedState { nav: NavigationState; days: number; }
 function restoreState(): PersistedState {
   const saved = vscode.getState() as PersistedState | null;
-  return {
-    activeWorkspaceId: saved?.activeWorkspaceId ?? null,
-    selectedSessionId: saved?.selectedSessionId ?? null,
-  };
+  return { nav: saved?.nav ?? { level: 'fleet' }, days: saved?.days ?? 7 };
 }
 
 export default function App(): React.ReactElement {
   const initial = restoreState();
-  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(initial.activeWorkspaceId);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(initial.selectedSessionId);
-  const [sessions, setSessions] = useState<AgentSession[]>([]);
-  const [events, setEvents] = useState<AgentEvent[]>([]);
-  const [summaries, setSummaries] = useState<Map<string, SummaryData>>(new Map());
+  const [nav, setNav] = useState<NavigationState>(initial.nav);
+  const [days, setDays] = useState<number>(initial.days);
+  const [summaries, setSummaries] = useState<FleetWorkspaceSummary[]>([]);
+  const [workspaceDetail, setWorkspaceDetail] = useState<FleetWorkspaceDetail | null>(null);
+  const [agentDetail, setAgentDetail] = useState<FleetAgentDetail | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Persist state on every change
-  useEffect(() => {
-    vscode.setState({ activeWorkspaceId, selectedSessionId } satisfies PersistedState);
-  }, [activeWorkspaceId, selectedSessionId]);
+  useEffect(() => { vscode.setState({ nav, days } satisfies PersistedState); }, [nav, days]);
 
-  // Request initial state from host
   useEffect(() => {
-    vscode.postMessage({ type: 'dashboard:requestState' });
-  }, []);
+    setLoading(true);
+    setError(null);
+    if (nav.level === 'fleet') {
+      const msg: WebviewToHostMessage = { type: 'fleet:requestOverview', days };
+      vscode.postMessage(msg);
+    } else if (nav.level === 'workspace' && nav.workspaceId !== undefined) {
+      vscode.postMessage({ type: 'fleet:requestWorkspaceDetail', workspaceId: nav.workspaceId, days });
+    } else if (nav.level === 'agent' && nav.workspaceId !== undefined && nav.agentId !== undefined) {
+      vscode.postMessage({ type: 'fleet:requestAgentDetail', workspaceId: nav.workspaceId, agentId: nav.agentId, days });
+    }
+  }, [nav.level, nav.workspaceId, nav.agentId, days]);
 
-  // Listen for host messages
   useEffect(() => {
-    function handler(event: MessageEvent) {
+    function handler(event: MessageEvent): void {
       const msg = event.data as HostToWebviewMessage;
       switch (msg.type) {
-        case 'dashboard:agentEvents':
-          setEvents(prev => {
-            // Merge new events, deduplicate by id, keep last 200
-            const existing = new Map(prev.map(e => [e.id, e]));
-            for (const ev of msg.events) {
-              existing.set(ev.id, ev);
-            }
-            const merged = Array.from(existing.values());
-            merged.sort((a, b) => a.timestamp - b.timestamp);
-            return merged.slice(-200);
-          });
+        case 'fleet:overview':
+          setSummaries(msg.summaries);
+          setLoading(false);
           break;
-
-        case 'dashboard:agentUpdate':
-          setSessions(prev => {
-            const idx = prev.findIndex(s => s.sessionId === msg.session.sessionId);
-            if (idx === -1) {
-              return [...prev, msg.session];
-            }
-            const next = [...prev];
-            next[idx] = msg.session;
-            return next;
-          });
+        case 'fleet:workspaceDetail':
+          setWorkspaceDetail(msg.detail);
+          setLoading(false);
           break;
-
-        case 'dashboard:summary':
-          setSummaries(prev => {
-            const next = new Map(prev);
-            next.set(msg.workspaceId, {
-              totalAgents: msg.totalAgents,
-              running: msg.running,
-              paused: msg.paused,
-              errors: msg.errors,
-              estimatedCost: msg.estimatedCost,
-            });
-            return next;
-          });
+        case 'fleet:agentDetail':
+          setAgentDetail(msg.detail);
+          setLoading(false);
           break;
-
-        case 'workspace:setActive':
-          setActiveWorkspaceId(msg.workspaceId);
+        case 'fleet:error':
+          setError(msg.message);
+          setLoading(false);
           break;
       }
     }
-
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
   }, []);
 
-  // Derive workspace list from sessions
-  const workspaceMap = new Map<string, number>();
-  for (const s of sessions) {
-    workspaceMap.set(s.workspaceId, (workspaceMap.get(s.workspaceId) ?? 0) + 1);
+  function handleSelectWorkspace(id: string): void {
+    const ws = summaries.find((s) => s.id === id);
+    setNav({ level: 'workspace', workspaceId: id, workspaceName: ws?.name ?? id });
   }
-  const workspaces = Array.from(workspaceMap.entries()).map(([id, count]) => ({
-    id,
-    name: id,
-    agentCount: count,
-  }));
 
-  // Filter sessions by active workspace
-  const filteredSessions =
-    activeWorkspaceId === null
-      ? sessions
-      : sessions.filter(s => s.workspaceId === activeWorkspaceId);
-
-  // Compute aggregate summary for current view
-  const aggregateSummary: SummaryData = (() => {
-    if (activeWorkspaceId !== null && summaries.has(activeWorkspaceId)) {
-      return summaries.get(activeWorkspaceId)!;
-    }
-    // Aggregate across all workspaces
-    let totalAgents = 0, running = 0, paused = 0, errors = 0;
-    for (const s of filteredSessions) {
-      totalAgents++;
-      if (s.controlState === 'running') running++;
-      if (s.controlState === 'paused') paused++;
-    }
-    // Sum errors from summaries (if available) or leave at 0
-    for (const [, sd] of summaries) {
-      errors += sd.errors;
-    }
-    return { totalAgents, running, paused, errors, estimatedCost: 0 };
-  })();
-
-  // Selected session and its events
-  const selectedSession = filteredSessions.find(s => s.sessionId === selectedSessionId) ?? null;
-  const selectedEvents = selectedSession
-    ? events.filter(e => e.sessionId === selectedSession.sessionId)
-    : [];
-
-  const handleSelectWorkspace = (id: string | null) => {
-    setActiveWorkspaceId(id);
-    setSelectedSessionId(null);
-  };
+  function handleSelectAgent(id: string): void {
+    const agent = workspaceDetail?.agents.find((a) => a.id === id);
+    setNav({ level: 'agent', workspaceId: nav.workspaceId, workspaceName: nav.workspaceName, agentId: id, agentName: agent?.name ?? id });
+  }
 
   return (
     <div className="dashboard">
-      <WorkspaceTabs
-        workspaces={workspaces}
-        activeWorkspaceId={activeWorkspaceId}
-        onSelectWorkspace={handleSelectWorkspace}
+      <DateRangeSelector selected={days} onSelect={setDays} />
+      <BreadcrumbBar
+        workspaceName={nav.level !== 'fleet' ? nav.workspaceName : undefined}
+        agentName={nav.level === 'agent' ? nav.agentName : undefined}
+        onNavigateFleet={() => setNav({ level: 'fleet' })}
+        onNavigateWorkspace={() => setNav({ level: 'workspace', workspaceId: nav.workspaceId, workspaceName: nav.workspaceName })}
       />
-      <SummaryBar
-        totalAgents={aggregateSummary.totalAgents}
-        running={aggregateSummary.running}
-        paused={aggregateSummary.paused}
-        errors={aggregateSummary.errors}
-      />
-      <div className="master-detail">
-        <div className="agent-list" role="listbox" aria-label="Agent list">
-          {filteredSessions.length === 0 ? (
-            <div className="empty-state">
-              <h2>No agents running</h2>
-              <p>Start a Claude Code session in a connected workspace to see agents here.</p>
-            </div>
-          ) : (
-            filteredSessions.map(s => (
-              <AgentCard
-                key={s.sessionId}
-                session={s}
-                recentEvent={events.filter(e => e.sessionId === s.sessionId).at(-1)}
-                isSelected={s.sessionId === selectedSessionId}
-                onSelect={(id) => setSelectedSessionId(prev => prev === id ? null : id)}
-              />
-            ))
-          )}
-        </div>
-        <AgentDetailPanel
-          session={selectedSession}
-          events={selectedEvents}
-          renderControls={(sessionId, controlState) => (
-            <ControlButtons sessionId={sessionId} controlState={controlState} size="large" />
-          )}
-        />
-      </div>
+      {nav.level === 'fleet' && (
+        <>
+          <AnalyticsPanel
+            title="Workspace Analytics"
+            windows={summaries[0]?.analytics ?? [
+              { label: '24h', runCount: 0, averageDurationMs: 0, successRatePct: 0 },
+              { label: '7d', runCount: 0, averageDurationMs: 0, successRatePct: 0 },
+              { label: '30d', runCount: 0, averageDurationMs: 0, successRatePct: 0 },
+            ]}
+          />
+          <FleetOverview summaries={summaries} loading={loading} error={error} onSelectWorkspace={handleSelectWorkspace} />
+        </>
+      )}
+      {nav.level === 'workspace' && workspaceDetail && (
+        <>
+          <AnalyticsPanel title="Workspace Analytics" windows={workspaceDetail.analytics} />
+          <WorkspaceDrillDown workspaceName={nav.workspaceName!} agents={workspaceDetail.agents} cost={workspaceDetail.cost} loading={loading} error={error} onSelectAgent={handleSelectAgent} />
+        </>
+      )}
+      {nav.level === 'agent' && agentDetail && (
+        <>
+          <AnalyticsPanel title="Agent Analytics" windows={agentDetail.analytics} />
+          <AgentDetail agentName={nav.agentName!} workspaceName={nav.workspaceName!} runs={agentDetail.runs} cost={agentDetail.cost} loading={loading} error={error} />
+        </>
+      )}
     </div>
   );
 }

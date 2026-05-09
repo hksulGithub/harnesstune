@@ -1,5 +1,6 @@
 export * from './AgentBackendAdapter';
 export * from './ClaudeCodeHookAdapter';
 export * from './OpenClawAdapter';
+export * from './RemoteAdapter';
 export * from './AdapterFactory';
 export * from './AdapterRegistry';
