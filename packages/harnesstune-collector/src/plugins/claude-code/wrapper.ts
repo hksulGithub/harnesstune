@@ -12,6 +12,7 @@ set -uo pipefail
 
 RUNS_DIR="\$HOME/.harnesstune/cron-runs"
 OUTPUT_TAIL_LINES=50
+TRANSCRIPT_FILE=""
 
 # --- Parse --name flag ---
 if [ "\$#" -lt 3 ] || [ "\$1" != "--name" ]; then
@@ -41,7 +42,7 @@ DURATION_MS=$(( (END_EPOCH - START_EPOCH) * 1000 ))
 
 # --- Capture last N lines of output ---
 OUTPUT_TAIL=\$(tail -n "\$OUTPUT_TAIL_LINES" "\$TMPOUT" | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\"/g; s/\\t/\\\\t/g')
-rm -f "\$TMPOUT"
+TRANSCRIPT_FILE="\$TMPOUT"
 
 # --- Build JSON (no jq dependency — use printf) ---
 TIMESTAMP=\$(date +%s%N | cut -c1-13)
@@ -55,8 +56,9 @@ printf '{
   "startedAt": "%s",
   "finishedAt": "%s",
   "durationMs": %d,
-  "outputTail": "%s"
-}\\n' "\$AGENT_NAME" "\$(echo "\$*" | sed 's/"/\\\\"/g')" "\$EXIT_CODE" "\$STARTED_AT" "\$FINISHED_AT" "\$DURATION_MS" "\$OUTPUT_TAIL" > "\$TMP_FILE"
+  "outputTail": "%s",
+  "transcriptPath": "%s"
+}\\n' "\$AGENT_NAME" "\$(echo "\$*" | sed 's/"/\\\\"/g')" "\$EXIT_CODE" "\$STARTED_AT" "\$FINISHED_AT" "\$DURATION_MS" "\$OUTPUT_TAIL" "\$TRANSCRIPT_FILE" > "\$TMP_FILE"
 
 # --- Atomic rename (risk 5.7 mitigation) ---
 mv "\$TMP_FILE" "\$RUN_FILE"

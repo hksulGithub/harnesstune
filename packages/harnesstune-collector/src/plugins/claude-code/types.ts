@@ -7,6 +7,7 @@ export interface CronRunFile {
   finishedAt: string;  // ISO 8601
   durationMs: number;
   outputTail: string;  // last 50 lines of stdout+stderr
+  transcriptPath?: string;
 }
 
 /** Parsed crontab entry containing harnesstune-wrap */

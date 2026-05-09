@@ -9,6 +9,8 @@ import { mapCrontabEntry, mapCronRunFile } from '../claude-code/mappers.js';
 import { readCrontab } from '../claude-code/crontab.js';
 import { generateWrapperScript } from '../claude-code/wrapper.js';
 import { COLLECTOR_DIR } from '../../config.js';
+import { parseSummaryMode, shouldSummarizeRun } from '../../summaries/policy.js';
+import { summarizeTranscript } from '../../summaries/summarizer.js';
 
 const DEFAULT_WRAPPER_PATH = join(COLLECTOR_DIR, 'bin', 'harnesstune-wrap');
 const DEFAULT_CRON_RUNS_DIR = join(COLLECTOR_DIR, 'cron-runs');
@@ -34,7 +36,7 @@ export class ClaudeCodePlugin implements PlatformPlugin {
       join(homedir(), '.local', 'bin', 'claude'),
     ];
     const settingsFile = join(homedir(), '.claude', 'settings.json');
-    return existsSync(settingsFile) || markers.some(p => existsSync(p));
+    return existsSync(settingsFile) || markers.some((p) => existsSync(p));
   }
 
   async setup(_existing?: PlatformConfig): Promise<PlatformConfig> {
@@ -46,18 +48,10 @@ export class ClaudeCodePlugin implements PlatformPlugin {
     writeFileSync(DEFAULT_WRAPPER_PATH, script, 'utf-8');
     chmodSync(DEFAULT_WRAPPER_PATH, 0o755);
 
-    console.log(`\nWrapper script installed: ${DEFAULT_WRAPPER_PATH}`);
-    console.log('\nTo use with cron, update your crontab entries:');
-    console.log(`  crontab -e`);
-    console.log(`\nReplace direct claude calls with the wrapper:`);
-    console.log(`  Before: 0 9 * * * claude -p 'Generate the daily report'`);
-    console.log(`  After:  0 9 * * * ${DEFAULT_WRAPPER_PATH} --name 'daily-report' claude -p 'Generate the daily report'`);
-    console.log(`\nOr add ${binDir} to your PATH and use:`);
-    console.log(`  0 9 * * * harnesstune-wrap --name 'daily-report' claude -p 'Generate the daily report'`);
-
     return {
       wrapperPath: DEFAULT_WRAPPER_PATH,
       cronRunsDir: DEFAULT_CRON_RUNS_DIR,
+      summaries: 'on',
     };
   }
 
@@ -72,6 +66,7 @@ export class ClaudeCodePlugin implements PlatformPlugin {
     const sinceMs = since.getTime();
     const nowMs = Date.now();
     const runs: RunReport[] = [];
+    const summaryMode = parseSummaryMode(this.platformConfig?.['summaries']);
 
     let entries: string[];
     try {
@@ -80,16 +75,17 @@ export class ClaudeCodePlugin implements PlatformPlugin {
       return [];
     }
 
+    let seenRunNumber = 0;
+
     for (const entry of entries) {
       const filePath = join(this.cronRunsDir, entry);
-
       if (entry.endsWith('.json.tmp')) continue;
       if (!entry.endsWith('.json')) continue;
 
       try {
         const mtime = statSync(filePath).mtime.getTime();
         if (mtime < nowMs - STALE_FILE_AGE_MS) {
-          try { unlinkSync(filePath); } catch { /* ignore */ }
+          try { unlinkSync(filePath); } catch {}
           continue;
         }
         if (mtime < sinceMs) continue;
@@ -100,22 +96,23 @@ export class ClaudeCodePlugin implements PlatformPlugin {
       try {
         const raw = readFileSync(filePath, 'utf-8');
         const runFile = JSON.parse(raw) as CronRunFile;
-
         if (!runFile.agentName || !runFile.startedAt || !runFile.finishedAt) {
-          console.warn(`Invalid run file (missing fields), skipping: ${entry}`);
-          try { unlinkSync(filePath); } catch { /* ignore */ }
+          try { unlinkSync(filePath); } catch {}
           continue;
         }
 
         const report = mapCronRunFile(runFile);
+        seenRunNumber += 1;
 
-        if (new Date(report.finishedAt).getTime() < sinceMs) {
-          try { unlinkSync(filePath); } catch { /* ignore */ }
-          continue;
+        if (
+          runFile.transcriptPath &&
+          shouldSummarizeRun(summaryMode, seenRunNumber)
+        ) {
+          report.summary = await summarizeTranscript(runFile.transcriptPath, { timeoutMs: 15_000 });
         }
 
         runs.push(report);
-        try { unlinkSync(filePath); } catch { /* ignore */ }
+        try { unlinkSync(filePath); } catch {}
       } catch (err) {
         console.error(`Failed to process run file ${entry}:`, (err as Error).message);
       }
