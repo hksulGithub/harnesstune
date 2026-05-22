@@ -1,77 +1,69 @@
 import type { RunReport } from '@harnesstune/shared';
 import type { AgentIdentity } from '../../types.js';
-import type { PaperclipAgent, PaperclipTaskSession, PaperclipCostEntry, PaperclipActivity } from './types.js';
+import type { PaperclipAgent, PaperclipHeartbeatRun, PaperclipActivity } from './types.js';
 
 /** Map a Paperclip agent to the collector's AgentIdentity */
 export function mapAgent(agent: PaperclipAgent): AgentIdentity {
+  const intervalSec = agent.runtimeConfig?.heartbeat?.intervalSec;
+  const schedule =
+    intervalSec != null && intervalSec > 0 && intervalSec % 60 === 0
+      ? `*/${intervalSec / 60} * * * *`
+      : null;
+
   return {
     agentId: agent.id,
     name: agent.name,
     platform: 'paperclip',
-    schedule: agent.schedule ?? null,
-    lastRunAt: agent.lastRunAt ?? null,
+    schedule,
+    lastRunAt: agent.lastHeartbeatAt ?? null,
     status: agent.status ?? 'unknown',
   };
 }
 
-/** Map a Paperclip task session to the shared RunReport type */
-export function mapTaskSession(session: PaperclipTaskSession): RunReport {
+/** Map a Paperclip heartbeat run to the shared RunReport type */
+export function mapHeartbeatRun(run: PaperclipHeartbeatRun): RunReport {
+  const statusMap = {
+    succeeded: 'success',
+    failed: 'failure',
+    running: 'running',
+  } as const;
   const durationMs =
-    session.durationMs ??
-    (new Date(session.finishedAt).getTime() - new Date(session.startedAt).getTime());
-
+    run.finishedAt != null
+      ? Date.parse(run.finishedAt) - Date.parse(run.startedAt)
+      : 0;
+  const usage = run.usageJson;
   const tokenUsage =
-    session.inputTokens != null && session.outputTokens != null
-      ? { inputTokens: session.inputTokens, outputTokens: session.outputTokens }
+    usage?.inputTokens != null && usage?.outputTokens != null
+      ? { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens }
+      : undefined;
+  const resultExcerpt =
+    run.resultJson != null
+      ? JSON.stringify(run.resultJson)?.slice(0, 500)
       : undefined;
 
   return {
-    agentId: session.agentId,
-    startedAt: session.startedAt,
-    finishedAt: session.finishedAt,
-    status: session.status,
+    agentId: run.agentId,
+    startedAt: run.startedAt,
+    finishedAt: run.finishedAt ?? run.startedAt,
+    status: statusMap[run.status],
     durationMs,
-    logExcerpt: session.logExcerpt,
-    errorSummary: session.errorSummary,
+    logExcerpt: run.stdoutExcerpt ?? run.stderrExcerpt ?? resultExcerpt,
+    errorSummary: run.error ?? run.errorCode ?? undefined,
     tokenUsage,
-    costCents: session.costCents,
+    costCents: usage?.costUsd != null ? Math.round(usage.costUsd * 100) : undefined,
   };
 }
 
-/**
- * D-03 fallback: enrich runs that are missing costCents from batch cost data.
- * Costs are per-agent per-day; match by agentId + date portion of finishedAt.
- * Only patches runs where costCents is null/undefined.
- */
-export function enrichWithCosts(
-  runs: RunReport[],
-  costs: PaperclipCostEntry[],
-): RunReport[] {
-  if (costs.length === 0) return runs;
-  const costMap = new Map(costs.map(c => [`${c.agentId}:${c.date}`, c.costCents]));
-  return runs.map(r => {
-    if (r.costCents != null) return r;
-    const date = r.finishedAt.slice(0, 10); // 'YYYY-MM-DD'
-    const cents = costMap.get(`${r.agentId}:${date}`);
-    return cents != null ? { ...r, costCents: cents } : r;
-  });
-}
-
-/**
- * Map Paperclip activity events to supplementary RunReport fields.
- * Activities that can be correlated to a run (by agentId + time proximity)
- * are appended to the run's logExcerpt. Standalone activities are returned
- * as minimal RunReports with status 'success' and zero duration.
- */
+/** Map Paperclip activity entries to minimal RunReport events. */
 export function mapActivitiesToEvents(
   activities: PaperclipActivity[],
 ): RunReport[] {
   return activities.map(a => ({
     agentId: a.agentId,
-    startedAt: a.occurredAt,
-    finishedAt: a.occurredAt,
+    startedAt: a.createdAt,
+    finishedAt: a.createdAt,
     status: 'success' as const,
     durationMs: 0,
-    logExcerpt: `[${a.eventType}] ${a.detail ?? ''}`.trim(),
+    logExcerpt: `[${a.action}] ${a.details != null ? JSON.stringify(a.details) : ''}`.trim(),
   }));
 }

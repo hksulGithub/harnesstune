@@ -1,13 +1,13 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import { createInterface } from 'node:readline/promises';
+import { createInterface, type Interface as ReadlineInterface } from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import type { RunReport } from '@harnesstune/shared';
 import type { PlatformPlugin, PlatformConfig } from '../interface.js';
 import type { AgentIdentity } from '../../types.js';
 import { PaperclipClient } from '../paperclip/client.js';
-import { mapAgent, mapTaskSession, enrichWithCosts, mapActivitiesToEvents } from '../paperclip/mappers.js';
+import { mapAgent, mapHeartbeatRun, mapActivitiesToEvents } from '../paperclip/mappers.js';
 
 /**
  * Paperclip platform plugin.
@@ -16,7 +16,7 @@ import { mapAgent, mapTaskSession, enrichWithCosts, mapActivitiesToEvents } from
  * setup(): prompts for serverUrl + apiKey, validates credentials via getCompanies(),
  *          auto-selects or prompts for companyId (D-02).
  * discover(): calls getAgents(companyId) and maps to AgentIdentity[] (PCLP-02).
- * collectRuns(): calls getTaskSessions + getCostsByAgent + getActivity, maps to RunReport[] (PCLP-03, PCLP-04, PCLP-05).
+ * collectRuns(): calls getHeartbeatRuns + getActivity, maps to RunReport[] (PCLP-03, PCLP-05).
  */
 export class PaperclipPlugin implements PlatformPlugin {
   readonly id = 'paperclip';
@@ -45,8 +45,9 @@ export class PaperclipPlugin implements PlatformPlugin {
     return markers.some(p => existsSync(p));
   }
 
-  async setup(existing?: PlatformConfig): Promise<PlatformConfig> {
-    const rl = createInterface({ input, output });
+  async setup(existing?: PlatformConfig, injectedRl?: ReadlineInterface): Promise<PlatformConfig> {
+    const rl = injectedRl ?? createInterface({ input, output });
+    const ownsRl = !injectedRl;
     try {
       // Step 1: prompt for server URL and API key
       const defaultUrl = (existing?.['serverUrl'] as string | undefined) ?? '';
@@ -88,7 +89,7 @@ export class PaperclipPlugin implements PlatformPlugin {
 
       return { serverUrl, apiKey, companyId };
     } finally {
-      rl.close();
+      if (ownsRl) rl.close();
     }
   }
 
@@ -108,28 +109,15 @@ export class PaperclipPlugin implements PlatformPlugin {
     // Step 1: discover agents to iterate (PCLP-02)
     const agents = await this.client.getAgents(this.companyId);
 
-    // Step 2: collect task sessions for each agent (PCLP-03)
+    // Step 2: collect heartbeat runs for each agent (PCLP-03)
     let allRuns: RunReport[] = [];
     for (const agent of agents) {
-      const sessions = await this.client.getTaskSessions(agent.id, since);
-      const runs = sessions.map(mapTaskSession);
-      allRuns.push(...runs);
+      const runs = await this.client.getHeartbeatRuns(this.companyId, agent.id, since);
+      const mappedRuns = runs.map(mapHeartbeatRun);
+      allRuns.push(...mappedRuns);
     }
 
-    // Step 3: fallback cost enrichment for runs missing costCents (PCLP-04, D-03)
-    const runsWithoutCost = allRuns.filter(r => r.costCents == null);
-    if (runsWithoutCost.length > 0) {
-      try {
-        const now = new Date();
-        const costs = await this.client.getCostsByAgent(this.companyId, since, now);
-        allRuns = enrichWithCosts(allRuns, costs);
-      } catch (err) {
-        // Cost enrichment is best-effort; don't fail the whole collection
-        console.error('Paperclip cost enrichment failed:', (err as Error).message);
-      }
-    }
-
-    // Step 4: collect activity/audit events (PCLP-05)
+    // Step 3: collect activity/audit events (PCLP-05)
     try {
       for (const agent of agents) {
         const activities = await this.client.getActivity(this.companyId, agent.id, since);

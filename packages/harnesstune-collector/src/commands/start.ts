@@ -1,7 +1,10 @@
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { readConfig, writePid, removePid, readPid, writeStatus, resolveToken } from '../config.js';
 import type { CollectorConfig, CollectorStatus } from '../config.js';
 import { RetryQueue } from '../queue.js';
 import { ALL_PLUGINS } from '../plugins/loader.js';
+import { loadCursors, saveCursors } from '../daemon/cursors.js';
 import { sendHeartbeat } from '../daemon/heartbeat.js';
 import { runCycle } from '../daemon/scheduler.js';
 import type { PluginCursors } from '../daemon/scheduler.js';
@@ -48,7 +51,8 @@ export async function start(_args: string[], opts: { dryRun: boolean }): Promise
   writePid(process.pid);
 
   const queue = new RetryQueue();
-  const cursors: PluginCursors = {};
+  const cursorsPath = join(homedir(), '.harnesstune', 'cursors.json');
+  const cursors: PluginCursors = loadCursors(cursorsPath);
 
   // Filter to enabled plugins
   const enabledIds = new Set(config.platforms.filter(p => p.enabled).map(p => p.id));
@@ -112,6 +116,7 @@ export async function start(_args: string[], opts: { dryRun: boolean }): Promise
     if (shuttingDown) return;
     try {
       const result = await runCycle(enabledPlugins, config, queue, cursors);
+      saveCursors(cursorsPath, cursors);
       lastPluginSummary = result.plugins;
 
       // Write status file

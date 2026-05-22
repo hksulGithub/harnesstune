@@ -98,7 +98,7 @@ export async function setup(args: string[]): Promise<void> {
 
         if (enabled) {
           console.log(`\nConfiguring ${plugin.displayName}:`);
-          platformConfig = await plugin.setup();
+          platformConfig = await plugin.setup(undefined, rl);
         }
       }
 

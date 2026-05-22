@@ -1,7 +1,8 @@
 import type {
   PaperclipCompany,
   PaperclipAgent,
-  PaperclipTaskSession,
+  PaperclipTaskDefinition,
+  PaperclipHeartbeatRun,
   PaperclipCostEntry,
   PaperclipActivity,
   PaperclipPaginatedResponse,
@@ -40,12 +41,38 @@ export class PaperclipClient {
     return this.getAll<PaperclipAgent>(`/api/companies/${companyId}/agents`);
   }
 
-  /** Get task sessions (runs) for an agent since a timestamp. Paginates internally. */
-  async getTaskSessions(agentId: string, since: Date): Promise<PaperclipTaskSession[]> {
+  /** Get task definitions for an agent. Prefer the canonical endpoint, then fall back. */
+  async getTaskDefinitions(companyId: string, agentId: string): Promise<PaperclipTaskDefinition[]> {
     const params: Record<string, string> = {
+      agentId,
+    };
+    try {
+      return await this.getAll<PaperclipTaskDefinition>(
+        `/api/companies/${companyId}/task-definitions`,
+        params,
+      );
+    } catch (error) {
+      if (error instanceof PaperclipApiError && error.status === 404) {
+        return this.getAll<PaperclipTaskDefinition>(
+          `/api/companies/${companyId}/task-sessions`,
+          params,
+        );
+      }
+      throw error;
+    }
+  }
+
+  /** Get heartbeat run executions for an agent since a timestamp. Paginates internally. */
+  async getHeartbeatRuns(
+    companyId: string,
+    agentId: string,
+    since: Date,
+  ): Promise<PaperclipHeartbeatRun[]> {
+    const params: Record<string, string> = {
+      agentId,
       since: since.toISOString(),
     };
-    return this.getAll<PaperclipTaskSession>(`/api/agents/${agentId}/task-sessions`, params);
+    return this.getAll<PaperclipHeartbeatRun>(`/api/companies/${companyId}/heartbeat-runs`, params);
   }
 
   /** Get per-agent cost data for a date range (fallback enrichment per D-03) */
@@ -67,8 +94,10 @@ export class PaperclipClient {
   }
 
   /**
-   * Generic paginated GET: fetches all pages and returns a flat array.
-   * Pagination uses cursor-based approach: ?cursor=<nextCursor>
+   * Generic GET that tolerates two response shapes:
+   *   1. Raw array `[...]` — typical of the local Paperclip dev server (no pagination).
+   *   2. Cursor envelope `{ data: T[], hasMore?: boolean, nextCursor?: string }` — for
+   *      deployments that paginate. We follow the cursor until exhausted.
    */
   private async getAll<T>(path: string, params?: Record<string, string>): Promise<T[]> {
     const results: T[] = [];
@@ -87,9 +116,21 @@ export class PaperclipClient {
         throw new PaperclipApiError(res.status, path, body);
       }
 
-      const page = (await res.json()) as PaperclipPaginatedResponse<T>;
-      results.push(...page.data);
-      cursor = page.hasMore ? page.nextCursor : undefined;
+      const payload = (await res.json()) as T[] | PaperclipPaginatedResponse<T>;
+
+      if (Array.isArray(payload)) {
+        results.push(...payload);
+        cursor = undefined;
+      } else if (payload && Array.isArray(payload.data)) {
+        results.push(...payload.data);
+        cursor = payload.hasMore ? payload.nextCursor : undefined;
+      } else {
+        throw new PaperclipApiError(
+          200,
+          path,
+          `Unexpected response shape: expected array or { data: [...] }, got ${typeof payload}`,
+        );
+      }
     } while (cursor);
 
     return results;

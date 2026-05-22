@@ -1,3 +1,4 @@
+import type { Interface as ReadlineInterface } from 'node:readline/promises';
 import type { RunReport } from '@harnesstune/shared';
 import type { AgentIdentity } from '../types.js';
 
@@ -26,8 +27,11 @@ export interface PlatformPlugin {
   /**
    * Interactive first-time platform config via readline prompts.
    * Returns config values to be stored in collector.json platforms[].config.
+   *
+   * The caller may inject a shared readline interface; if provided, the plugin
+   * MUST NOT close it (closing stdin breaks subsequent prompts in the parent).
    */
-  setup(existing?: PlatformConfig): Promise<PlatformConfig>;
+  setup(existing?: PlatformConfig, rl?: ReadlineInterface): Promise<PlatformConfig>;
 
   /**
    * Discover all agents registered on this platform.
