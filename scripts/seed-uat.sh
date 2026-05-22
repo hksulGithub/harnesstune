@@ -52,7 +52,8 @@ if (!dbPath) throw new Error('UAT_DB_PATH is required');
 const client = createClient({ url: `file:${dbPath}` });
 const now = Date.now();
 const iso = (offsetMs) => new Date(now + offsetMs).toISOString();
-const ms = (offsetMs) => now + offsetMs;
+// Drizzle's `mode: 'timestamp'` columns store Unix seconds, so seed inserts must use seconds.
+const ms = (offsetMs) => Math.floor((now + offsetMs) / 1000);
 const hash = (value) => createHash('sha256').update(value).digest('hex');
 
 async function exec(sql, args = []) {
