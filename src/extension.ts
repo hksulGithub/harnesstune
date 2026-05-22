@@ -18,6 +18,7 @@ import { ScaffoldService } from './scaffold';
 import { AlertEngine } from './alerts';
 import { LocalFleetProvider } from './providers/LocalFleetProvider';
 import { RemoteFleetProvider } from './providers/RemoteFleetProvider';
+import { mergeWorkspaceSummaries } from './providers/fleetBuilder';
 import type { FleetDataProvider } from './providers/FleetDataProvider';
 import type { AlertCycleSummary } from './types/alerts';
 // TerminalManager replaced by ChatManager (webview-based chat panels)
@@ -329,7 +330,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         localFleetProvider.getWorkspaceSummaries(days),
         remoteFleetProvider.getWorkspaceSummaries(days),
       ]);
-      return [...local, ...remote];
+      return mergeWorkspaceSummaries(local, remote);
     },
     async getWorkspaceDetail(workspaceId: string, days: number) {
       const ws = registry.getById(workspaceId);

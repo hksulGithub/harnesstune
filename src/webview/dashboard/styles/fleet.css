@@ -140,6 +140,9 @@
 }
 
 .workspace-card-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   flex: 0 0 auto;
   margin-left: 8px;
 }
@@ -156,6 +159,22 @@
 .workspace-card-platform {
   font-size: 11px;
   color: var(--vscode-descriptionForeground);
+}
+
+.workspace-card-relay-badge {
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--vscode-badge-foreground);
+  background: var(--vscode-badge-background);
+  padding: 1px 5px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.workspace-card-relay-badge.unreachable,
+.workspace-card-relay-badge.failing {
+  color: var(--vscode-errorForeground);
+  background: var(--vscode-inputValidation-errorBackground);
 }
 
 .workspace-card-metrics {
@@ -219,6 +238,11 @@
 
 .health-dot.no-data {
   background: var(--vscode-descriptionForeground);
+}
+
+.health-dot.unreachable {
+  background: var(--vscode-errorForeground);
+  border-radius: 2px;
 }
 
 /* ============================================================

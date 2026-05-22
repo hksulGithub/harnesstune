@@ -26,6 +26,26 @@ function formatRelativeTime(ts: number): string {
   return `${Math.floor(diff / 86400000)}d ago`;
 }
 
+function formatWorkspaceStatus(ws: FleetWorkspaceSummary): string {
+  if (ws.health === 'unreachable') {
+    return 'Relay unreachable';
+  }
+  return formatRelativeTime(ws.lastActivityTs);
+}
+
+function formatRelayBadge(ws: FleetWorkspaceSummary): string | null {
+  if (!ws.relayStatus) {
+    return null;
+  }
+  if (ws.relayStatus === 'unreachable') {
+    return 'Relay unreachable';
+  }
+  if (ws.relayStatus === 'no-data') {
+    return 'Relay no data';
+  }
+  return `Relay ${ws.relayStatus}`;
+}
+
 function handleKeyDown(onSelect: () => void) {
   return (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -67,6 +87,9 @@ export function FleetOverview({ summaries, loading: _loading, error, onSelectWor
                 <span className="workspace-card-name">{ws.name}</span>
               </div>
               <div className="workspace-card-right">
+                {formatRelayBadge(ws) && (
+                  <span className={`workspace-card-relay-badge ${ws.relayStatus}`}>{formatRelayBadge(ws)}</span>
+                )}
                 <span className="workspace-card-platform">{ws.platform}</span>
               </div>
             </div>
@@ -82,7 +105,9 @@ export function FleetOverview({ summaries, loading: _loading, error, onSelectWor
                 <span className="metric-label"> error rate</span>
               </span>
               <span>
-                <span className="metric-label">{formatRelativeTime(ws.lastActivityTs)}</span>
+                <span className={ws.health === 'unreachable' ? 'metric-label metric-error' : 'metric-label'}>
+                  {formatWorkspaceStatus(ws)}
+                </span>
               </span>
             </div>
             <div className="workspace-card-cta">View agents →</div>

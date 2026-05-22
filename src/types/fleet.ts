@@ -1,4 +1,4 @@
-export type HealthState = 'healthy' | 'degraded' | 'failing' | 'no-data';
+export type HealthState = 'healthy' | 'degraded' | 'failing' | 'no-data' | 'unreachable';
 export type CostTrend = 'up' | 'down' | 'flat';
 
 export interface FleetWorkspaceSummary {
@@ -6,6 +6,7 @@ export interface FleetWorkspaceSummary {
   name: string;
   platform: string;
   health: HealthState;
+  relayStatus?: HealthState;
   agentCount: number;
   errorRatePct: number;
   lastActivityTs: number;
