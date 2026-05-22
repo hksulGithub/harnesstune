@@ -245,8 +245,8 @@ export function GraphArea({
     <div className="graph-area">
       {nodes.length === 0 ? (
         <div className="empty-state">
-          <h2>No agents running</h2>
-          <p>Start a Claude Code session to see the agent hierarchy appear here.</p>
+          <h2>Topology will render once at least one agent is connected.</h2>
+          <p>Schematic will render once an agent reports its task graph.</p>
         </div>
       ) : (
         <>

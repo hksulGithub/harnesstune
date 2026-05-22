@@ -70,7 +70,7 @@ export function AgentDetail({
       ) : runs.length === 0 ? (
         <div className="fleet-empty">
           <h2>No runs recorded</h2>
-          <p>Agent runs will appear here once the collector reports data.</p>
+          <p>Runs appear here once an agent executes a task.</p>
         </div>
       ) : (
         <div className="run-table">

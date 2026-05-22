@@ -70,8 +70,8 @@ export function WorkspaceDrillDown({
         </div>
       ) : agents.length === 0 ? (
         <div className="fleet-empty">
-          <h2>No agents discovered</h2>
-          <p>This workspace has no agents yet. Run a collector to discover agents.</p>
+          <h2>No agents connected yet</h2>
+          <p>Run <code>scripts/install-collector.sh</code> on a machine to see it here.</p>
         </div>
       ) : (
         agents.map((agent) => (
