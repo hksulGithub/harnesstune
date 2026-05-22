@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: milestone
-status: Phase 17 complete
-last_updated: "2026-04-24T06:00:00.000Z"
-last_activity: 2026-04-24 -- Phase 17 execution complete
+milestone: v3.0
+milestone_name: multi-platform-fleet
+status: v3.1 followups complete; live VSCode UAT remains for Phase 16/17 UI checks
+last_updated: "2026-05-09T05:15:00.000Z"
+last_activity: 2026-05-09 -- v3.1 followups implemented and review blockers fixed
 progress:
   total_phases: 17
-  completed_phases: 8
+  completed_phases: 17
   total_plans: 27
-  completed_plans: 19
-  percent: 70
+  completed_plans: 27
+  percent: 100
 ---
 
 # GSD State: HarnessTune
@@ -20,14 +20,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-22)
 
 **Core value:** Engineers running multiple agent systems can see and control all their agents from one place inside VSCode.
-**Current focus:** Phase 17 — proactive-alerts (complete)
+**Current focus:** v3.1 followups complete: Paperclip API shape rewrite, relay `/reports` → `agent_runs` ingestion, relay-unreachable fleet state, alert threshold copy, review blockers, and added Node-verifiable coverage for dashboard navigation/render states plus status-bar alert badge and toast summary behavior. Remaining work is live VSCode UAT for Phase 16/17 UI behavior.
 
 ## Current Position
 
 Phase: 17 (proactive-alerts) — COMPLETE
 Plan: 2 of 2 (all done)
-Next: Next milestone or `/gsd-verify-work 17`
-Last activity: 2026-04-24 -- Phase 17 execution complete
+Milestone: v3.0 — CLOSED (2026-05-09)
+Next: live VSCode UAT — Phase 16 dashboard interactions and Phase 17 status-bar/toast behavior
+Last activity: 2026-05-09 -- v3.1 followups complete; implementation review blockers fixed
 
 ## Progress
 
@@ -156,3 +157,7 @@ Last activity: 2026-04-24 -- Phase 17 execution complete
 - **2026-04-24**: Phase 17 discuss-phase complete. 4 areas discussed (Alert Engine Design, Notification Delivery, Alert Configuration, Relay Alert State). 7 decisions captured in 17-CONTEXT.md. Key decisions: extension-side AlertEngine polling FleetDataProvider every 60s, stale detection via 2x cron interval with 24h fallback, in-memory state transition map for dedup, single summary toast + status bar badge, WorkspaceRecord.alertConfig field, quiet hours deferred, relay alert state extension-only (no API changes). Ready for `/gsd-plan-phase 17`.
 
 - **2026-04-24**: Phase 17 execution complete. 2 plans across 2 waves. Plan 17-01: Alert types (AlertConfig, AlertState, AlertTransition, AlertCycleSummary, ALERT_DEFAULTS), alertConfig field on WorkspaceRecord, AlertEngine class with 60s polling, stale detection via cron-parser v5 (2x interval, 24h fallback), in-memory state transition Map for dedup. Plan 17-02: StatusBarManager alert badge (setAlertCount, clearAlertBadge, $(bell) codicon, warningBackground), CompositeFleetProvider (merges local + remote), AlertEngine wired into extension lifecycle, batched summary toast via showWarningMessage with "View Fleet Dashboard" action, badge clears on dashboard open, remote fleet clients registered/removed on connect/remove. 4 commits, 4 files modified, tsc passes clean. Phase 17 complete.
+
+- **2026-05-09**: v3.0 milestone closure. Phase 13 UAT (5 items) — 1 PASSED (setup credential validation), 4 FAILED on Paperclip API shape mismatch; all 4 rolled into v3.1 followup `.planning/v3.1-followups/paperclip-shape-rewrite.md`. Real-deployment wins kept in v3.0: setup wizard, credential validation, cross-plugin readline lifecycle fix, adaptive `getAll<T>` (raw arrays + cursor envelopes). Phase 17 UAT (6 tests) — 3 PASSED via direct AlertEngine driver (Tests 4 disabled-workspace skip, 5 mixed local+remote batching, 6 cron-parser v5 edge cases); Tests 1/2/3 BLOCKED on live VSCode dev host (status-bar bell, amber WarningBackground, showWarningMessage toast, View Fleet Dashboard button) — code-level wiring captured per test. Second v3.1 followup queued: `.planning/v3.1-followups/relay-runs-ingestion.md` (relay `/reports` POST stores envelope only, never fans into `agent_runs` table — remote agents invisible in fleet view). Daemon PID 83500 healthy (claude-desktop + claude-code plugins enabled). v3.0 ships with 2 known-broken items deferred to v3.1.
+
+- **2026-05-09**: v3.1 followups and review blockers complete. Paperclip shape rewrite UAT re-run green; relay `/reports` now fans out `run_batch` rows into `agent_runs` and returns retryable `500` on fanout failure; collector cursor persistence added; remote token input re-masked; root build now includes `packages/harnesstune-collector`; Jest topology ESM failure removed by replacing `d3-hierarchy` runtime dependency with deterministic layout; AdapterRegistry runtime error fixed; Phase 16 relay-unreachable state now renders distinctly from `no-data`; Phase 17 stale-threshold copy now reports minutes/hours/days instead of `0h`; dashboard navigation/render-state, status-bar alert badge, and alert-toast summary coverage added. Build passes and full Jest suite passes (15 suites, 71 tests). Remaining: live VSCode UAT for Phase 16 dashboard clicks/date persistence/error card and Phase 17 real status-bar/toast behavior.

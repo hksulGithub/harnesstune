@@ -282,7 +282,7 @@ Plans:
 Plans:
 - [x] 07-01-PLAN.md — Drizzle schema, Turso client, Hono app, middleware chain (auth, sanitize, version, rateLimit), health endpoint
 - [x] 07-02-PLAN.md — Channel registration, report endpoints (upload, paginated list, full-body fetch), message endpoints (post, poll, delete)
-- [ ] 07-03-PLAN.md — Vercel entry point, deployment config, schema push, live deployment verification
+- [x] 07-03-PLAN.md — Vercel entry point, deployment config, schema push, live deployment verification
 
 ---
 
@@ -391,8 +391,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — Type consolidation (BackendType canonical + mode discriminant + registry v2 migration)
-- [ ] 06-02-PLAN.md — Monorepo structure (pnpm workspaces + TS project references + package scaffolds)
+- [x] 10-01-PLAN.md — Extension Host Infrastructure + Panel Scaffold (types, RelayClient.getMessages, RemoteAdapter timeline merge, ReportPanel singleton, esbuild entry)
+- [x] 10-02-PLAN.md — React Components + CSS + Integration (10 components from UI-SPEC, reports.css, App.tsx wiring)
 
 ---
 
@@ -637,12 +637,12 @@ Plans:
 | 9. RemoteAdapter + Remote Workspace Management | 2/2 | Complete | 2026-04-19 |
 | 10. Report Timeline UI + Async Chat | 2/2 | Complete | 2026-04-21 |
 | 11. Multi-Agent Model + Relay Extensions | 2/2 | Complete    | 2026-04-23 |
-| 12. Collector Daemon + Easy Setup | 1/2 | In Progress|  |
-| 13. Paperclip Adapter | 0/2 | Complete    | 2026-04-23 |
-| 14. Claude Desktop + Claude Code Cron Adapters | 0/? | Not started | - |
+| 12. Collector Daemon + Easy Setup | 2/2 | Complete    | 2026-04-23 |
+| 13. Paperclip Adapter | 2/2 | Complete    | 2026-04-23 |
+| 14. Claude Desktop + Claude Code Cron Adapters | 3/3 | Complete    | 2026-04-23 |
 | 15. OpenClaw Remote Adapter | 2/2 | Complete   | 2026-04-24 |
-| 16. Fleet Dashboard + Historical Reporting UI | 0/? | Not started | - |
-| 17. Proactive Alerts | 0/? | Not started | - |
+| 16. Fleet Dashboard + Historical Reporting UI | 2/2 | Complete    | 2026-04-24 |
+| 17. Proactive Alerts | 2/2 | Complete    | 2026-04-24 |
 
 ---
 
