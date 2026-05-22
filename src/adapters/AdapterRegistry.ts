@@ -1,6 +1,5 @@
 import type { AgentBackendAdapter } from './AgentBackendAdapter';
 import type { AdapterFactory, WorkspaceConnectionConfig } from './AdapterFactory';
-import { assertNeverBackendType } from '../types/workspace';
 
 export class AdapterRegistry {
   private readonly factories = new Map<string, AdapterFactory>();
@@ -12,15 +11,7 @@ export class AdapterRegistry {
   create(config: WorkspaceConnectionConfig): AgentBackendAdapter {
     const factory = this.factories.get(config.backendType);
     if (!factory) {
-      // Exhaustiveness check: compile-time error if a BackendType is unhandled
-      switch (config.backendType) {
-        case 'claude-code':
-        case 'openclaw':
-        case 'remote':
-          throw new Error(`No adapter factory registered for backendType: ${config.backendType}`);
-        default:
-          return assertNeverBackendType(config.backendType);
-      }
+      throw new Error(`No adapter factory registered for backendType: ${config.backendType}`);
     }
     return factory.createAdapter(config);
   }

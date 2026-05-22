@@ -15,7 +15,7 @@ import { AgentEventStore } from './database';
 import { AgentControlManager } from './controls';
 import { NotificationService } from './notifications';
 import { ScaffoldService } from './scaffold';
-import { AlertEngine } from './alerts';
+import { AlertEngine, formatAlertWarningMessage } from './alerts';
 import { LocalFleetProvider } from './providers/LocalFleetProvider';
 import { RemoteFleetProvider } from './providers/RemoteFleetProvider';
 import { mergeWorkspaceSummaries } from './providers/fleetBuilder';
@@ -358,19 +358,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     statusBarManager.setAlertCount(activeAlertCount);
 
     if (summary.problems.length > 0) {
-      const failingCount = summary.problems.filter(t => t.currentState === 'failing').length;
-      const staleCount = summary.problems.filter(t => t.currentState === 'stale').length;
-      const degradedCount = summary.problems.filter(t => t.currentState === 'degraded').length;
+      const msg = formatAlertWarningMessage(summary);
 
-      const parts: string[] = [];
-      if (failingCount > 0) { parts.push(`${failingCount} failing`); }
-      if (staleCount > 0) { parts.push(`${staleCount} stale`); }
-      if (degradedCount > 0) { parts.push(`${degradedCount} degraded`); }
-
-      const total = summary.problems.length;
-      const msg = `${total} agent${total === 1 ? '' : 's'} need${total === 1 ? 's' : ''} attention: ${parts.join(', ')}`;
-
-      vscode.window.showWarningMessage(`HarnessTune: ${msg}`, 'View Fleet Dashboard').then(action => {
+      vscode.window.showWarningMessage(`HarnessTune: ${msg ?? 'Agents need attention'}`, 'View Fleet Dashboard').then(action => {
         if (action === 'View Fleet Dashboard') {
           vscode.commands.executeCommand('harnesstune.showDashboard');
           activeAlertCount = 0;
@@ -912,7 +902,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     () => {
       const panel = chatManager.getPanel();
       if (panel) {
-        panel.postMessage({ type: 'chat:triggerInterrupt' as any });
+        panel.postMessage({ type: 'chat:triggerInterrupt' });
       }
       // Also send interrupt directly via the webview message channel
       chatManager.interruptActive();
@@ -1086,6 +1076,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       title: 'Add Remote Workspace (2/2)',
       prompt: 'Enter the agent Bearer token',
       password: true,
+      ignoreFocusOut: true,
       validateInput: (value) => value.trim().length === 0 ? 'Token cannot be empty' : undefined,
     });
     if (!token) { return; } // user cancelled

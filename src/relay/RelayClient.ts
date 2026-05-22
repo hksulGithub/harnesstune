@@ -42,7 +42,7 @@ export interface AgentSummary {
   failureCount: number;
   successRate: number;
   totalCostCents: number;
-  lastRunAt: string | null;
+  lastRunAt: number | null;
 }
 
 export interface ChannelSummaryResponse {

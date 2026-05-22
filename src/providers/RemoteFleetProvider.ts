@@ -13,10 +13,15 @@ import type {
 } from '../types/fleet.js';
 import type { IWorkspaceRegistry } from '../types/workspace.js';
 
+const STALE_THRESHOLD_MS = 24 * 3600 * 1000;
+
 function computeHealthFromSummary(a: AgentSummary): HealthState {
   if (a.totalRuns === 0) { return 'no-data'; }
-  if (a.failureCount === 0) { return 'healthy'; }
   if (a.successRate < 0.5) { return 'failing'; }
+  const lastRunMs = a.lastRunAt !== null ? a.lastRunAt * 1000 : 0;
+  const isStale = lastRunMs > 0 && Date.now() - lastRunMs > STALE_THRESHOLD_MS;
+  if (isStale) { return 'degraded'; }
+  if (a.failureCount === 0) { return 'healthy'; }
   return 'degraded';
 }
 
@@ -65,7 +70,7 @@ export class RemoteFleetProvider implements FleetDataProvider {
         const health = computeHealthFromAgentSummaries(agents);
         const lastActivityTs = agents.reduce((max, a) => {
           if (a.lastRunAt === null) { return max; }
-          const ts = Date.parse(a.lastRunAt);
+          const ts = a.lastRunAt * 1000;
           return ts > max ? ts : max;
         }, 0);
 
@@ -78,12 +83,13 @@ export class RemoteFleetProvider implements FleetDataProvider {
           errorRatePct,
           lastActivityTs,
         });
-      } catch {
+      } catch (err) {
+        console.error(`HarnessTune RemoteFleetProvider: getSummary failed for workspace "${ws.name}" (id=${ws.id}):`, err);
         summaries.push({
           id: ws.id,
           name: ws.name,
           platform: ws.name ?? 'Remote',
-          health: 'no-data',
+          health: 'unreachable',
           agentCount: 0,
           errorRatePct: 0,
           lastActivityTs: 0,
@@ -110,7 +116,7 @@ export class RemoteFleetProvider implements FleetDataProvider {
     const agents: FleetAgentSummary[] = channelSummary.agents.map(agentSummary => {
       const identity = identityMap.get(agentSummary.agentId);
       const health = computeHealthFromSummary(agentSummary);
-      const lastRunTs = agentSummary.lastRunAt !== null ? Date.parse(agentSummary.lastRunAt) : 0;
+      const lastRunTs = agentSummary.lastRunAt !== null ? agentSummary.lastRunAt * 1000 : 0;
 
       return {
         id: agentSummary.agentId,

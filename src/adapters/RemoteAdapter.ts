@@ -167,42 +167,29 @@ export class RemoteAdapter implements AgentBackendAdapter {
   async getTimelineItems(): Promise<{ items: TimelineItem[]; loopIterations: Record<string, RalphReportBody[]> }> {
     if (!this.client) { return { items: [], loopIterations: {} }; }
 
-    // WARNING: getTimelineItems() shares reportCursor and messageCursor with the poll() loop.
-    // Both advance the same instance cursors. If poll() and getTimelineItems() run concurrently
-    // (e.g., poll fires during a UI refresh), one call may consume events the other was about to
-    // process. The poll loop is the authoritative cursor owner; getTimelineItems() should only
-    // be called when the poll loop is idle or from the same async context.
-    // TODO: migrate getTimelineItems() to use a separate snapshot cursor in a future refactor.
+    // Fetch the full history independently of the poll() cursor. The poll loop owns
+    // reportCursor/messageCursor for incremental event streaming; the Reports panel
+    // needs the historical snapshot regardless of poll progress. Calling getReports()
+    // with the poll cursor would race poll() and return 0 items whenever poll already
+    // consumed the latest batch (relay applies a strictly-greater-than filter).
     const [reports, messages] = await Promise.all([
-      this.client.getReports(this.reportCursor),
-      this.client.getMessages(this.messageCursor),
+      this.client.getReports(undefined),
+      this.client.getMessages(undefined),
     ]);
 
     const items: TimelineItem[] = [];
     const loopMap: Record<string, RalphReportBody[]> = {};
 
     for (const report of reports) {
-      // report is a ReportListItem (metadata only — no body field)
-      // generatedAt is mapped from DB createdAt in RelayClient.getReports()
-      if (!this.reportCursor || report.generatedAt > this.reportCursor) {
-        this.reportCursor = report.generatedAt;
-      }
       // Track heartbeats for stale detection but don't include in timeline
       if (report.type === 'heartbeat') {
         this.lastHeartbeatAt = Date.now();
         continue;
       }
-      // Cast to ReportEnvelope for TimelineItem compatibility; body is absent on list items.
-      // Callers that need the full body should call RelayClient.getReport(report.id) individually.
       items.push({ kind: 'report', data: report as unknown as import('@harnesstune/shared').ReportEnvelope, at: report.generatedAt });
-      // ralph loop body collection requires full body — not available from list endpoint.
-      // loopMap remains empty here; full bodies must be fetched via getReport() if needed.
     }
 
     for (const msg of messages) {
-      if (!this.messageCursor || msg.createdAt > this.messageCursor) {
-        this.messageCursor = msg.createdAt;
-      }
       items.push({ kind: 'message', data: msg, at: msg.createdAt });
     }
 

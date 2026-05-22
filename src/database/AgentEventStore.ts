@@ -95,7 +95,7 @@ export class AgentEventStore {
     }
 
     this.db.run(
-      `INSERT INTO agent_events (
+      `INSERT OR IGNORE INTO agent_events (
         id, workspace_id, session_id, agent_id, event_type, timestamp,
         tool_name, tool_input, model, input_tokens, output_tokens, cache_read_tokens,
         error, parent_tool_use_id, raw

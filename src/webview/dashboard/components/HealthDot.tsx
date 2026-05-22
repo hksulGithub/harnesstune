@@ -11,6 +11,7 @@ const HEALTH_LABELS: Record<HealthState, string> = {
   'degraded': 'Degraded',
   'failing': 'Failing',
   'no-data': 'No Data',
+  'unreachable': 'Unreachable',
 };
 
 export function HealthDot({ health, showLabel = false }: HealthDotProps): React.ReactElement {

@@ -1,4 +1,3 @@
-import { hierarchy, tree } from 'd3-hierarchy';
 import type { AgentEvent } from '../types/agent';
 import type { TopologyNode, TopologyEdge, TopologyState } from '../types/topology';
 
@@ -20,7 +19,7 @@ interface NodeData {
  * Steps:
  *  A — Build node map from events, track pending Agent tool uses for parent linking
  *  B — Build edges from parent-child relationships
- *  C — Compute layout with d3-hierarchy tree layout (nodeSize [160, 80])
+ *  C — Compute a deterministic tree layout (nodeSize [160, 80])
  *  D — Return { nodes, edges }
  */
 export function buildTopology(events: AgentEvent[], workspaceFilter?: string, knownSessionIds?: Set<string>): TopologyState {
@@ -37,6 +36,7 @@ export function buildTopology(events: AgentEvent[], workspaceFilter?: string, kn
     timestamp: number;
     workspaceId: string;
   }> = [];
+  const latestSessionByWorkspace = new Map<string, string>();
 
   const sorted = [...events].sort((a, b) => a.timestamp - b.timestamp);
 
@@ -90,6 +90,8 @@ export function buildTopology(events: AgentEvent[], workspaceFilter?: string, kn
         if (spawnIdx !== -1) {
           parentSessionId = pendingAgentSpawns[spawnIdx].parentSessionId;
           pendingAgentSpawns.splice(spawnIdx, 1);
+        } else if (event.eventType === 'SubagentStart') {
+          parentSessionId = latestSessionByWorkspace.get(event.workspaceId) ?? null;
         }
 
         nodeMap.set(event.sessionId, {
@@ -106,6 +108,7 @@ export function buildTopology(events: AgentEvent[], workspaceFilter?: string, kn
           stoppedAt: null,
         });
       }
+      latestSessionByWorkspace.set(event.workspaceId, event.sessionId);
     }
   }
 
@@ -123,36 +126,34 @@ export function buildTopology(events: AgentEvent[], workspaceFilter?: string, kn
     }
   }
 
-  // Step C: Compute layout with d3-hierarchy
+  // Step C: Compute deterministic tree layout
   // Group nodes by root session (nodes with parentSessionId === null)
   const roots = [...nodeMap.values()].filter(n => n.parentSessionId === null);
-  const treeLayout = tree<NodeData>().nodeSize([160, 80]);
 
   let xOffset = 0;
 
   for (const root of roots) {
     const nodeData = buildNodeData(root.sessionId, nodeMap);
-    const h = hierarchy(nodeData);
-    const positioned = treeLayout(h);
+    const positioned = layoutTree(nodeData);
 
     // Find the leftmost x to offset correctly
     let minX = Infinity;
     let maxX = -Infinity;
-    positioned.each(d => {
+    for (const d of positioned) {
       if (d.x < minX) { minX = d.x; }
       if (d.x > maxX) { maxX = d.x; }
-    });
+    }
 
     const treeWidth = maxX - minX;
 
-    positioned.each(d => {
+    for (const d of positioned) {
       const n = nodeMap.get(d.data.sessionId);
       if (n) {
         // Center tree horizontally: shift by -minX + xOffset
         n.x = d.x - minX + xOffset;
         n.y = d.y;
       }
-    });
+    }
 
     xOffset += treeWidth + 200;
   }
@@ -162,7 +163,7 @@ export function buildTopology(events: AgentEvent[], workspaceFilter?: string, kn
   return { nodes, edges };
 }
 
-/** Build a recursive NodeData structure for d3.hierarchy() */
+/** Build a recursive NodeData structure for tree layout */
 function buildNodeData(sessionId: string, nodeMap: Map<string, TopologyNode>): NodeData {
   const children: NodeData[] = [];
   for (const node of nodeMap.values()) {
@@ -171,6 +172,28 @@ function buildNodeData(sessionId: string, nodeMap: Map<string, TopologyNode>): N
     }
   }
   return { sessionId, children };
+}
+
+function layoutTree(root: NodeData): Array<{ data: NodeData; x: number; y: number }> {
+  const positioned: Array<{ data: NodeData; x: number; y: number }> = [];
+  let leafIndex = 0;
+
+  const visit = (node: NodeData, depth: number): number => {
+    if (node.children.length === 0) {
+      const x = leafIndex * 160;
+      leafIndex += 1;
+      positioned.push({ data: node, x, y: depth * 80 });
+      return x;
+    }
+
+    const childXs = node.children.map(child => visit(child, depth + 1));
+    const x = (childXs[0] + childXs[childXs.length - 1]) / 2;
+    positioned.push({ data: node, x, y: depth * 80 });
+    return x;
+  };
+
+  visit(root, 0);
+  return positioned;
 }
 
 /** Find all descendant session IDs for a given root session ID */

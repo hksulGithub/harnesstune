@@ -84,7 +84,7 @@ export class LocalFleetProvider implements FleetDataProvider {
   async getWorkspaceSummaries(days: number): Promise<FleetWorkspaceSummary[]> {
     const cutoffMs = Date.now() - days * 86400000;
     const files = await this.readCronRunFiles(cutoffMs);
-    const workspaces = this.registry.getAll();
+    const workspaces = this.registry.getAll().filter(ws => ws.mode === 'local');
 
     return workspaces.map(ws => {
       const wsFiles = files; // local provider uses a single shared dir; all runs belong to the local workspace

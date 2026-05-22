@@ -8,8 +8,8 @@ export interface TopologyNode {
   model: string | null;
   status: AgentControlState;
   opacity: number;          // 1.0 for active, 0.5 for completed
-  x: number;                // computed by d3-hierarchy
-  y: number;                // computed by d3-hierarchy
+  x: number;                // computed by topology layout
+  y: number;                // computed by topology layout
   startedAt: number;
   stoppedAt: number | null;
 }

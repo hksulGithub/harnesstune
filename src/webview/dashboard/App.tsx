@@ -7,34 +7,25 @@ import { BreadcrumbBar } from './components/BreadcrumbBar.js';
 import { FleetOverview } from './components/FleetOverview.js';
 import { WorkspaceDrillDown } from './components/WorkspaceDrillDown.js';
 import { AgentDetail } from './components/AgentDetail.js';
+import {
+  createFleetRequest,
+  navigateFleet,
+  navigateWorkspace,
+  restoreDashboardState,
+  selectAgent,
+  selectWorkspace,
+  type DashboardNavigationState,
+  type DashboardPersistedState,
+} from './state.js';
 
-type ViewLevel = 'fleet' | 'workspace' | 'agent';
-
-interface NavigationState {
-  level: ViewLevel;
-  workspaceId?: string;
-  workspaceName?: string;
-  agentId?: string;
-  agentName?: string;
-}
-
-interface PersistedState {
-  nav: NavigationState;
-  days: number;
-}
-
-function restoreState(): PersistedState {
-  const saved = vscode.getState() as PersistedState | null;
-  return {
-    nav: saved?.nav ?? { level: 'fleet' },
-    days: saved?.days ?? 7,
-  };
+function restoreState(): DashboardPersistedState {
+  return restoreDashboardState(vscode.getState() as DashboardPersistedState | null);
 }
 
 export default function App(): React.ReactElement {
   const initial = restoreState();
 
-  const [nav, setNav] = useState<NavigationState>(initial.nav);
+  const [nav, setNav] = useState<DashboardNavigationState>(initial.nav);
   const [days, setDays] = useState<number>(initial.days);
   const [summaries, setSummaries] = useState<FleetWorkspaceSummary[]>([]);
   const [workspaceDetail, setWorkspaceDetail] = useState<FleetWorkspaceDetail | null>(null);
@@ -52,23 +43,8 @@ export default function App(): React.ReactElement {
     setLoading(true);
     setError(null);
 
-    if (nav.level === 'fleet') {
-      const msg: WebviewToHostMessage = { type: 'fleet:requestOverview', days };
-      vscode.postMessage(msg);
-    } else if (nav.level === 'workspace' && nav.workspaceId !== undefined) {
-      const msg: WebviewToHostMessage = {
-        type: 'fleet:requestWorkspaceDetail',
-        workspaceId: nav.workspaceId,
-        days,
-      };
-      vscode.postMessage(msg);
-    } else if (nav.level === 'agent' && nav.workspaceId !== undefined && nav.agentId !== undefined) {
-      const msg: WebviewToHostMessage = {
-        type: 'fleet:requestAgentDetail',
-        workspaceId: nav.workspaceId,
-        agentId: nav.agentId,
-        days,
-      };
+    const msg: WebviewToHostMessage | null = createFleetRequest(nav, days);
+    if (msg !== null) {
       vscode.postMessage(msg);
     }
   }, [nav.level, nav.workspaceId, nav.agentId, days]);
@@ -103,29 +79,19 @@ export default function App(): React.ReactElement {
 
   // Navigation handlers
   function handleSelectWorkspace(id: string): void {
-    const ws = summaries.find((s) => s.id === id);
-    const workspaceName = ws?.name ?? id;
-    setNav({ level: 'workspace', workspaceId: id, workspaceName });
+    setNav(selectWorkspace(summaries, id));
   }
 
   function handleSelectAgent(id: string): void {
-    const agent = workspaceDetail?.agents.find((a) => a.id === id);
-    const agentName = agent?.name ?? id;
-    setNav({
-      level: 'agent',
-      workspaceId: nav.workspaceId,
-      workspaceName: nav.workspaceName,
-      agentId: id,
-      agentName,
-    });
+    setNav(selectAgent(nav, workspaceDetail, id));
   }
 
   function handleNavigateFleet(): void {
-    setNav({ level: 'fleet' });
+    setNav(navigateFleet());
   }
 
   function handleNavigateWorkspace(): void {
-    setNav({ level: 'workspace', workspaceId: nav.workspaceId, workspaceName: nav.workspaceName });
+    setNav(navigateWorkspace(nav));
   }
 
   return (

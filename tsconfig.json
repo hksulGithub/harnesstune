@@ -19,6 +19,7 @@
   "references": [
     { "path": "./packages/shared" },
     { "path": "./packages/harnesstune-relay" },
-    { "path": "./packages/harnesstune-agent" }
+    { "path": "./packages/harnesstune-agent" },
+    { "path": "./packages/harnesstune-collector" }
   ]
 }

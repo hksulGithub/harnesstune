@@ -4,11 +4,16 @@ module.exports = {
   roots: ['<rootDir>/tests'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'mjs'],
   transform: {
-    '^.+\\.tsx?$': 'ts-jest',
+    '^.+\\.tsx?$': ['ts-jest', {
+      tsconfig: {
+        jsx: 'react-jsx',
+        lib: ['ES2022', 'DOM', 'DOM.Iterable'],
+      },
+    }],
     '^.+\\.m?js$': ['ts-jest', { useESM: false }],
   },
-  transformIgnorePatterns: [
-    '/node_modules/(?!(d3-hierarchy)/)',
-  ],
-  moduleNameMapper: { '^vscode$': '<rootDir>/tests/__mocks__/vscode.ts' },
+  moduleNameMapper: {
+    '^vscode$': '<rootDir>/tests/__mocks__/vscode.ts',
+    '^(\\.{1,2}/.*)\\.js$': '$1',
+  },
 };

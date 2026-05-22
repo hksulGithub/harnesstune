@@ -157,7 +157,7 @@ export class ChatManager implements vscode.Disposable {
       // Notify the panel if this is a read-only OpenClaw log viewer
       if (entry.session instanceof OpenClawLogSession) {
         panel.postMessage({
-          type: 'chat:setReadOnly' as any,
+          type: 'chat:setReadOnly',
           reason: "Log viewer -- this workspace doesn't support interactive chat.",
         });
       }

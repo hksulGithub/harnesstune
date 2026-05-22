@@ -78,8 +78,7 @@ export class AlertEngine implements vscode.Disposable {
 
         if (isStale) {
           currentState = 'stale';
-          const hoursAgo = Math.round((Date.now() - lastRunTs) / 3600000);
-          reason = `No run in ${hoursAgo}h (threshold: ${Math.round(staleThresholdMs / 3600000)}h)`;
+          reason = `No run in ${formatDuration(Date.now() - lastRunTs)} (threshold: ${formatDuration(staleThresholdMs)})`;
         } else {
           // Use health from FleetAgentSummary
           currentState = agentSummary.health;
@@ -153,4 +152,14 @@ export class AlertEngine implements vscode.Disposable {
     }
     this._onDidDetectAlerts.dispose();
   }
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 3600000) {
+    return `${Math.max(1, Math.round(ms / 60000))}m`;
+  }
+  if (ms < 86400000) {
+    return `${Math.round(ms / 3600000)}h`;
+  }
+  return `${Math.round(ms / 86400000)}d`;
 }

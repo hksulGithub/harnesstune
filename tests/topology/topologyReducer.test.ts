@@ -36,7 +36,7 @@ describe('buildTopology', () => {
     expect(node.parentSessionId).toBeNull();
     expect(node.status).toBe('running');
     expect(node.opacity).toBe(1.0);
-    // Root node at origin after d3-hierarchy positioning
+    // Root node is positioned by the deterministic tree layout
     expect(typeof node.x).toBe('number');
     expect(typeof node.y).toBe('number');
   });
@@ -116,7 +116,7 @@ describe('buildTopology', () => {
     expect(childNodes).toHaveLength(1);
   });
 
-  it('Test 8: d3-hierarchy produces y-coordinates increasing with depth (child.y > root.y)', () => {
+  it('Test 8: tree layout produces y-coordinates increasing with depth (child.y > root.y)', () => {
     const events = [
       makeEvent({ eventType: 'SessionStart', sessionId: 'root-1', timestamp: 1000 }),
       makeEvent({ eventType: 'SubagentStart', sessionId: 'child-1', timestamp: 2000 }),

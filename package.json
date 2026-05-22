@@ -4,6 +4,10 @@
   "description": "Agent Harness Engineering IDE",
   "version": "0.1.0",
   "publisher": "harnesstune",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hksulGithub/harnesstune.git"
+  },
   "engines": {
     "vscode": "^1.96.0"
   },
@@ -152,20 +156,20 @@
     }
   },
   "scripts": {
-    "build:packages": "tsc --build packages/shared packages/harnesstune-relay packages/harnesstune-agent",
+    "build:packages": "tsc --build packages/shared packages/harnesstune-relay packages/harnesstune-agent packages/harnesstune-collector",
     "build": "pnpm run build:packages && node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
-    "package": "vsce package",
+    "package": "vsce package --no-dependencies",
     "test": "jest --passWithNoTests"
   },
   "devDependencies": {
-    "@types/d3-hierarchy": "^3.1.7",
     "@types/jest": "^30.0.0",
     "@types/node": "^20.0.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "@types/sql.js": "^1.4.11",
     "@types/vscode": "^1.96.0",
+    "@vscode/vsce": "^3.9.1",
     "esbuild": "^0.24.0",
     "jest": "^30.3.0",
     "ts-jest": "^29.4.9",
@@ -175,7 +179,6 @@
     "@harnesstune/shared": "workspace:*",
     "chokidar": "^4.0.3",
     "cron-parser": "^5.5.0",
-    "d3-hierarchy": "^3.1.2",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "sql.js": "^1.14.1"
