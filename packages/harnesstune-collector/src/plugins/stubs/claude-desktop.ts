@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import { createInterface } from 'node:readline/promises';
+import { createInterface, type Interface as ReadlineInterface } from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import type { RunReport } from '@harnesstune/shared';
 import type { PlatformPlugin, PlatformConfig } from '../interface.js';
@@ -42,8 +42,9 @@ export class ClaudeDesktopPlugin implements PlatformPlugin {
     return markers.some(p => existsSync(p));
   }
 
-  async setup(existing?: PlatformConfig): Promise<PlatformConfig> {
-    const rl = createInterface({ input, output });
+  async setup(existing?: PlatformConfig, injectedRl?: ReadlineInterface): Promise<PlatformConfig> {
+    const rl = injectedRl ?? createInterface({ input, output });
+    const ownsRl = !injectedRl;
     try {
       const paths = this.discoverSessionPaths();
 
@@ -74,7 +75,7 @@ export class ClaudeDesktopPlugin implements PlatformPlugin {
       console.log(`Selected: ${paths[idx]}`);
       return { sessionsDir: paths[idx] };
     } finally {
-      rl.close();
+      if (ownsRl) rl.close();
     }
   }
 

@@ -51,7 +51,7 @@ export function scanSessions(sessionsDir: string, since: Date): SessionFile[] {
 
     try {
       const mtime = statSync(filePath).mtime.getTime();
-      if (mtime < sinceMs) continue;
+      if (mtime <= sinceMs) continue;
     } catch {
       continue;
     }
@@ -66,7 +66,7 @@ export function scanSessions(sessionsDir: string, since: Date): SessionFile[] {
     if (session.lastActivityAt > nowMs - STALENESS_GUARD_MS) continue;
 
     // Time filter on session data
-    if (session.lastActivityAt < sinceMs) continue;
+    if (session.lastActivityAt <= sinceMs) continue;
 
     results.push(session);
   }

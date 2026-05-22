@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { randomUUID } from 'node:crypto';
 import { eq, gt, desc, and } from 'drizzle-orm';
 import { getDb } from '../db/client.js';
-import { reports } from '../db/schema.js';
+import { reports, agentRuns, agents } from '../db/schema.js';
 import type { AuthVariables } from '../middleware/auth.js';
 
 const MAX_REPORT_SIZE = 2 * 1024 * 1024; // 2MB
@@ -53,6 +53,80 @@ reportsRouter.post('/', async (c) => {
     body: JSON.stringify(body.body),
     agentId,
   });
+
+  try {
+    const runs = body.type === 'run_batch' && Array.isArray(body.body.runs)
+      ? body.body.runs
+      : [];
+
+    if (runs.length > 0) {
+      const latestFinishedAtByAgent = new Map<string, Date>();
+
+      for (const run of runs) {
+        if (!run || typeof run !== 'object') continue;
+
+        const runData = run as {
+          agentId?: unknown;
+          startedAt?: unknown;
+          finishedAt?: unknown;
+          status?: unknown;
+          durationMs?: unknown;
+          logExcerpt?: unknown;
+          errorSummary?: unknown;
+          tokenUsage?: unknown;
+          costCents?: unknown;
+        };
+
+        if (typeof runData.agentId !== 'string' || runData.agentId.length === 0) continue;
+        if (typeof runData.status !== 'string' || runData.status.length === 0) continue;
+        if (typeof runData.durationMs !== 'number' || Number.isNaN(runData.durationMs)) continue;
+
+        const startedAt = new Date(typeof runData.startedAt === 'string' ? runData.startedAt : '');
+        const finishedAt = new Date(typeof runData.finishedAt === 'string' ? runData.finishedAt : '');
+        if (Number.isNaN(startedAt.getTime()) || Number.isNaN(finishedAt.getTime())) continue;
+
+        await db.insert(agentRuns).values({
+          id: randomUUID(),
+          channelId,
+          agentId: runData.agentId,
+          startedAt,
+          finishedAt,
+          status: runData.status,
+          durationMs: runData.durationMs,
+          logExcerpt: typeof runData.logExcerpt === 'string' ? runData.logExcerpt : null,
+          errorSummary: typeof runData.errorSummary === 'string' ? runData.errorSummary : null,
+          tokenUsage: runData.tokenUsage ? JSON.stringify(runData.tokenUsage) : null,
+          costCents: typeof runData.costCents === 'number' ? runData.costCents : null,
+        }).onConflictDoNothing();
+
+        const existingAgent = await db.select().from(agents)
+          .where(and(eq(agents.channelId, channelId), eq(agents.agentId, runData.agentId)))
+          .limit(1);
+        if (existingAgent.length === 0) {
+          await db.insert(agents).values({
+            id: randomUUID(), channelId, agentId: runData.agentId,
+            platform: 'unknown', name: null, schedule: null,
+          });
+        }
+
+        const previousLatest = latestFinishedAtByAgent.get(runData.agentId);
+        if (!previousLatest || finishedAt > previousLatest) {
+          latestFinishedAtByAgent.set(runData.agentId, finishedAt);
+        }
+      }
+
+      for (const [batchAgentId, latestFinishedAt] of latestFinishedAtByAgent) {
+        await db.update(agents).set({ lastRunAt: latestFinishedAt })
+          .where(and(eq(agents.channelId, channelId), eq(agents.agentId, batchAgentId)));
+      }
+    }
+  } catch (error) {
+    console.error('Failed to fan out run_batch report into agent_runs:', error);
+    return c.json({
+      error: 'Failed to fan out run_batch report into agent_runs',
+      reportId: id,
+    }, 500);
+  }
 
   return c.json({ id, channelId, type: body.type, createdAt: new Date().toISOString() }, 201);
 });
