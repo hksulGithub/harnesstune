@@ -160,7 +160,8 @@
     "build": "pnpm run build:packages && node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
     "package": "vsce package --no-dependencies",
-    "test": "jest --passWithNoTests"
+    "test": "jest --passWithNoTests",
+    "test:uat": "UAT_RELAY_URL=http://127.0.0.1:18787/api UAT_DB_PATH=$PWD/.uat-tmp/uat-relay.db UAT_SEED_SCRIPT=$PWD/packages/harnesstune-relay/seed-payload.mjs UAT_POPULATED_TOKEN=uat-token-ws-populated UAT_EMPTY_TOKEN=uat-token-ws-empty jest tests/integration --runInBand"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
