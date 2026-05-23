@@ -32,7 +32,7 @@ describe('AdapterRegistry', () => {
     expect(result).toBe(mockAdapter);
   });
 
-  test('Test 2: create throws for unregistered backendType', () => {
+  test('Test 2a: create throws for known BackendType with no registered factory', () => {
     const registry = new AdapterRegistry();
 
     const config: WorkspaceConnectionConfig = {
@@ -40,11 +40,24 @@ describe('AdapterRegistry', () => {
       host: 'localhost',
     };
 
-    // Force unknown type for test
+    expect(() => registry.create(config)).toThrow(
+      'No adapter factory registered for backendType: openclaw'
+    );
+  });
+
+  test('Test 2b: create throws via exhaustiveness check for invalid BackendType', () => {
+    const registry = new AdapterRegistry();
+
+    const config: WorkspaceConnectionConfig = {
+      backendType: 'openclaw',
+      host: 'localhost',
+    };
+
+    // Force unknown type to exercise the exhaustiveness fallthrough
     (config as unknown as { backendType: string }).backendType = 'unknown-type';
 
     expect(() => registry.create(config as WorkspaceConnectionConfig)).toThrow(
-      'No adapter factory registered for backendType: unknown-type'
+      'Unexpected BackendType: unknown-type'
     );
   });
 
