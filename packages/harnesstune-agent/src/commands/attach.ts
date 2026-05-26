@@ -75,17 +75,28 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
     console.error('Hint: pass an absolute path, e.g. attach -- /opt/homebrew/bin/claude');
     process.exit(127);
   }
+  // Ensure the child can find Node (for shebang scripts like claude) and the
+  // resolved binary's own directory (for sibling tools). Our own node interpreter
+  // is the safest bet — process.execPath is always absolute.
+  const nodeDir = path.dirname(process.execPath);
+  const binDir = path.dirname(resolvedCmd);
+  const augmentedPath = [binDir, nodeDir, process.env.PATH ?? '']
+    .filter(Boolean)
+    .join(':');
+  const childEnv = { ...process.env, PATH: augmentedPath };
+
   let ptyProc: IPty;
   try {
     ptyProc = pty.spawn(resolvedCmd, cmdArgs, {
       name: process.env.TERM ?? 'xterm-256color',
       cols: process.stdout.columns ?? 80,
       rows: process.stdout.rows ?? 24,
-      env: process.env,
+      env: childEnv,
       cwd: process.cwd(),
     });
   } catch (err) {
     console.error(`Error: failed to spawn '${resolvedCmd}': ${(err as Error).message}`);
+    console.error(`Augmented PATH was: ${augmentedPath}`);
     process.exit(1);
   }
 
