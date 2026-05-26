@@ -31,9 +31,7 @@ type IPty = {
   resize: (cols: number, rows: number) => void;
 };
 
-const OUTPUT_FLUSH_MS = 2000;
 const POLL_INTERVAL_MS = 10_000;
-const MAX_OUTPUT_BYTES = 64 * 1024;
 
 export async function attach(args: string[], opts?: { dryRun?: boolean }): Promise<void> {
   // Parse: everything after `--` is the target command + args
@@ -124,8 +122,6 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
   dbg(`attach starting: cwd=${process.cwd()} target=${JSON.stringify(target)} resolved=${resolvedCmd} execCmd=${execCmd}`);
 
   let shuttingDown = false;
-  let outputBuffer: string[] = [];
-  let lastFlushAt = Date.now();
   let lastMessageCursor = new Date().toISOString();
 
   // --- Send announcement so Mac A can see the agent attached ---
@@ -135,15 +131,9 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
     cwd: process.cwd(),
   });
 
-  // --- PTY output → user's terminal AND relay buffer ---
+  // --- PTY output → user's terminal (no relay streaming — see JSONL watcher below) ---
   ptyProc.onData((data: string) => {
     process.stdout.write(data);
-    outputBuffer.push(data);
-    // Cap buffer to MAX_OUTPUT_BYTES; trim oldest on overflow
-    let total = outputBuffer.reduce((n, s) => n + s.length, 0);
-    while (total > MAX_OUTPUT_BYTES && outputBuffer.length > 1) {
-      total -= outputBuffer.shift()!.length;
-    }
   });
 
   // --- User's terminal input → PTY ---
@@ -171,28 +161,95 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
     }
   });
 
-  // --- Flush output buffer to relay every OUTPUT_FLUSH_MS ---
-  const flushTimer = setInterval(() => {
-    void flushOutput();
-  }, OUTPUT_FLUSH_MS);
-  flushTimer.unref();
+  // --- Find Claude's session JSONL file (where it logs clean structured messages) ---
+  // Path convention: ~/.claude/projects/<sanitized-cwd>/<session-uuid>.jsonl
+  // Sanitized cwd = cwd with / and . replaced by -
+  const claudeProjectsDir = path.join(process.env.HOME ?? '', '.claude', 'projects');
 
-  async function flushOutput(): Promise<void> {
-    if (outputBuffer.length === 0) return;
-    const chunk = outputBuffer.join('');
-    outputBuffer = [];
-    lastFlushAt = Date.now();
-    // Strip ANSI escape sequences for readability in the timeline
-    const stripped = stripAnsi(chunk);
-    if (stripped.trim().length === 0) return;
-    await postReport(client, config.channelId, 'chat_response', {
-      text: stripped,
-      raw: chunk.length !== stripped.length ? chunk : undefined,
-      flushedAt: new Date().toISOString(),
-    });
+  function findCurrentSessionLog(): string | null {
+    if (!fs.existsSync(claudeProjectsDir)) return null;
+    let latest: { p: string; mtime: number } | null = null;
+    for (const dir of fs.readdirSync(claudeProjectsDir)) {
+      const projDir = path.join(claudeProjectsDir, dir);
+      try {
+        for (const f of fs.readdirSync(projDir)) {
+          if (!f.endsWith('.jsonl')) continue;
+          const p = path.join(projDir, f);
+          const m = fs.statSync(p).mtimeMs;
+          if (!latest || m > latest.mtime) latest = { p, mtime: m };
+        }
+      } catch { /* skip unreadable */ }
+    }
+    return latest?.p ?? null;
   }
 
-  // --- Poll relay for inbound messages → write to PTY stdin ---
+  let sessionLogPath: string | null = findCurrentSessionLog();
+  let sessionLogOffset = sessionLogPath ? fs.statSync(sessionLogPath).size : 0;
+  dbg(`session JSONL: ${sessionLogPath ?? '(none yet)'} initial offset=${sessionLogOffset}`);
+
+  /**
+   * Wait for Claude's response to land in the JSONL, then return the clean text.
+   * Strategy: poll file size every 500ms. Once it has grown AND been stable for
+   * 3 seconds, consider the response done. Read newly-appended bytes, parse the
+   * JSONL lines, and pull out assistant text content (no thinking / tool_use).
+   */
+  async function waitForResponseAndExtract(baselineOffset: number): Promise<string> {
+    // Refresh in case session rotated
+    const currentPath = sessionLogPath ?? findCurrentSessionLog();
+    if (!currentPath) { dbg('  wait: no session file found'); return ''; }
+    sessionLogPath = currentPath;
+
+    let lastSize = baselineOffset;
+    let stableAt = 0;
+    const startedAt = Date.now();
+    const TIMEOUT_MS = 5 * 60 * 1000; // 5 min response budget
+    const STABLE_MS = 3000;
+
+    while (Date.now() - startedAt < TIMEOUT_MS) {
+      await new Promise(r => setTimeout(r, 500));
+      let size = 0;
+      try { size = fs.statSync(currentPath).size; } catch { continue; }
+      if (size > lastSize) {
+        lastSize = size;
+        stableAt = 0;
+      } else if (size === lastSize && size > baselineOffset) {
+        if (stableAt === 0) stableAt = Date.now();
+        if (Date.now() - stableAt > STABLE_MS) break;
+      }
+    }
+
+    if (lastSize <= baselineOffset) {
+      dbg(`  wait: timed out or no growth (baseline=${baselineOffset} final=${lastSize})`);
+      return '';
+    }
+
+    // Read new bytes
+    const fd = fs.openSync(currentPath, 'r');
+    try {
+      const buf = Buffer.alloc(lastSize - baselineOffset);
+      fs.readSync(fd, buf, 0, buf.length, baselineOffset);
+      sessionLogOffset = lastSize;
+      const lines = buf.toString('utf8').split('\n').filter(Boolean);
+      const texts: string[] = [];
+      for (const line of lines) {
+        try {
+          const d = JSON.parse(line) as { message?: { role?: string; content?: Array<{ type?: string; text?: string }> } };
+          const msg = d.message ?? {};
+          if (msg.role !== 'assistant') continue;
+          const content = Array.isArray(msg.content) ? msg.content : [];
+          for (const c of content) {
+            if (c.type === 'text' && typeof c.text === 'string' && c.text.trim()) texts.push(c.text);
+          }
+        } catch { /* skip non-JSON lines */ }
+      }
+      dbg(`  wait: extracted ${texts.length} text segment(s) from ${lines.length} JSONL lines`);
+      return texts.join('\n\n');
+    } finally {
+      fs.closeSync(fd);
+    }
+  }
+
+  // --- Poll relay for inbound messages → write to PTY, wait for response, POST clean text ---
   const pollTimer = setInterval(() => {
     void pollMessages();
   }, POLL_INTERVAL_MS);
@@ -218,10 +275,28 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
         dbg(`  msg id=${msg.id} dir=${msg.direction} body=${JSON.stringify(msg.body).slice(0, 80)}`);
         if (msg.direction === 'to_agent') {
           const text = typeof msg.body.text === 'string' ? msg.body.text : JSON.stringify(msg.body);
-          dbg(`  -> writing to PTY: ${text.slice(0, 80)}`);
+          // Capture baseline file size BEFORE injecting (so we read only Claude's reply)
+          const currentPath = findCurrentSessionLog();
+          const baseline = currentPath ? (() => { try { return fs.statSync(currentPath).size; } catch { return 0; } })() : 0;
+          if (currentPath) sessionLogPath = currentPath;
+          dbg(`  -> writing to PTY: ${text.slice(0, 80)} (baseline offset=${baseline})`);
           process.stdout.write(`\r\n\x1b[33m[remote] ${text}\x1b[0m\r\n`);
           ptyProc.write(text + '\r');
           await client.delete(`/api/channels/${config.channelId}/messages/${msg.id}`).catch(() => undefined);
+
+          // Fire-and-forget the response watcher so subsequent polls aren't blocked
+          waitForResponseAndExtract(baseline).then(async (responseText) => {
+            if (!responseText.trim()) {
+              dbg('  response: empty after extract, not posting');
+              return;
+            }
+            dbg(`  response: posting ${responseText.length} chars`);
+            await postReport(client, config.channelId, 'chat_response', {
+              text: responseText,
+              inReplyTo: msg.id,
+              flushedAt: new Date().toISOString(),
+            });
+          }).catch((err) => dbg(`  response: watcher error: ${(err as Error).message}`));
         }
         lastMessageCursor = msg.createdAt;
       }
@@ -234,13 +309,11 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
   async function gracefulExit(code: number): Promise<void> {
     if (shuttingDown) return;
     shuttingDown = true;
-    clearInterval(flushTimer);
     clearInterval(pollTimer);
     if (process.stdin.isTTY) {
       try { process.stdin.setRawMode(false); } catch { /* ignore */ }
     }
     process.stdin.pause();
-    await flushOutput().catch(() => undefined);
     await postReport(client, config.channelId, 'agent_detached', {
       exitCode: code,
     }).catch(() => undefined);
