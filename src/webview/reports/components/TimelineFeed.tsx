@@ -1,5 +1,5 @@
 import React from 'react';
-import type { TimelineItem, RalphReportBody } from '@harnesstune/shared';
+import type { TimelineItem, RalphReportBody, RelayMessage } from '@harnesstune/shared';
 import BriefingReportCard from './BriefingReportCard';
 import RalphLoopReportCard from './RalphLoopReportCard';
 import ChatBubble from './ChatBubble';
@@ -35,6 +35,19 @@ export default function TimelineFeed({ items, loopIterations, onReply }: Timelin
               onReply={onReply}
             />
           );
+        }
+        if (item.data.type === 'chat_response') {
+          const body = item.data.body as { text?: string; flushedAt?: string };
+          const text = body.text ?? '';
+          if (!text.trim()) return null;
+          const pseudoMessage: RelayMessage = {
+            id: item.data.reportId,
+            channelId: '',
+            direction: 'from_agent',
+            body: { text },
+            createdAt: body.flushedAt ?? item.at,
+          };
+          return <ChatBubble key={`chat-${item.data.reportId}`} message={pseudoMessage} />;
         }
         return null;
       })}

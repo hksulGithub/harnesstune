@@ -76,7 +76,7 @@ export default function App() {
     if (filter === 'activity') return item.kind === 'activity';
     if (filter === 'briefings') return item.kind === 'report' && item.data.type === 'briefing';
     if (filter === 'ralph') return item.kind === 'report' && item.data.type === 'ralph';
-    if (filter === 'chat') return item.kind === 'message';
+    if (filter === 'chat') return item.kind === 'message' || (item.kind === 'report' && item.data.type === 'chat_response');
     return true;
   });
 

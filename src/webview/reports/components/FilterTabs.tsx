@@ -23,7 +23,7 @@ function countForTab(tab: FilterTab, items: TimelineItem[]): number {
   if (tab === 'activity') return items.filter(i => i.kind === 'activity').length;
   if (tab === 'briefings') return items.filter(i => i.kind === 'report' && i.data.type === 'briefing').length;
   if (tab === 'ralph') return items.filter(i => i.kind === 'report' && i.data.type === 'ralph').length;
-  if (tab === 'chat') return items.filter(i => i.kind === 'message').length;
+  if (tab === 'chat') return items.filter(i => i.kind === 'message' || (i.kind === 'report' && i.data.type === 'chat_response')).length;
   return 0;
 }
 
