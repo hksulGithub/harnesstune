@@ -114,6 +114,15 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
     process.exit(1);
   }
 
+  // --- File-based debug log (TTY is owned by claude's TUI, console output gets clobbered) ---
+  const logPath = path.join(process.cwd(), 'attach.log');
+  const dbg = (msg: string) => {
+    try {
+      fs.appendFileSync(logPath, `[${new Date().toISOString()}] ${msg}\n`);
+    } catch { /* best-effort */ }
+  };
+  dbg(`attach starting: cwd=${process.cwd()} target=${JSON.stringify(target)} resolved=${resolvedCmd} execCmd=${execCmd}`);
+
   let shuttingDown = false;
   let outputBuffer: string[] = [];
   let lastFlushAt = Date.now();
@@ -191,25 +200,33 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
 
   async function pollMessages(): Promise<void> {
     if (shuttingDown) return;
+    dbg(`poll: GET messages since=${lastMessageCursor}`);
     try {
       const res = await client.get(`/api/channels/${config.channelId}/messages`, {
         limit: '50',
         since: lastMessageCursor,
       });
-      if (!res.ok) return;
+      dbg(`poll: HTTP ${res.status}`);
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '<unreadable>');
+        dbg(`poll: error body: ${errBody.slice(0, 200)}`);
+        return;
+      }
       const data = (await res.json()) as { messages: Array<{ id: string; direction: string; body: Record<string, unknown>; createdAt: string }> };
+      dbg(`poll: got ${data.messages.length} messages`);
       for (const msg of data.messages) {
+        dbg(`  msg id=${msg.id} dir=${msg.direction} body=${JSON.stringify(msg.body).slice(0, 80)}`);
         if (msg.direction === 'to_agent') {
           const text = typeof msg.body.text === 'string' ? msg.body.text : JSON.stringify(msg.body);
-          // Echo a visible marker so the local user knows a remote message arrived
+          dbg(`  -> writing to PTY: ${text.slice(0, 80)}`);
           process.stdout.write(`\r\n\x1b[33m[remote] ${text}\x1b[0m\r\n`);
           ptyProc.write(text + '\r');
           await client.delete(`/api/channels/${config.channelId}/messages/${msg.id}`).catch(() => undefined);
         }
         lastMessageCursor = msg.createdAt;
       }
-    } catch {
-      /* transient errors are silently retried on next tick */
+    } catch (err) {
+      dbg(`poll: caught error: ${(err as Error).message}`);
     }
   }
 
