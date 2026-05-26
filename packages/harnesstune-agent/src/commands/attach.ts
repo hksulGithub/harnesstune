@@ -1,0 +1,236 @@
+/**
+ * harnesstune-agent attach — bridge an interactive command (e.g. `claude`) to the relay.
+ *
+ * Usage: harnesstune-agent attach -- <command> [args...]
+ *
+ * Spawns the target command in a real PTY (so TUI / keychain auth works), proxies
+ * the user's terminal transparently, and bridges the PTY in both directions to the
+ * relay: PTY stdout is batched and POSTed as chat_response reports; to_agent
+ * messages from the relay are written into the PTY stdin (visible in the local
+ * terminal — no surprise injection).
+ *
+ * Designed for the case where the user has an interactive Terminal session on a
+ * remote Mac and wants to chat with that live Claude Code session from VS Code
+ * on another machine via the harnesstune relay.
+ */
+import { randomUUID } from 'node:crypto';
+import { readConfig } from '../config.js';
+import { createClient, type RelayClient } from '../client.js';
+
+// node-pty is loaded lazily so other subcommands don't pay the native-module cost
+type IPty = {
+  write: (data: string) => void;
+  onData: (cb: (data: string) => void) => void;
+  onExit: (cb: (e: { exitCode: number; signal?: number }) => void) => void;
+  kill: (signal?: string) => void;
+  resize: (cols: number, rows: number) => void;
+};
+
+const OUTPUT_FLUSH_MS = 2000;
+const POLL_INTERVAL_MS = 10_000;
+const MAX_OUTPUT_BYTES = 64 * 1024;
+
+export async function attach(args: string[], opts?: { dryRun?: boolean }): Promise<void> {
+  // Parse: everything after `--` is the target command + args
+  const sepIdx = args.indexOf('--');
+  const target = sepIdx >= 0 ? args.slice(sepIdx + 1) : args;
+  if (target.length === 0) {
+    console.error('Usage: harnesstune-agent attach -- <command> [args...]');
+    console.error('Example: harnesstune-agent attach -- claude');
+    process.exit(2);
+  }
+
+  const config = readConfig();
+  const client = createClient(config.relayUrl, config.token);
+
+  if (opts?.dryRun) {
+    console.log('Dry run: config + target validated');
+    console.log(`  relay URL:  ${config.relayUrl}`);
+    console.log(`  channel ID: ${config.channelId}`);
+    console.log(`  target:     ${target.join(' ')}`);
+    process.exit(0);
+  }
+
+  // Lazy require so other subcommands aren't gated on node-pty being installed
+  let pty: { spawn: (cmd: string, args: string[], opts: Record<string, unknown>) => IPty };
+  try {
+    pty = (await import('node-pty')) as unknown as typeof pty;
+  } catch (err) {
+    console.error('Error: node-pty is required for the attach subcommand.');
+    console.error('Install it: pnpm --filter @harnesstune/agent add node-pty');
+    console.error(`Underlying error: ${(err as Error).message}`);
+    process.exit(1);
+  }
+
+  const [cmd, ...cmdArgs] = target;
+  const ptyProc = pty.spawn(cmd, cmdArgs, {
+    name: process.env.TERM ?? 'xterm-256color',
+    cols: process.stdout.columns ?? 80,
+    rows: process.stdout.rows ?? 24,
+    env: process.env,
+    cwd: process.cwd(),
+  });
+
+  let shuttingDown = false;
+  let outputBuffer: string[] = [];
+  let lastFlushAt = Date.now();
+  let lastMessageCursor = new Date().toISOString();
+
+  // --- Send announcement so Mac A can see the agent attached ---
+  await postReport(client, config.channelId, 'agent_attached', {
+    target: target.join(' '),
+    pid: process.pid,
+    cwd: process.cwd(),
+  });
+
+  // --- PTY output → user's terminal AND relay buffer ---
+  ptyProc.onData((data: string) => {
+    process.stdout.write(data);
+    outputBuffer.push(data);
+    // Cap buffer to MAX_OUTPUT_BYTES; trim oldest on overflow
+    let total = outputBuffer.reduce((n, s) => n + s.length, 0);
+    while (total > MAX_OUTPUT_BYTES && outputBuffer.length > 1) {
+      total -= outputBuffer.shift()!.length;
+    }
+  });
+
+  // --- User's terminal input → PTY ---
+  if (process.stdin.isTTY) {
+    process.stdin.setRawMode(true);
+  }
+  process.stdin.resume();
+  process.stdin.on('data', (chunk) => {
+    // Ctrl-] (0x1d) — local escape to detach without killing the PTY child
+    // Ctrl-C still passes through to claude as SIGINT (via PTY)
+    if (chunk.length === 1 && chunk[0] === 0x1d) {
+      console.log('\n[harnesstune-attach] Detaching (PTY child kept running)');
+      void gracefulExit(0);
+      return;
+    }
+    ptyProc.write(chunk.toString('utf8'));
+  });
+
+  // --- Resize forwarding ---
+  process.stdout.on('resize', () => {
+    try {
+      ptyProc.resize(process.stdout.columns ?? 80, process.stdout.rows ?? 24);
+    } catch {
+      /* ignore resize on dead PTY */
+    }
+  });
+
+  // --- Flush output buffer to relay every OUTPUT_FLUSH_MS ---
+  const flushTimer = setInterval(() => {
+    void flushOutput();
+  }, OUTPUT_FLUSH_MS);
+  flushTimer.unref();
+
+  async function flushOutput(): Promise<void> {
+    if (outputBuffer.length === 0) return;
+    const chunk = outputBuffer.join('');
+    outputBuffer = [];
+    lastFlushAt = Date.now();
+    // Strip ANSI escape sequences for readability in the timeline
+    const stripped = stripAnsi(chunk);
+    if (stripped.trim().length === 0) return;
+    await postReport(client, config.channelId, 'chat_response', {
+      text: stripped,
+      raw: chunk.length !== stripped.length ? chunk : undefined,
+      flushedAt: new Date().toISOString(),
+    });
+  }
+
+  // --- Poll relay for inbound messages → write to PTY stdin ---
+  const pollTimer = setInterval(() => {
+    void pollMessages();
+  }, POLL_INTERVAL_MS);
+  pollTimer.unref();
+
+  async function pollMessages(): Promise<void> {
+    if (shuttingDown) return;
+    try {
+      const res = await client.get(`/api/channels/${config.channelId}/messages`, {
+        limit: '50',
+        since: lastMessageCursor,
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { messages: Array<{ id: string; direction: string; body: Record<string, unknown>; createdAt: string }> };
+      for (const msg of data.messages) {
+        if (msg.direction === 'to_agent') {
+          const text = typeof msg.body.text === 'string' ? msg.body.text : JSON.stringify(msg.body);
+          // Echo a visible marker so the local user knows a remote message arrived
+          process.stdout.write(`\r\n\x1b[33m[remote] ${text}\x1b[0m\r\n`);
+          ptyProc.write(text + '\r');
+          await client.delete(`/api/channels/${config.channelId}/messages/${msg.id}`).catch(() => undefined);
+        }
+        lastMessageCursor = msg.createdAt;
+      }
+    } catch {
+      /* transient errors are silently retried on next tick */
+    }
+  }
+
+  // --- Graceful shutdown ---
+  async function gracefulExit(code: number): Promise<void> {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    clearInterval(flushTimer);
+    clearInterval(pollTimer);
+    if (process.stdin.isTTY) {
+      try { process.stdin.setRawMode(false); } catch { /* ignore */ }
+    }
+    process.stdin.pause();
+    await flushOutput().catch(() => undefined);
+    await postReport(client, config.channelId, 'agent_detached', {
+      exitCode: code,
+    }).catch(() => undefined);
+    process.exit(code);
+  }
+
+  ptyProc.onExit(({ exitCode }) => {
+    console.log(`\n[harnesstune-attach] PTY child exited (code ${exitCode})`);
+    void gracefulExit(exitCode);
+  });
+
+  process.on('SIGTERM', () => {
+    try { ptyProc.kill('SIGTERM'); } catch { /* ignore */ }
+  });
+  process.on('SIGHUP', () => {
+    try { ptyProc.kill('SIGHUP'); } catch { /* ignore */ }
+  });
+
+  console.log(`[harnesstune-attach] Attached to '${target.join(' ')}' — Ctrl-] to detach`);
+}
+
+async function postReport(
+  client: RelayClient,
+  channelId: string,
+  type: string,
+  body: Record<string, unknown>,
+): Promise<void> {
+  const envelope = {
+    type,
+    body,
+    generatedAt: new Date().toISOString(),
+    reportId: randomUUID(),
+  };
+  try {
+    await client.post(`/api/channels/${channelId}/reports`, envelope);
+  } catch {
+    /* swallow — best-effort streaming */
+  }
+}
+
+// Minimal ANSI escape stripper — handles CSI, OSC, and a few common single-char sequences.
+// Good enough to make claude's TUI output readable in the timeline; not exhaustive.
+function stripAnsi(s: string): string {
+  return s
+    // CSI: ESC [ ... letter
+    .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '')
+    // OSC: ESC ] ... BEL or ESC \
+    .replace(/\x1b\][\s\S]*?(?:\x07|\x1b\\)/g, '')
+    // Single-char escapes
+    .replace(/\x1b[@-Z\\-_]/g, '')
+    // Carriage returns inside a single line (cursor reset)
+    .replace(/\r(?!\n)/g, '');
+}

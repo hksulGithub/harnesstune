@@ -21,7 +21,8 @@
     "dist"
   ],
   "dependencies": {
-    "@harnesstune/shared": "workspace:*"
+    "@harnesstune/shared": "workspace:*",
+    "node-pty": "^1.1.0"
   },
   "devDependencies": {
     "typescript": "^5.6.0"

@@ -8,6 +8,7 @@ import { register } from './commands/register.js';
 import { start } from './commands/start.js';
 import { stop } from './commands/stop.js';
 import { report } from './commands/report.js';
+import { attach } from './commands/attach.js';
 
 const rawArgs = process.argv.slice(2);
 const dryRun = rawArgs.includes('--dry-run');
@@ -27,9 +28,13 @@ switch (subcommand) {
   case 'report':
     await report(rest, { dryRun });
     break;
+  case 'attach':
+    await attach(rest, { dryRun });
+    break;
   default:
     console.error(`Unknown subcommand: ${subcommand ?? '(none)'}`);
-    console.error('Usage: harnesstune-agent <register|start|stop|report> [options]');
+    console.error('Usage: harnesstune-agent <register|start|stop|report|attach> [options]');
     console.error('Flags: --dry-run  Validate setup without uploading data');
+    console.error('attach: harnesstune-agent attach -- <command> [args...]');
     process.exit(1);
 }
