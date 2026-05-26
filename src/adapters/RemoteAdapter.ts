@@ -180,13 +180,24 @@ export class RemoteAdapter implements AgentBackendAdapter {
     const items: TimelineItem[] = [];
     const loopMap: Record<string, RalphReportBody[]> = {};
 
+    // Types whose bodies the UI needs for rendering. The relay list endpoint
+    // returns metadata only (RLAY-10), so we fetch full bodies via getReport().
+    const TYPES_NEEDING_BODY = new Set(['chat_response', 'briefing', 'ralph']);
+    const bodyFetches = reports
+      .filter(r => TYPES_NEEDING_BODY.has(r.type))
+      .map(r => this.client!.getReport(r.id).then(env => [r.id, env] as const).catch(() => [r.id, null] as const));
+    const fetched = await Promise.all(bodyFetches);
+    const bodyById = new Map<string, import('@harnesstune/shared').ReportEnvelope | null>(fetched);
+
     for (const report of reports) {
       // Track heartbeats for stale detection but don't include in timeline
       if (report.type === 'heartbeat') {
         this.lastHeartbeatAt = Date.now();
         continue;
       }
-      items.push({ kind: 'report', data: report as unknown as import('@harnesstune/shared').ReportEnvelope, at: report.generatedAt });
+      const fullEnvelope = bodyById.get(report.id);
+      const data = fullEnvelope ?? (report as unknown as import('@harnesstune/shared').ReportEnvelope);
+      items.push({ kind: 'report', data, at: report.generatedAt });
     }
 
     for (const msg of messages) {
