@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: multi-platform-fleet
-status: v3.1 followups complete; live VSCode UAT remains for Phase 16/17 UI checks
-last_updated: "2026-05-09T05:15:00.000Z"
-last_activity: 2026-05-09 -- v3.1 followups implemented and review blockers fixed
+status: v3.0 SHIPPED — live VSCode UAT all green; tagged v0.1.0
+last_updated: "2026-05-26T08:00:00.000Z"
+last_activity: 2026-05-26 -- live UAT (UAT-1..10 + Phase 16/17) all passed; VSIX repackaged, v3.0 closed
 progress:
   total_phases: 17
   completed_phases: 17
@@ -161,3 +161,5 @@ Last activity: 2026-05-09 -- v3.1 followups complete; implementation review bloc
 - **2026-05-09**: v3.0 milestone closure. Phase 13 UAT (5 items) — 1 PASSED (setup credential validation), 4 FAILED on Paperclip API shape mismatch; all 4 rolled into v3.1 followup `.planning/v3.1-followups/paperclip-shape-rewrite.md`. Real-deployment wins kept in v3.0: setup wizard, credential validation, cross-plugin readline lifecycle fix, adaptive `getAll<T>` (raw arrays + cursor envelopes). Phase 17 UAT (6 tests) — 3 PASSED via direct AlertEngine driver (Tests 4 disabled-workspace skip, 5 mixed local+remote batching, 6 cron-parser v5 edge cases); Tests 1/2/3 BLOCKED on live VSCode dev host (status-bar bell, amber WarningBackground, showWarningMessage toast, View Fleet Dashboard button) — code-level wiring captured per test. Second v3.1 followup queued: `.planning/v3.1-followups/relay-runs-ingestion.md` (relay `/reports` POST stores envelope only, never fans into `agent_runs` table — remote agents invisible in fleet view). Daemon PID 83500 healthy (claude-desktop + claude-code plugins enabled). v3.0 ships with 2 known-broken items deferred to v3.1.
 
 - **2026-05-09**: v3.1 followups and review blockers complete. Paperclip shape rewrite UAT re-run green; relay `/reports` now fans out `run_batch` rows into `agent_runs` and returns retryable `500` on fanout failure; collector cursor persistence added; remote token input re-masked; root build now includes `packages/harnesstune-collector`; Jest topology ESM failure removed by replacing `d3-hierarchy` runtime dependency with deterministic layout; AdapterRegistry runtime error fixed; Phase 16 relay-unreachable state now renders distinctly from `no-data`; Phase 17 stale-threshold copy now reports minutes/hours/days instead of `0h`; dashboard navigation/render-state, status-bar alert badge, and alert-toast summary coverage added. Build passes and full Jest suite passes (15 suites, 71 tests). Remaining: live VSCode UAT for Phase 16 dashboard clicks/date persistence/error card and Phase 17 real status-bar/toast behavior.
+
+- **2026-05-26**: v3.0 SHIPPED. UAT relay-live jest suite green (13/13 tests, 1.6s). Live VSCode UAT walkthrough complete on installed VSIX: UAT-1 (sidebar mount) PASS; UAT-9 (status pill flip on relay disconnect/reconnect) PASS; Phase 16 fleet drill-down (3 agents render with correct health dots, $7.08 workspace total, breadcrumb, date range tabs) PASS; agent drill-down (3 historical runs with timestamps/durations/cost) PASS; 30d date range persists across window reload PASS; ws-empty empty-state copy ("No agents connected yet. Run `scripts/install-collector.sh` on a machine to see it here.") PASS; Phase 17 alert toast ("HarnessTune: 4 agents need attention: 2 failing, 2 stale" + "View Fleet Dashboard" button) PASS; fleet-view dedup confirmed (6 sidebar entries → 5 unique workspaces in fleet). VSIX repackaged (1.23 MB, 26 files, sha256 834d806c…). Known cosmetic residue deferred to v3.2 backlog: workspace-total token sum reports 0. Tagged v0.1.0.
