@@ -65,9 +65,9 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
   }
 
   const [cmd, ...cmdArgs] = target;
-  // node-pty uses posix_spawnp on macOS which inherits a stripped PATH (often just
-  // /usr/bin:/bin). User-installed binaries like claude (under /opt/homebrew/bin
-  // or ~/.nvm/...) won't resolve. Walk PATH ourselves to find the absolute path.
+  // node-pty uses posix_spawnp on macOS. Resolve bare command names to absolute
+  // paths via $PATH ourselves so the child doesn't depend on the (stripped) PATH
+  // inherited by posix_spawn.
   const resolvedCmd = resolveBin(cmd);
   if (!resolvedCmd) {
     console.error(`Error: '${cmd}' not found on PATH.`);
@@ -75,9 +75,7 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
     console.error('Hint: pass an absolute path, e.g. attach -- /opt/homebrew/bin/claude');
     process.exit(127);
   }
-  // Ensure the child can find Node (for shebang scripts like claude) and the
-  // resolved binary's own directory (for sibling tools). Our own node interpreter
-  // is the safest bet — process.execPath is always absolute.
+  // Augment PATH so /usr/bin/env-style shebang interpreters can find their target.
   const nodeDir = path.dirname(process.execPath);
   const binDir = path.dirname(resolvedCmd);
   const augmentedPath = [binDir, nodeDir, process.env.PATH ?? '']
@@ -85,9 +83,16 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
     .join(':');
   const childEnv = { ...process.env, PATH: augmentedPath };
 
+  // macOS posix_spawnp doesn't always honor #!/usr/bin/env <interpreter> shebangs
+  // when the interpreter is a separately-managed Node install. Read the shebang
+  // ourselves and rewrite the spawn to invoke the interpreter directly with the
+  // script as the first argument. This bypasses the kernel's flaky shebang
+  // handling entirely.
+  const { execCmd, execArgs } = unwrapShebang(resolvedCmd, cmdArgs, nodeDir);
+
   let ptyProc: IPty;
   try {
-    ptyProc = pty.spawn(resolvedCmd, cmdArgs, {
+    ptyProc = pty.spawn(execCmd, execArgs, {
       name: process.env.TERM ?? 'xterm-256color',
       cols: process.stdout.columns ?? 80,
       rows: process.stdout.rows ?? 24,
@@ -95,8 +100,9 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
       cwd: process.cwd(),
     });
   } catch (err) {
-    console.error(`Error: failed to spawn '${resolvedCmd}': ${(err as Error).message}`);
+    console.error(`Error: failed to spawn '${execCmd}' (orig '${resolvedCmd}'): ${(err as Error).message}`);
     console.error(`Augmented PATH was: ${augmentedPath}`);
+    console.error(`Args: ${JSON.stringify(execArgs)}`);
     process.exit(1);
   }
 
@@ -262,6 +268,62 @@ function stripAnsi(s: string): string {
     .replace(/\x1b[@-Z\\-_]/g, '')
     // Carriage returns inside a single line (cursor reset)
     .replace(/\r(?!\n)/g, '');
+}
+
+/**
+ * If the resolved binary is a #!/usr/bin/env <interp> script, parse the shebang
+ * and return an exec spec that invokes the interpreter directly with the script
+ * as its first argument. This dodges macOS posix_spawnp's flaky shebang chain
+ * handling (the original cause of `posix_spawnp failed` when spawning claude).
+ *
+ * Falls through to the original spec if the file isn't a script or the shebang
+ * can't be parsed cleanly.
+ */
+function unwrapShebang(
+  resolvedCmd: string,
+  cmdArgs: string[],
+  nodeDir: string,
+): { execCmd: string; execArgs: string[] } {
+  try {
+    const fd = fs.openSync(resolvedCmd, 'r');
+    try {
+      const buf = Buffer.alloc(256);
+      const n = fs.readSync(fd, buf, 0, 256, 0);
+      const firstLine = buf.slice(0, n).toString('utf8').split('\n')[0];
+      if (!firstLine.startsWith('#!')) {
+        return { execCmd: resolvedCmd, execArgs: cmdArgs };
+      }
+      const shebangBody = firstLine.slice(2).trim();
+      const parts = shebangBody.split(/\s+/);
+      // Handle '/usr/bin/env <interp> [interp-args...]'
+      if (parts[0] === '/usr/bin/env' && parts.length >= 2) {
+        const interpName = parts[1];
+        // Resolve interpreter via our augmented logic. For node specifically,
+        // prefer our own process.execPath if interpName is 'node'.
+        let interpPath: string | null = null;
+        if (interpName === 'node') {
+          interpPath = path.join(nodeDir, 'node');
+          if (!fs.existsSync(interpPath)) interpPath = process.execPath;
+        } else {
+          interpPath = resolveBin(interpName);
+        }
+        if (interpPath) {
+          return { execCmd: interpPath, execArgs: [...parts.slice(2), resolvedCmd, ...cmdArgs] };
+        }
+      }
+      // Direct interpreter path: '#!/usr/local/bin/node'
+      if (parts[0].startsWith('/')) {
+        if (fs.existsSync(parts[0])) {
+          return { execCmd: parts[0], execArgs: [...parts.slice(1), resolvedCmd, ...cmdArgs] };
+        }
+      }
+    } finally {
+      fs.closeSync(fd);
+    }
+  } catch {
+    /* fall through */
+  }
+  return { execCmd: resolvedCmd, execArgs: cmdArgs };
 }
 
 /**
