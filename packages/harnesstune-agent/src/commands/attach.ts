@@ -242,7 +242,11 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
     try { ptyProc.kill('SIGHUP'); } catch { /* ignore */ }
   });
 
-  console.log(`[harnesstune-attach] Attached to '${target.join(' ')}' — Ctrl-] to detach`);
+  const ptyPid = (ptyProc as unknown as { pid?: number }).pid;
+  console.log(`[harnesstune-attach] resolved: ${resolvedCmd}`);
+  console.log(`[harnesstune-attach] spawned : ${execCmd} ${JSON.stringify(execArgs)}`);
+  console.log(`[harnesstune-attach] child PID: ${ptyPid ?? 'unknown'}`);
+  console.log(`[harnesstune-attach] Attached — Ctrl-] to detach`);
 }
 
 async function postReport(
@@ -327,12 +331,20 @@ function unwrapShebang(
       // Handle '/usr/bin/env <interp> [interp-args...]'
       if (parts[0] === '/usr/bin/env' && parts.length >= 2) {
         const interpName = parts[1];
-        // Resolve interpreter via our augmented logic. For node specifically,
-        // prefer our own process.execPath if interpName is 'node'.
+        // Resolve interpreter. Priority for 'node':
+        //   1. node sitting next to the script (matches the version the script
+        //      was installed against — critical for nvm/brew-managed installs
+        //      where running with a mismatched Node version causes silent crash)
+        //   2. first 'node' on PATH (what /usr/bin/env would have done)
+        //   3. our own process.execPath as last resort
         let interpPath: string | null = null;
         if (interpName === 'node') {
-          interpPath = path.join(nodeDir, 'node');
-          if (!fs.existsSync(interpPath)) interpPath = process.execPath;
+          const sideBySide = path.join(path.dirname(resolvedCmd), 'node');
+          if (fs.existsSync(sideBySide)) {
+            interpPath = sideBySide;
+          } else {
+            interpPath = resolveBin('node') ?? process.execPath;
+          }
         } else {
           interpPath = resolveBin(interpName);
         }
