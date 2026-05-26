@@ -14,6 +14,8 @@
  * on another machine via the harnesstune relay.
  */
 import { randomUUID } from 'node:crypto';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { readConfig } from '../config.js';
 import { createClient, type RelayClient } from '../client.js';
 
@@ -63,13 +65,29 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
   }
 
   const [cmd, ...cmdArgs] = target;
-  const ptyProc = pty.spawn(cmd, cmdArgs, {
-    name: process.env.TERM ?? 'xterm-256color',
-    cols: process.stdout.columns ?? 80,
-    rows: process.stdout.rows ?? 24,
-    env: process.env,
-    cwd: process.cwd(),
-  });
+  // node-pty uses posix_spawnp on macOS which inherits a stripped PATH (often just
+  // /usr/bin:/bin). User-installed binaries like claude (under /opt/homebrew/bin
+  // or ~/.nvm/...) won't resolve. Walk PATH ourselves to find the absolute path.
+  const resolvedCmd = resolveBin(cmd);
+  if (!resolvedCmd) {
+    console.error(`Error: '${cmd}' not found on PATH.`);
+    console.error('Tried:', (process.env.PATH ?? '').split(':').join(', '));
+    console.error('Hint: pass an absolute path, e.g. attach -- /opt/homebrew/bin/claude');
+    process.exit(127);
+  }
+  let ptyProc: IPty;
+  try {
+    ptyProc = pty.spawn(resolvedCmd, cmdArgs, {
+      name: process.env.TERM ?? 'xterm-256color',
+      cols: process.stdout.columns ?? 80,
+      rows: process.stdout.rows ?? 24,
+      env: process.env,
+      cwd: process.cwd(),
+    });
+  } catch (err) {
+    console.error(`Error: failed to spawn '${resolvedCmd}': ${(err as Error).message}`);
+    process.exit(1);
+  }
 
   let shuttingDown = false;
   let outputBuffer: string[] = [];
@@ -233,4 +251,34 @@ function stripAnsi(s: string): string {
     .replace(/\x1b[@-Z\\-_]/g, '')
     // Carriage returns inside a single line (cursor reset)
     .replace(/\r(?!\n)/g, '');
+}
+
+/**
+ * Resolve a command name to its absolute path by walking $PATH ourselves.
+ * node-pty's posix_spawnp on macOS uses a stripped PATH that doesn't include
+ * /opt/homebrew/bin or user-installed Node binaries, so we must resolve before
+ * spawning. Returns null if not found. If the command already contains a slash,
+ * it's treated as a direct path and only checked for executability.
+ */
+function resolveBin(cmd: string): string | null {
+  if (cmd.includes('/')) {
+    try {
+      const stat = fs.statSync(cmd);
+      if (stat.isFile() && (stat.mode & 0o111)) return cmd;
+    } catch {
+      /* not found */
+    }
+    return null;
+  }
+  const pathDirs = (process.env.PATH ?? '').split(':').filter(Boolean);
+  for (const dir of pathDirs) {
+    const candidate = path.join(dir, cmd);
+    try {
+      const stat = fs.statSync(candidate);
+      if (stat.isFile() && (stat.mode & 0o111)) return candidate;
+    } catch {
+      /* skip */
+    }
+  }
+  return null;
 }
