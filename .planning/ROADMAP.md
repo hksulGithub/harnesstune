@@ -622,6 +622,36 @@ Plans:
 
 ---
 
+## Milestone 4: Async Persistent Chat (v3.2)
+
+### Phase 18: Async Persistent Chat with Remote Agent
+
+**Goal:** Close the v3.0 gap where `harnesstune-agent` accepts inbound chat messages but (a) starts a fresh Claude session per message (no continuity) and (b) drops Claude's response on the floor instead of POSTing it back to the relay. After Phase 18, user can chat with a long-running Claude session on a remote Mac and see threaded responses in the VS Code timeline.
+
+**Depends on:** Phase 10 (timeline UI + chat bubbles), Phase 12 (collector channel reuse for agent config)
+
+**Plan:** `.planning/v3.2-async-chat/PLAN.md`
+
+**Key Deliverables:**
+- `harnesstune-agent` `routeMessage` rewrite: `claude -p --output-format json --resume <session-id>`
+- Session ID persisted to `.harnesstune/config.json` under `claudeSessionId`
+- Response capture (stdout + stderr + exitCode) POSTed as `chat_response` report envelope
+- VS Code Reports panel: render `chat_response` as `<ChatBubble side="agent">` paired with originating outbound message via `inReplyTo` or nearest-prior timestamp match
+- In-house ~10-line serial queue (no `p-queue` dep)
+- Graceful JSON parse fallback to raw stdout
+- No relay schema changes (envelope accepts arbitrary `type` strings)
+
+**Success Criteria:**
+1. Send "what is 2 + 2?" from Mac A VS Code → response containing "4" appears in timeline within 90s
+2. Send "and 3 + 3?" → response containing "6" (proves Claude session continuity across messages)
+3. Trigger an error condition → bubble renders the stderr/exit code, doesn't crash the agent
+4. Existing one-shot `harnesstune-agent` flow still works (JSON parse failure fallback)
+5. Only one Claude invocation in-flight per agent at any time
+
+**Research Flag:** Pre-flight required — verify actual `claude -p --output-format json` field names on real Mac B before writing parser code. Otherwise standard implementation.
+
+---
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |

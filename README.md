@@ -1,5 +1,28 @@
 # HarnessTune
 
+## Chat with a live remote Claude session (v3.2+)
+
+Run an interactive Claude session on a remote Mac and chat with it asynchronously from VS Code on another machine. Each remote message appears in the live terminal session as if typed, and Claude's responses stream back to VS Code in ~2s batches.
+
+**On the remote Mac (interactive Terminal — keychain must be unlocked):**
+```sh
+# One-time setup: write ~/.harnesstune-agent/.harnesstune/config.json
+# pointing at your relay URL + channel token. Easiest path: reuse the
+# collector's channel from ~/.harnesstune/collector.json.
+
+cd ~/.harnesstune-agent
+~/.harnesstune/bin/harnesstune-agent attach -- claude
+```
+
+**On the client machine (VS Code with HarnessTune installed):**
+1. **HarnessTune: Add Remote Workspace** — paste your relay URL + token (or reuse an existing workspace if same channel)
+2. Click the workspace card → open Chat panel → send messages
+3. Replies stream into the "All" and "Chat" tabs of the Reports panel as agent ChatBubbles
+
+`Ctrl-]` in the attached terminal detaches the harnesstune bridge without killing the underlying Claude session.
+
+The attach wrapper runs Claude in a real PTY, so TUI rendering + macOS Keychain authentication both work (unlike non-interactive `claude -p` over SSH/launchd).
+
 ## Local UAT
 
 Run the deterministic local UAT fixture from the repo root:

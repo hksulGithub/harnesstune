@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.0
-milestone_name: multi-platform-fleet
-status: v3.0 SHIPPED — live VSCode UAT all green; tagged v0.1.0
-last_updated: "2026-05-26T08:00:00.000Z"
-last_activity: 2026-05-26 -- live UAT (UAT-1..10 + Phase 16/17) all passed; VSIX repackaged, v3.0 closed
+milestone: v3.2
+milestone_name: async-persistent-chat
+status: Phase 18 PTY bridge built, awaiting interactive smoke test on Mac B
+last_updated: "2026-05-27T00:00:00.000Z"
+last_activity: 2026-05-27 -- v3.2 Phase 18 implemented (harnesstune-agent attach + chat_response render); VSIX repackaged 1.23 MB
 progress:
-  total_phases: 17
+  total_phases: 18
   completed_phases: 17
-  total_plans: 27
+  total_plans: 28
   completed_plans: 27
-  percent: 100
+  percent: 96
 ---
 
 # GSD State: HarnessTune
@@ -163,3 +163,5 @@ Last activity: 2026-05-09 -- v3.1 followups complete; implementation review bloc
 - **2026-05-09**: v3.1 followups and review blockers complete. Paperclip shape rewrite UAT re-run green; relay `/reports` now fans out `run_batch` rows into `agent_runs` and returns retryable `500` on fanout failure; collector cursor persistence added; remote token input re-masked; root build now includes `packages/harnesstune-collector`; Jest topology ESM failure removed by replacing `d3-hierarchy` runtime dependency with deterministic layout; AdapterRegistry runtime error fixed; Phase 16 relay-unreachable state now renders distinctly from `no-data`; Phase 17 stale-threshold copy now reports minutes/hours/days instead of `0h`; dashboard navigation/render-state, status-bar alert badge, and alert-toast summary coverage added. Build passes and full Jest suite passes (15 suites, 71 tests). Remaining: live VSCode UAT for Phase 16 dashboard clicks/date persistence/error card and Phase 17 real status-bar/toast behavior.
 
 - **2026-05-26**: v3.0 SHIPPED. UAT relay-live jest suite green (13/13 tests, 1.6s). Live VSCode UAT walkthrough complete on installed VSIX: UAT-1 (sidebar mount) PASS; UAT-9 (status pill flip on relay disconnect/reconnect) PASS; Phase 16 fleet drill-down (3 agents render with correct health dots, $7.08 workspace total, breadcrumb, date range tabs) PASS; agent drill-down (3 historical runs with timestamps/durations/cost) PASS; 30d date range persists across window reload PASS; ws-empty empty-state copy ("No agents connected yet. Run `scripts/install-collector.sh` on a machine to see it here.") PASS; Phase 17 alert toast ("HarnessTune: 4 agents need attention: 2 failing, 2 stale" + "View Fleet Dashboard" button) PASS; fleet-view dedup confirmed (6 sidebar entries → 5 unique workspaces in fleet). VSIX repackaged (1.23 MB, 26 files, sha256 834d806c…). Known cosmetic residue deferred to v3.2 backlog: workspace-total token sum reports 0. Tagged v0.1.0.
+
+- **2026-05-27**: v3.2 Phase 18 implemented (live PTY chat bridge). v1 of plan (per-message `claude -p --resume`) was discarded after two real-world blockers surfaced: (a) `claude` over SSH/launchd/cron crashes inside JWT decoder because macOS Keychain isn't accessible outside graphical sessions, and (b) user actually wanted to chat with an already-running Claude Code instance, not spawn fresh ones per message. v2 plan + implementation: new `harnesstune-agent attach -- <cmd>` subcommand spawns the target (e.g. `claude`) in a real PTY via node-pty inside an interactive Terminal (so Keychain works), transparently proxies the user's local terminal, mirrors PTY output to relay as `chat_response` reports every ~2s, polls relay every 10s for `to_agent` messages and writes them into PTY stdin with visible `[remote]` marker. VS Code Reports panel renders `chat_response` reports as agent ChatBubbles (reusing existing component); "Chat" filter tab + counter updated. Codex CLI subagent was unreliable across 4 invocation attempts (broker auth issues, silent dispatch failures, account-ID mismatch) — fell back to Claude implementation per feedback_codex_fallback.md. Build clean, jest 17/17 suites pass (74 tests, 1 UAT suite skipped on env). VSIX rebuilt (1.23 MB, 26 files). Mac B agent configured at `~/.harnesstune-agent/.harnesstune/config.json` reusing collector's channel, shim at `~/.harnesstune/bin/harnesstune-agent`, dry-run validated. Awaiting interactive smoke test (user opens Mac B Terminal, runs `harnesstune-agent attach -- claude`, chat from Mac A VS Code).
