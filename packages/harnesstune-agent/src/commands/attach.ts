@@ -14,10 +14,13 @@
  * on another machine via the harnesstune relay.
  */
 import { randomUUID } from 'node:crypto';
+import { createRequire } from 'node:module';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { readConfig } from '../config.js';
 import { createClient, type RelayClient } from '../client.js';
+
+const require = createRequire(import.meta.url);
 
 // node-pty is loaded lazily so other subcommands don't pay the native-module cost
 type IPty = {
@@ -63,6 +66,11 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
     console.error(`Underlying error: ${(err as Error).message}`);
     process.exit(1);
   }
+
+  // Self-heal: Dropbox can strip the execute bit from node-pty's spawn-helper
+  // binary during sync, which causes posix_spawnp to fail with a generic
+  // "posix_spawnp failed" message. Ensure the spawn-helper is executable.
+  ensureNodePtySpawnHelperExecutable();
 
   const [cmd, ...cmdArgs] = target;
   // node-pty uses posix_spawnp on macOS. Resolve bare command names to absolute
@@ -268,6 +276,27 @@ function stripAnsi(s: string): string {
     .replace(/\x1b[@-Z\\-_]/g, '')
     // Carriage returns inside a single line (cursor reset)
     .replace(/\r(?!\n)/g, '');
+}
+
+/**
+ * Walk up from this file to find node-pty's package dir and ensure spawn-helper
+ * has the execute bit set. Dropbox-synced installs frequently lose chmod +x.
+ */
+function ensureNodePtySpawnHelperExecutable(): void {
+  try {
+    const ptyPkgPath = require.resolve('node-pty/package.json');
+    const ptyDir = path.dirname(ptyPkgPath);
+    const helperPath = path.join(ptyDir, 'prebuilds', `darwin-${process.arch}`, 'spawn-helper');
+    if (fs.existsSync(helperPath)) {
+      const stat = fs.statSync(helperPath);
+      if ((stat.mode & 0o111) === 0) {
+        fs.chmodSync(helperPath, stat.mode | 0o755);
+        console.error(`[harnesstune-attach] chmod +x ${helperPath} (Dropbox stripped exec bit)`);
+      }
+    }
+  } catch {
+    /* best-effort; spawn will surface a clear error if helper still unusable */
+  }
 }
 
 /**
