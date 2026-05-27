@@ -32,6 +32,12 @@ export default function App() {
   const [hasMore, setHasMore] = useState(savedState?.hasMore ?? true);
   const [loading, setLoading] = useState(true);
   const [replyTo, setReplyTo] = useState<AppState['replyTo']>(null);
+  // UI-only display limit. Start by showing just the most recent message + reply.
+  // Each "Load older" click reveals INITIAL_PAGE_SIZE more items already in memory
+  // before falling back to a backend fetch for older history.
+  const INITIAL_PAGE_SIZE = 2;
+  const PAGE_INCREMENT = 10;
+  const [displayLimit, setDisplayLimit] = useState<number>(INITIAL_PAGE_SIZE);
 
   // Persist state
   useEffect(() => {
@@ -79,6 +85,11 @@ export default function App() {
     if (filter === 'chat') return item.kind === 'message' || (item.kind === 'report' && item.data.type === 'chat_response');
     return true;
   });
+  // Display only the most recent `displayLimit` items. Items are sorted newest-first
+  // by the adapter, so slicing [0, displayLimit] keeps the newest N.
+  const visibleItems = filteredItems.slice(0, displayLimit);
+  const moreInMemory = filteredItems.length > displayLimit;
+  const showLoadMore = moreInMemory || hasMore;
 
   const handleSend = useCallback((text: string) => {
     // Optimistic append — show the message immediately
@@ -106,11 +117,19 @@ export default function App() {
   }, [workspaceId, replyTo]);
 
   const handleLoadMore = useCallback(() => {
-    const oldest = items[items.length - 1];
-    if (oldest) {
-      vscode.postMessage({ type: 'timeline:loadMore', workspaceId, before: oldest.at });
-    }
-  }, [items, workspaceId]);
+    // First exhaust items already in memory by bumping the display window.
+    // Only fetch from the backend when we've revealed everything in memory.
+    setDisplayLimit(prev => {
+      const next = prev + PAGE_INCREMENT;
+      if (next >= filteredItems.length && hasMore) {
+        const oldest = items[items.length - 1];
+        if (oldest) {
+          vscode.postMessage({ type: 'timeline:loadMore', workspaceId, before: oldest.at });
+        }
+      }
+      return next;
+    });
+  }, [items, filteredItems.length, hasMore, workspaceId]);
 
   const handleReply = useCallback((reportId: string, reportType: string, timestamp: string) => {
     setReplyTo({ reportId, reportType, timestamp });
@@ -134,11 +153,11 @@ export default function App() {
           />
         ) : (
           <>
-            {hasMore && (
+            {showLoadMore && (
               <LoadMoreButton onClick={handleLoadMore} loading={false} />
             )}
             <TimelineFeed
-              items={filteredItems}
+              items={visibleItems}
               loopIterations={loopIterations}
               onReply={handleReply}
             />
