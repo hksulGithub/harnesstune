@@ -282,7 +282,9 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
           dbg(`  -> writing to PTY: ${text.slice(0, 80)} (baseline offset=${baseline})`);
           process.stdout.write(`\r\n\x1b[33m[remote] ${text}\x1b[0m\r\n`);
           ptyProc.write(text + '\r');
-          await client.delete(`/api/channels/${config.channelId}/messages/${msg.id}`).catch(() => undefined);
+          // Don't delete the message — keep it so the client UI shows the
+          // full conversation history. The cursor (lastMessageCursor) is
+          // advanced below so we won't re-inject it on the next poll.
 
           // Fire-and-forget the response watcher so subsequent polls aren't blocked
           waitForResponseAndExtract(baseline).then(async (responseText) => {
