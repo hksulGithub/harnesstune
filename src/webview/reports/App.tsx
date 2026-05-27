@@ -73,7 +73,14 @@ export default function App() {
     window.addEventListener('message', handler);
     // Request initial data
     vscode.postMessage({ type: 'timeline:requestInitial', workspaceId: '' });
-    return () => window.removeEventListener('message', handler);
+    // Auto-refresh every 5s so new chat responses appear without reopening the panel
+    const refresh = setInterval(() => {
+      vscode.postMessage({ type: 'timeline:requestInitial', workspaceId: '' });
+    }, 5000);
+    return () => {
+      window.removeEventListener('message', handler);
+      clearInterval(refresh);
+    };
   }, []);
 
   // Filter items
