@@ -19,6 +19,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { readConfig } from '../config.js';
 import { createClient, type RelayClient } from '../client.js';
+import { resolveStrategy } from '../strategies/index.js';
 
 const require = createRequire(import.meta.url);
 
@@ -70,7 +71,19 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
   // "posix_spawnp failed" message. Ensure the spawn-helper is executable.
   ensureNodePtySpawnHelperExecutable();
 
-  const [cmd, ...cmdArgs] = target;
+  const [cmd, ...cmdArgsRaw] = target;
+  const cmdBasename = path.basename(cmd);
+  const strategyOrNull = resolveStrategy(cmdBasename);
+  if (!strategyOrNull) {
+    console.error(`Error: '${cmdBasename}' is not a supported agent.`);
+    console.error('Supported agents: claude, agy');
+    console.error('Example: harnesstune-agent attach -- claude');
+    process.exit(2);
+  }
+  // Non-null assertion safe: process.exit(2) above makes this branch unreachable if null
+  const strategy = strategyOrNull!;
+  // Delegate flag injection to the strategy (e.g. claude injects --permission-mode bypassPermissions)
+  const cmdArgs = strategy.injectArgs(cmdArgsRaw);
   // node-pty uses posix_spawnp on macOS. Resolve bare command names to absolute
   // paths via $PATH ourselves so the child doesn't depend on the (stripped) PATH
   // inherited by posix_spawn.
@@ -129,6 +142,7 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
     target: target.join(' '),
     pid: process.pid,
     cwd: process.cwd(),
+    agent: strategy.id,
   });
 
   // --- PTY output → user's terminal (no relay streaming — see JSONL watcher below) ---
@@ -161,31 +175,76 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
     }
   });
 
-  // --- Find Claude's session JSONL file (where it logs clean structured messages) ---
-  // Path convention: ~/.claude/projects/<sanitized-cwd>/<session-uuid>.jsonl
-  // Sanitized cwd = cwd with / and . replaced by -
-  const claudeProjectsDir = path.join(process.env.HOME ?? '', '.claude', 'projects');
+  // --- Find the agent's transcript JSONL file via strategy ---
+  const home = process.env.HOME ?? '';
+  const transcriptDir = strategy.resolveTranscriptDir({ cwd: process.cwd(), home });
+  dbg(`session scope: [${strategy.label}] ${transcriptDir ?? '(dir not yet created)'}`);
+
+  /** Return true if filename should be included per strategy filter. */
+  function acceptFile(filename: string): boolean {
+    return strategy.transcriptFilenameFilter
+      ? strategy.transcriptFilenameFilter(filename)
+      : filename.endsWith('.jsonl');
+  }
+
+  /**
+   * Collect all candidate transcript files under the strategy's transcript dir.
+   * For recursive strategies (agy), walks the full subtree. For non-recursive
+   * (claude), scans one level deep inside the scoped project subdir.
+   */
+  function listSessionFiles(): Array<{ p: string; size: number }> {
+    const dir = strategy.resolveTranscriptDir({ cwd: process.cwd(), home });
+    if (!dir || !fs.existsSync(dir)) return [];
+    const out: Array<{ p: string; size: number }> = [];
+    if (strategy.recursiveTranscriptSearch) {
+      // Recursive walk for agy: brain/<uuid>/.system_generated/logs/transcript.jsonl
+      const walk = (d: string) => {
+        try {
+          for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
+            const full = path.join(d, entry.name);
+            if (entry.isDirectory()) {
+              walk(full);
+            } else if (entry.isFile() && acceptFile(entry.name)) {
+              try { out.push({ p: full, size: fs.statSync(full).size }); } catch { /* skip */ }
+            }
+          }
+        } catch { /* unreadable */ }
+      };
+      walk(dir);
+    } else {
+      // Non-recursive: scan one level deep (claude scopes to sanitized-cwd subdir)
+      try {
+        for (const f of fs.readdirSync(dir)) {
+          if (!acceptFile(f)) continue;
+          const p = path.join(dir, f);
+          try { out.push({ p, size: fs.statSync(p).size }); } catch { /* skip */ }
+        }
+      } catch { /* unreadable */ }
+    }
+    return out;
+  }
 
   function findCurrentSessionLog(): string | null {
-    if (!fs.existsSync(claudeProjectsDir)) return null;
+    const files = listSessionFiles();
+    if (files.length === 0) {
+      // Dir doesn't exist yet or no matching files — fall back to scanning
+      // the parent transcript dir for the most recently modified matching file
+      const dir = strategy.resolveTranscriptDir({ cwd: process.cwd(), home });
+      if (!dir || !fs.existsSync(dir)) return null;
+      return null; // listSessionFiles already covers the dir; nothing to fall back to
+    }
     let latest: { p: string; mtime: number } | null = null;
-    for (const dir of fs.readdirSync(claudeProjectsDir)) {
-      const projDir = path.join(claudeProjectsDir, dir);
+    for (const f of files) {
       try {
-        for (const f of fs.readdirSync(projDir)) {
-          if (!f.endsWith('.jsonl')) continue;
-          const p = path.join(projDir, f);
-          const m = fs.statSync(p).mtimeMs;
-          if (!latest || m > latest.mtime) latest = { p, mtime: m };
-        }
-      } catch { /* skip unreadable */ }
+        const m = fs.statSync(f.p).mtimeMs;
+        if (!latest || m > latest.mtime) latest = { p: f.p, mtime: m };
+      } catch { /* skip */ }
     }
     return latest?.p ?? null;
   }
 
   let sessionLogPath: string | null = findCurrentSessionLog();
-  let sessionLogOffset = sessionLogPath ? fs.statSync(sessionLogPath).size : 0;
-  dbg(`session JSONL: ${sessionLogPath ?? '(none yet)'} initial offset=${sessionLogOffset}`);
+  dbg(`session JSONL: ${sessionLogPath ?? '(none yet)'}`);
 
   /**
    * Wait for Claude's response to land in the JSONL, then return the clean text.
@@ -194,62 +253,106 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
    * JSONL lines, and pull out assistant text content (no thinking / tool_use).
    */
   async function waitForResponseAndExtract(baselineOffset: number): Promise<string> {
-    // Refresh in case session rotated
-    const currentPath = sessionLogPath ?? findCurrentSessionLog();
-    if (!currentPath) { dbg('  wait: no session file found'); return ''; }
-    sessionLogPath = currentPath;
+    // Snapshot every .jsonl in the scoped project dir at start. Claude may
+    // append to the existing session OR rotate to a brand-new file mid-session
+    // (newer claude versions do this on certain triggers). Pick the one that
+    // grew the most during the wait — that's the active write target.
+    const initialFiles = listSessionFiles();
+    const initialPath = findCurrentSessionLog();
+    dbg(`  wait: scoped to ${transcriptDir ?? '(not yet created)'} (${initialFiles.length} jsonl files, latest=${initialPath ? path.basename(initialPath) : 'none'})`);
 
-    let lastSize = baselineOffset;
-    let stableAt = 0;
     const startedAt = Date.now();
-    const TIMEOUT_MS = 5 * 60 * 1000; // 5 min response budget
-    const STABLE_MS = 3000;
+    const TIMEOUT_MS = 5 * 60 * 1000;
+    // Per-strategy stability window. claude is fast and atomic (3s default);
+    // agy does multi-step tool use with long inter-call pauses (overrides to 30s).
+    const STABLE_MS = strategy.stableMs ?? 3000;
+    let lastHeartbeatLog = Date.now();
+    dbg(`  wait: stability window=${STABLE_MS}ms (strategy=${strategy.label})`);
+
+    // sizes[path] = last observed size; updated each tick
+    const sizes = new Map<string, number>();
+    for (const f of initialFiles) sizes.set(f.p, f.size);
+    if (initialPath && !sizes.has(initialPath)) {
+      try { sizes.set(initialPath, fs.statSync(initialPath).size); } catch { /* */ }
+    }
+
+    let stableAt = 0;
+    let activePath: string | null = null;
+    let activeStartSize = 0;
+    let activeLastSize = 0;
 
     while (Date.now() - startedAt < TIMEOUT_MS) {
       await new Promise(r => setTimeout(r, 500));
-      let size = 0;
-      try { size = fs.statSync(currentPath).size; } catch { continue; }
-      if (size > lastSize) {
-        lastSize = size;
+
+      // Rescan dir to catch newly-created files
+      const current = listSessionFiles();
+      let frameGrew = false;
+      for (const f of current) {
+        const prev = sizes.get(f.p);
+        if (prev === undefined) {
+          // New file appeared — treat its starting size as 0 so all of it counts as growth
+          sizes.set(f.p, 0);
+          if (!activePath) {
+            activePath = f.p;
+            activeStartSize = 0;
+            dbg(`  wait: new jsonl appeared: ${path.basename(f.p)}`);
+          }
+        }
+        const prevSize = sizes.get(f.p) ?? 0;
+        if (f.size > prevSize) {
+          sizes.set(f.p, f.size);
+          if (!activePath) {
+            activePath = f.p;
+            activeStartSize = prevSize;
+            dbg(`  wait: detected active file ${path.basename(f.p)} (start=${prevSize})`);
+          }
+          if (f.p === activePath) {
+            activeLastSize = f.size;
+            frameGrew = true;
+          }
+        }
+      }
+
+      if (frameGrew) {
         stableAt = 0;
-      } else if (size === lastSize && size > baselineOffset) {
+      } else if (activePath && activeLastSize > activeStartSize) {
         if (stableAt === 0) stableAt = Date.now();
         if (Date.now() - stableAt > STABLE_MS) break;
       }
+
+      // Heartbeat log every 10s so we know the watcher is alive
+      if (Date.now() - lastHeartbeatLog > 10_000) {
+        const activeBasename = activePath ? path.basename(activePath) : 'none';
+        dbg(`  wait: heartbeat — active=${activeBasename} start=${activeStartSize} now=${activeLastSize} (elapsed ${Math.floor((Date.now() - startedAt) / 1000)}s)`);
+        lastHeartbeatLog = Date.now();
+      }
     }
 
-    if (lastSize <= baselineOffset) {
-      dbg(`  wait: timed out or no growth (baseline=${baselineOffset} final=${lastSize})`);
+    if (!activePath || activeLastSize <= activeStartSize) {
+      dbg(`  wait: timed out or no growth (elapsed=${Date.now() - startedAt}ms)`);
       return '';
     }
 
-    // Read new bytes
-    const fd = fs.openSync(currentPath, 'r');
+    void baselineOffset; // legacy param kept for signature; we now use per-file deltas
+    dbg(`  wait: reading ${path.basename(activePath)} bytes [${activeStartSize}..${activeLastSize})`);
+    // Read new bytes and delegate extraction to the strategy
+    const fd = fs.openSync(activePath, 'r');
     try {
-      const buf = Buffer.alloc(lastSize - baselineOffset);
-      fs.readSync(fd, buf, 0, buf.length, baselineOffset);
-      sessionLogOffset = lastSize;
-      const lines = buf.toString('utf8').split('\n').filter(Boolean);
-      const texts: string[] = [];
-      for (const line of lines) {
-        try {
-          const d = JSON.parse(line) as { message?: { role?: string; content?: Array<{ type?: string; text?: string }> } };
-          const msg = d.message ?? {};
-          if (msg.role !== 'assistant') continue;
-          const content = Array.isArray(msg.content) ? msg.content : [];
-          for (const c of content) {
-            if (c.type === 'text' && typeof c.text === 'string' && c.text.trim()) texts.push(c.text);
-          }
-        } catch { /* skip non-JSON lines */ }
-      }
-      dbg(`  wait: extracted ${texts.length} text segment(s) from ${lines.length} JSONL lines`);
-      return texts.join('\n\n');
+      const buf = Buffer.alloc(activeLastSize - activeStartSize);
+      fs.readSync(fd, buf, 0, buf.length, activeStartSize);
+      const result = strategy.extractAssistantText(buf);
+      const segmentCount = result ? result.split('\n\n').length : 0;
+      dbg(`  wait: extracted ${segmentCount} segment(s) via ${strategy.label}`);
+      return result;
     } finally {
       fs.closeSync(fd);
     }
   }
 
   // --- Poll relay for inbound messages → write to PTY, wait for response, POST clean text ---
+  // pausePollUntil = epoch ms; if set, poll cycles bail out early until passed.
+  // Lets us honor 429 Retry-After without spamming the relay.
+  let pausePollUntil = 0;
   const pollTimer = setInterval(() => {
     void pollMessages();
   }, POLL_INTERVAL_MS);
@@ -257,6 +360,10 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
 
   async function pollMessages(): Promise<void> {
     if (shuttingDown) return;
+    if (Date.now() < pausePollUntil) {
+      dbg(`poll: paused (rate-limited), ${Math.ceil((pausePollUntil - Date.now()) / 1000)}s remaining`);
+      return;
+    }
     dbg(`poll: GET messages since=${lastMessageCursor}`);
     try {
       const res = await client.get(`/api/channels/${config.channelId}/messages`, {
@@ -267,6 +374,20 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
       if (!res.ok) {
         const errBody = await res.text().catch(() => '<unreadable>');
         dbg(`poll: error body: ${errBody.slice(0, 200)}`);
+        if (res.status === 429) {
+          // Parse retryAfter from header or body, default 30s.
+          const headerVal = res.headers.get('retry-after');
+          let retrySec = headerVal ? parseInt(headerVal, 10) : NaN;
+          if (Number.isNaN(retrySec)) {
+            try {
+              const parsed = JSON.parse(errBody) as { retryAfter?: number };
+              if (typeof parsed.retryAfter === 'number') retrySec = parsed.retryAfter;
+            } catch { /* ignore */ }
+          }
+          if (Number.isNaN(retrySec) || retrySec <= 0) retrySec = 30;
+          pausePollUntil = Date.now() + (retrySec + 1) * 1000;
+          dbg(`poll: rate-limited, pausing ${retrySec + 1}s`);
+        }
         return;
       }
       const data = (await res.json()) as { messages: Array<{ id: string; direction: string; body: Record<string, unknown>; createdAt: string }> };
@@ -292,12 +413,19 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
               dbg('  response: empty after extract, not posting');
               return;
             }
+            // If we're currently rate-limited, defer the post until the window
+            // passes so the response isn't lost to a 429.
+            if (Date.now() < pausePollUntil) {
+              const wait = pausePollUntil - Date.now();
+              dbg(`  response: rate-limit pause active, deferring ${wait}ms`);
+              await new Promise(r => setTimeout(r, wait));
+            }
             dbg(`  response: posting ${responseText.length} chars`);
             await postReport(client, config.channelId, 'chat_response', {
               text: responseText,
               inReplyTo: msg.id,
               flushedAt: new Date().toISOString(),
-            });
+            }, dbg);
           }).catch((err) => dbg(`  response: watcher error: ${(err as Error).message}`));
         }
         lastMessageCursor = msg.createdAt;
@@ -316,9 +444,15 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
       try { process.stdin.setRawMode(false); } catch { /* ignore */ }
     }
     process.stdin.pause();
-    await postReport(client, config.channelId, 'agent_detached', {
-      exitCode: code,
-    }).catch(() => undefined);
+    // Race the agent_detached post against a 3s timeout. Without this, an
+    // unreachable relay would hang the await forever and process.exit would
+    // never fire — leaving an orphan attach process polling on a stale cursor.
+    // Orphans accumulate across redeploys and cause every user message to be
+    // answered N times in the UI (one chat_response per surviving attach).
+    await Promise.race([
+      postReport(client, config.channelId, 'agent_detached', { exitCode: code }).catch(() => undefined),
+      new Promise(r => setTimeout(r, 3000)),
+    ]);
     process.exit(code);
   }
 
@@ -327,12 +461,19 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
     void gracefulExit(exitCode);
   });
 
-  process.on('SIGTERM', () => {
-    try { ptyProc.kill('SIGTERM'); } catch { /* ignore */ }
-  });
-  process.on('SIGHUP', () => {
-    try { ptyProc.kill('SIGHUP'); } catch { /* ignore */ }
-  });
+  // SIGTERM/SIGHUP: forward to the PTY child (it owns the foreground claude
+  // session) AND start gracefulExit on ourselves. Previously we only forwarded
+  // to the child, so if claude ignored the signal or took long to die we'd
+  // survive — and a subsequent `attach` invocation would create a duplicate
+  // poller, causing every UI message to be answered twice.
+  function handleTermSignal(sig: 'SIGTERM' | 'SIGHUP'): void {
+    try { ptyProc.kill(sig); } catch { /* ignore */ }
+    // Give the PTY child a moment to exit cleanly so its ptyProc.onExit fires
+    // with the real exit code. If it doesn't, force our own exit at 1s.
+    setTimeout(() => { void gracefulExit(sig === 'SIGTERM' ? 143 : 129); }, 1000);
+  }
+  process.on('SIGTERM', () => handleTermSignal('SIGTERM'));
+  process.on('SIGHUP', () => handleTermSignal('SIGHUP'));
 
   const ptyPid = (ptyProc as unknown as { pid?: number }).pid;
   console.log(`[harnesstune-attach] resolved: ${resolvedCmd}`);
@@ -346,6 +487,7 @@ async function postReport(
   channelId: string,
   type: string,
   body: Record<string, unknown>,
+  dbg?: (msg: string) => void,
 ): Promise<void> {
   const envelope = {
     type,
@@ -353,10 +495,29 @@ async function postReport(
     generatedAt: new Date().toISOString(),
     reportId: randomUUID(),
   };
-  try {
-    await client.post(`/api/channels/${channelId}/reports`, envelope);
-  } catch {
-    /* swallow — best-effort streaming */
+  // Retry once on 429 — chat_response posts MUST land or the user never sees
+  // claude's reply. The relay rate-limits per token at 60 req/min; if we hit it,
+  // wait until the next minute window and try again.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await client.post(`/api/channels/${channelId}/reports`, envelope);
+      if (!res.ok) {
+        if (res.status === 429 && attempt === 0) {
+          // 429 retryAfter is at most 60s (seconds until next minute boundary).
+          // Sleep + 1s safety margin, then retry.
+          const wait = 61_000;
+          dbg?.(`postReport(${type}): 429, sleeping ${wait}ms before retry`);
+          await new Promise(r => setTimeout(r, wait));
+          continue;
+        }
+        dbg?.(`postReport(${type}): HTTP ${res.status}, giving up`);
+        return;
+      }
+      return;
+    } catch (err) {
+      dbg?.(`postReport(${type}): caught ${(err as Error).message}`);
+      return;
+    }
   }
 }
 
