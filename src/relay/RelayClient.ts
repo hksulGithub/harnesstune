@@ -201,7 +201,10 @@ export class RelayClient {
 
   /** Fetch pre-aggregated summary for the channel */
   async getSummary(days = 7): Promise<ChannelSummaryResponse> {
-    const res = await this.doFetch(`/channels/${this.channelId}/summary?days=${days}`, { timeout: 5000 });
+    // 15s timeout: Vercel cold-start + Turso DB roundtrip can exceed 5s when this
+    // function hasn't been hit recently (the dashboard hits /summary on demand,
+    // so it doesn't stay warm like the 30s poll cycle does).
+    const res = await this.doFetch(`/channels/${this.channelId}/summary?days=${days}`, { timeout: 15000 });
     if (!res.ok) { throw new RelayError(res.status, await res.text()); }
     return res.json() as Promise<ChannelSummaryResponse>;
   }

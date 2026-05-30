@@ -14,6 +14,7 @@ export function mergeWorkspaceSummaries(
     return {
       ...summary,
       relayStatus: relayShadow.health,
+      relayError: relayShadow.relayError,
     };
   });
 

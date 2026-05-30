@@ -49,6 +49,20 @@ export default function App(): React.ReactElement {
     }
   }, [nav.level, nav.workspaceId, nav.agentId, days]);
 
+  // Auto-refresh the fleet overview every 30s so a transient /summary error
+  // (cold-start timeout, brief network blip) self-heals instead of leaving
+  // "Relay unreachable" frozen until the user reopens the panel.
+  useEffect(() => {
+    if (nav.level !== 'fleet') { return; }
+    const interval = setInterval(() => {
+      const msg = createFleetRequest(nav, days);
+      if (msg !== null) {
+        vscode.postMessage(msg);
+      }
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, [nav.level, days]);
+
   // Listen for messages from extension host
   useEffect(() => {
     function handler(event: MessageEvent): void {

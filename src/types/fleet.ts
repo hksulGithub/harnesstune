@@ -7,6 +7,8 @@ export interface FleetWorkspaceSummary {
   platform: string;
   health: HealthState;
   relayStatus?: HealthState;
+  /** Short human reason when health === 'unreachable' (e.g. "401 Unauthorized", "Timeout"). */
+  relayError?: string;
   agentCount: number;
   errorRatePct: number;
   lastActivityTs: number;

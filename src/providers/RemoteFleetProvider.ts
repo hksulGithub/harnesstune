@@ -1,4 +1,4 @@
-import { RelayClient } from '../relay/RelayClient.js';
+import { RelayClient, RelayError } from '../relay/RelayClient.js';
 import type { AgentSummary } from '../relay/RelayClient.js';
 import type { FleetDataProvider } from './FleetDataProvider.js';
 import type {
@@ -31,6 +31,21 @@ function computeHealthFromAgentSummaries(agents: AgentSummary[]): HealthState {
   if (healths.some(h => h === 'degraded')) { return 'degraded'; }
   if (healths.every(h => h === 'no-data')) { return 'no-data'; }
   return 'healthy';
+}
+
+function describeRelayError(err: unknown): string {
+  if (err instanceof RelayError) {
+    if (err.status === 401) { return '401 Unauthorized'; }
+    if (err.status === 403) { return '403 Forbidden'; }
+    if (err.status >= 500) { return `${err.status} Server error`; }
+    return `HTTP ${err.status}`;
+  }
+  if (err instanceof Error) {
+    if (err.name === 'AbortError') { return 'Timeout'; }
+    if (err.message.toLowerCase().includes('fetch')) { return 'Network error'; }
+    return err.message.slice(0, 80);
+  }
+  return 'Unknown error';
 }
 
 function mapRunStatus(status: string): HealthState {
@@ -90,6 +105,7 @@ export class RemoteFleetProvider implements FleetDataProvider {
           name: ws.name,
           platform: ws.name ?? 'Remote',
           health: 'unreachable',
+          relayError: describeRelayError(err),
           agentCount: 0,
           errorRatePct: 0,
           lastActivityTs: 0,

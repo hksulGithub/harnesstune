@@ -30,6 +30,12 @@ export class RemoteAdapter implements AgentBackendAdapter {
   private readonly _onStatusChange = new vscode.EventEmitter<{ workspaceId: string; status: string; lastHeartbeatAt?: number }>();
   readonly onStatusChange: vscode.Event<{ workspaceId: string; status: string; lastHeartbeatAt?: number }> = this._onStatusChange.event;
 
+  // Cache fetched report bodies. Reports are immutable once posted, so once we
+  // fetch a body we never need to fetch it again. Without this, each panel
+  // auto-refresh re-fetches every chat_response/briefing/ralph body, burning
+  // through the relay's 60-req/min-per-token rate limit very quickly.
+  private readonly bodyCache = new Map<string, import('@harnesstune/shared').ReportEnvelope>();
+
   constructor(
     private readonly relayUrl: string,
     private readonly token: string,
@@ -182,12 +188,18 @@ export class RemoteAdapter implements AgentBackendAdapter {
 
     // Types whose bodies the UI needs for rendering. The relay list endpoint
     // returns metadata only (RLAY-10), so we fetch full bodies via getReport().
+    // Reports are immutable, so cache bodies on the adapter — only fetch the
+    // ones we haven't seen yet. This keeps the auto-refresh request volume
+    // bounded as conversation history grows.
     const TYPES_NEEDING_BODY = new Set(['chat_response', 'briefing', 'ralph']);
-    const bodyFetches = reports
-      .filter(r => TYPES_NEEDING_BODY.has(r.type))
-      .map(r => this.client!.getReport(r.id).then(env => [r.id, env] as const).catch(() => [r.id, null] as const));
+    const needsFetch = reports.filter(r => TYPES_NEEDING_BODY.has(r.type) && !this.bodyCache.has(r.id));
+    const bodyFetches = needsFetch.map(r =>
+      this.client!.getReport(r.id).then(env => [r.id, env] as const).catch(() => [r.id, null] as const),
+    );
     const fetched = await Promise.all(bodyFetches);
-    const bodyById = new Map<string, import('@harnesstune/shared').ReportEnvelope | null>(fetched);
+    for (const [id, env] of fetched) {
+      if (env) this.bodyCache.set(id, env);
+    }
 
     for (const report of reports) {
       // Track heartbeats for stale detection but don't include in timeline
@@ -195,7 +207,7 @@ export class RemoteAdapter implements AgentBackendAdapter {
         this.lastHeartbeatAt = Date.now();
         continue;
       }
-      const fullEnvelope = bodyById.get(report.id);
+      const fullEnvelope = this.bodyCache.get(report.id);
       const data = fullEnvelope ?? (report as unknown as import('@harnesstune/shared').ReportEnvelope);
       items.push({ kind: 'report', data, at: report.generatedAt });
     }

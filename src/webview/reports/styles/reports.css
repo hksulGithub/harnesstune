@@ -160,6 +160,115 @@ body {
   40% { opacity: 1; transform: scale(1); }
 }
 
+/* ── Tighten markdown rendering inside chat bubbles ──────────────────
+   react-markdown emits browser-default margins on h1-h6/p/ul/ol which
+   blow up the vertical space and make agent replies look like an essay.
+   Pull them in close to match the density of agy's TUI output. */
+.chat-bubble__body > :first-child { margin-top: 0; }
+.chat-bubble__body > :last-child { margin-bottom: 0; }
+.chat-bubble__body p {
+  margin: 0.35em 0;
+  line-height: 1.45;
+}
+.chat-bubble__body h1,
+.chat-bubble__body h2,
+.chat-bubble__body h3,
+.chat-bubble__body h4,
+.chat-bubble__body h5,
+.chat-bubble__body h6 {
+  margin: 0.8em 0 0.3em;
+  line-height: 1.25;
+  font-weight: 600;
+}
+.chat-bubble__body h1 { font-size: 1.25em; }
+.chat-bubble__body h2 { font-size: 1.18em; }
+.chat-bubble__body h3 { font-size: 1.1em; }
+.chat-bubble__body h4 { font-size: 1.05em; }
+.chat-bubble__body h5,
+.chat-bubble__body h6 { font-size: 1em; }
+.chat-bubble__body ul,
+.chat-bubble__body ol {
+  margin: 0.3em 0;
+  padding-left: 1.4em;
+}
+.chat-bubble__body li {
+  margin: 0.1em 0;
+}
+.chat-bubble__body li > p {
+  margin: 0;
+}
+.chat-bubble__body pre {
+  margin: 0.4em 0;
+  padding: 6px 8px;
+  background: var(--vscode-textBlockQuote-background, rgba(127,127,127,0.1));
+  border-radius: 3px;
+  overflow-x: auto;
+  font-size: 0.9em;
+  line-height: 1.4;
+}
+.chat-bubble__body code {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.9em;
+  background: var(--vscode-textBlockQuote-background, rgba(127,127,127,0.1));
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+.chat-bubble__body pre code {
+  padding: 0;
+  background: none;
+}
+.chat-bubble__body blockquote {
+  margin: 0.4em 0;
+  padding-left: 0.8em;
+  border-left: 3px solid var(--vscode-widget-border);
+  color: var(--vscode-descriptionForeground);
+}
+.chat-bubble__body hr {
+  margin: 0.6em 0;
+  border: none;
+  border-top: 1px solid var(--vscode-widget-border);
+}
+.chat-bubble__body table {
+  border-collapse: collapse;
+  margin: 0.4em 0;
+  font-size: 0.95em;
+}
+.chat-bubble__body th,
+.chat-bubble__body td {
+  border: 1px solid var(--vscode-widget-border);
+  padding: 3px 8px;
+  text-align: left;
+}
+.chat-bubble__body a {
+  color: var(--vscode-textLink-foreground);
+  text-decoration: none;
+}
+.chat-bubble__body a:hover {
+  text-decoration: underline;
+}
+
+/* ── Collapsible "Reasoning" inside agent chat bubbles ────────────── */
+.chat-bubble__reasoning {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--vscode-widget-border);
+  font-size: 0.9em;
+  opacity: 0.85;
+}
+.chat-bubble__reasoning > summary {
+  cursor: pointer;
+  user-select: none;
+  color: var(--vscode-descriptionForeground);
+  font-weight: 500;
+  padding: 2px 0;
+}
+.chat-bubble__reasoning > summary:hover {
+  color: var(--vscode-foreground);
+}
+.chat-bubble__reasoning[open] > summary {
+  margin-bottom: 6px;
+}
+
 /* ── Report cards (shared) ─────────────────────────── */
 .report-card {
   border: 1px solid var(--vscode-widget-border);

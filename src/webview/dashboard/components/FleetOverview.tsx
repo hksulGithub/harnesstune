@@ -28,7 +28,7 @@ function formatRelativeTime(ts: number): string {
 
 function formatWorkspaceStatus(ws: FleetWorkspaceSummary): string {
   if (ws.health === 'unreachable') {
-    return 'Relay unreachable';
+    return ws.relayError ? `Relay unreachable — ${ws.relayError}` : 'Relay unreachable';
   }
   return formatRelativeTime(ws.lastActivityTs);
 }
