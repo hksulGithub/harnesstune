@@ -21,6 +21,7 @@ import { RemoteFleetProvider } from './providers/RemoteFleetProvider';
 import { mergeWorkspaceSummaries } from './providers/fleetBuilder';
 import type { FleetDataProvider } from './providers/FleetDataProvider';
 import type { AlertCycleSummary } from './types/alerts';
+import { bootstrapWorkspacesFromCredentialsFile } from './credentialsBootstrap';
 // TerminalManager replaced by ChatManager (webview-based chat panels)
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -32,6 +33,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const watcherManager = new FileWatcherManager(context);
   const secretStore = new SecretStore(context.secrets);
+
+  // Bootstrap remote workspaces from a credentials JSON file (default at
+  // ~/Dropbox/harnesstune-credentials.json). Lets a new Mac inherit channel
+  // configs without typing tokens into the UI. Idempotent — entries with a
+  // channelId already in the registry are skipped.
+  try {
+    await bootstrapWorkspacesFromCredentialsFile(registry, secretStore);
+  } catch (err) {
+    console.error('HarnessTune: credentials bootstrap failed:', err);
+  }
 
   // ── Initial watcher setup for persisted workspaces ───────────────────────────
   for (const workspace of registry.getAll()) {
