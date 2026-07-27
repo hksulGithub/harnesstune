@@ -9,15 +9,10 @@ export class NotificationService implements vscode.Disposable {
     switch (event.eventType) {
       case 'PostToolUseFailure':
       case 'StopFailure': {
-        const errorMsg = event.error ?? 'Unknown error';
-        const action = await vscode.window.showErrorMessage(
-          `HarnessTune: Agent "${event.agentId}" error — ${errorMsg}`,
-          'View Details'
-        );
-        if (action === 'View Details') {
-          vscode.commands.executeCommand('harnesstune.showDashboard');
-        }
-        // Increment workspace errorCount
+        // Toast suppressed: these fire on every non-zero bash exit (file/grep/
+        // ls of a missing path, etc.), which the user normally ignores. The
+        // workspace error count badge in the sidebar still surfaces the tally,
+        // and full details remain visible in the Fleet Dashboard.
         const workspace = this.registry.getById(event.workspaceId);
         if (workspace) {
           await this.registry.update(event.workspaceId, {
