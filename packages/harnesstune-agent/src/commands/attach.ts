@@ -262,12 +262,16 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
     dbg(`  wait: scoped to ${transcriptDir ?? '(not yet created)'} (${initialFiles.length} jsonl files, latest=${initialPath ? path.basename(initialPath) : 'none'})`);
 
     const startedAt = Date.now();
-    const TIMEOUT_MS = 5 * 60 * 1000;
+    // Strategies with hasFinalResponse may sit through a multi-minute brew
+    // install or git clone — give them up to 30 minutes. Stability-only
+    // strategies keep the original 5-minute cap so a stalled tool doesn't
+    // pin the watcher forever.
+    const TIMEOUT_MS = strategy.hasFinalResponse ? 30 * 60 * 1000 : 5 * 60 * 1000;
     // Per-strategy stability window. claude is fast and atomic (3s default);
     // agy does multi-step tool use with long inter-call pauses (overrides to 30s).
     const STABLE_MS = strategy.stableMs ?? 3000;
     let lastHeartbeatLog = Date.now();
-    dbg(`  wait: stability window=${STABLE_MS}ms (strategy=${strategy.label})`);
+    dbg(`  wait: stability window=${STABLE_MS}ms (strategy=${strategy.label}, semanticEndDetector=${!!strategy.hasFinalResponse})`);
 
     // sizes[path] = last observed size; updated each tick
     const sizes = new Map<string, number>();
@@ -317,7 +321,29 @@ export async function attach(args: string[], opts?: { dryRun?: boolean }): Promi
         stableAt = 0;
       } else if (activePath && activeLastSize > activeStartSize) {
         if (stableAt === 0) stableAt = Date.now();
-        if (Date.now() - stableAt > STABLE_MS) break;
+        if (Date.now() - stableAt > STABLE_MS) {
+          // Stability satisfied — but if the strategy can tell us whether the
+          // agent's actual end-of-turn has fired, use that as the real gate.
+          // Without this, agy posts a half-finished "I'll check progress soon"
+          // reply during a long external wait and gives up before the model
+          // writes its real summary.
+          if (strategy.hasFinalResponse) {
+            try {
+              const fd = fs.openSync(activePath, 'r');
+              try {
+                const buf = Buffer.alloc(activeLastSize - activeStartSize);
+                fs.readSync(fd, buf, 0, buf.length, activeStartSize);
+                if (strategy.hasFinalResponse(buf)) break;
+              } finally { fs.closeSync(fd); }
+            } catch { /* fall through and keep waiting */ }
+            // Not yet final — reset the stability clock and keep watching.
+            // Don't reset activeStartSize, so the next extraction still
+            // captures everything since the user's message.
+            stableAt = 0;
+          } else {
+            break;
+          }
+        }
       }
 
       // Heartbeat log every 10s so we know the watcher is alive

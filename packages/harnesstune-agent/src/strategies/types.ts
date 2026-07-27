@@ -64,4 +64,15 @@ export interface AgentTranscriptStrategy {
    * If omitted, the pipeline uses its default (3000ms).
    */
   readonly stableMs?: number;
+
+  /**
+   * Optional semantic end-of-turn detector. When provided, the watcher keeps
+   * polling past the `stableMs` window until this returns true (or until the
+   * overall timeout). Use to avoid posting a half-finished response when the
+   * agent goes quiet during a long external operation (e.g. agy waiting for
+   * `git clone` to finish — looks "stable" but isn't done).
+   *
+   * If omitted, stability alone determines completion (current behavior).
+   */
+  hasFinalResponse?(buf: Buffer): boolean;
 }

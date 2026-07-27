@@ -41,17 +41,17 @@ export const agyStrategy: AgentTranscriptStrategy = {
     // that appears in agy's TUI is rendered live from streaming output and
     // is NOT stored, so we cannot recover it.
     //
-    // PLANNER_RESPONSE rows are heterogeneous — some are the final prose
-    // answer, others are wrapped tool events like {"event": "task_updated"...}
-    // with stdout dumps. To get the clean final answer:
-    //   1. Collect all PLANNER_RESPONSE rows with non-empty content
-    //   2. Skip rows that look like raw tool-event JSON (start with `{`)
-    //   3. Take the LAST surviving row — that's the model's final reply
+    // The model's real final answer is a PLANNER_RESPONSE with `content` and
+    // NO `tool_calls`. Intermediate rows with `tool_calls` either kick off
+    // the next bash command or summarize a step — not the answer. Strict
+    // filtering avoids posting "I will check the progress in a moment..."
+    // as if it were the final reply when the agent later writes a full
+    // summary after a long external wait.
     const lines = buf.toString('utf8').split('\n').filter(Boolean);
     const candidates: string[] = [];
     for (const line of lines) {
       try {
-        const d = JSON.parse(line) as { source?: string; type?: string; content?: string };
+        const d = JSON.parse(line) as { source?: string; type?: string; content?: string; tool_calls?: unknown[] };
         if (
           d.source !== 'MODEL' ||
           d.type !== 'PLANNER_RESPONSE' ||
@@ -60,12 +60,36 @@ export const agyStrategy: AgentTranscriptStrategy = {
         const trimmed = d.content.trim();
         if (!trimmed) continue;
         // Skip raw tool-event JSON dumps (e.g. {"event": "task_updated"...}).
-        // Real prose answers never start with a bare `{`.
         if (trimmed.startsWith('{')) continue;
+        // Skip rows where the model is still issuing tool calls — that's a
+        // mid-thought commentary, not the final answer.
+        if (Array.isArray(d.tool_calls) && d.tool_calls.length > 0) continue;
         candidates.push(trimmed);
       } catch { /* skip malformed lines */ }
     }
     if (candidates.length === 0) return '';
     return candidates[candidates.length - 1];
+  },
+
+  hasFinalResponse(buf: Buffer): boolean {
+    // True iff the LATEST PLANNER_RESPONSE (by file order) has content and no
+    // tool_calls. Anything else means the agent is still working — keep
+    // watching. Lets a 5-minute brew install or git clone finish before the
+    // watcher posts.
+    const lines = buf.toString('utf8').split('\n').filter(Boolean);
+    let latestIsFinal = false;
+    for (const line of lines) {
+      try {
+        const d = JSON.parse(line) as { source?: string; type?: string; content?: string; tool_calls?: unknown[] };
+        if (d.source !== 'MODEL' || d.type !== 'PLANNER_RESPONSE') continue;
+        const hasContent =
+          typeof d.content === 'string' &&
+          d.content.trim().length > 0 &&
+          !d.content.trim().startsWith('{');
+        const hasTools = Array.isArray(d.tool_calls) && d.tool_calls.length > 0;
+        latestIsFinal = hasContent && !hasTools;
+      } catch { /* skip */ }
+    }
+    return latestIsFinal;
   },
 };
