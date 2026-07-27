@@ -114,23 +114,42 @@ export default function App() {
   // conversation reads Q1 → A1 → Q2 → A2 even when A1 arrives after Q2.
   // chat_response carries body.inReplyTo === Q.id; we use that to attach the
   // reply right after its question instead of in raw timestamp order.
+  //
+  // Dedup contract: when the relay holds multiple chat_responses with the same
+  // inReplyTo (an old SIGTERM-orphan-attach bug occasionally produced two of
+  // these), only the LATEST one renders. Older duplicates that would otherwise
+  // appear at their original timestamp are dropped — they're never the answer
+  // the user wants to see.
+  //
   // Non-paired items (briefings, ralph, activity, replies with no matching Q)
   // stay at their own timestamp position.
   const threadedItems = React.useMemo(() => {
     // Sort oldest-first for threading
     const chrono = [...filteredItems].sort((a, b) => a.at.localeCompare(b.at));
+    // Map inReplyTo → the latest chat_response with that inReplyTo. Because we
+    // iterate chrono (oldest → newest), .set overwrites earlier dupes.
     const replyByMessageId = new Map<string, TimelineItem>();
+    // Set of reportIds we will hide — earlier duplicates whose inReplyTo points
+    // at the same question as a later chat_response.
+    const duplicateReplyIds = new Set<string>();
     for (const it of chrono) {
       if (it.kind === 'report' && it.data.type === 'chat_response') {
         const body = it.data.body as { inReplyTo?: string };
-        if (body?.inReplyTo) replyByMessageId.set(body.inReplyTo, it);
+        if (body?.inReplyTo) {
+          const prev = replyByMessageId.get(body.inReplyTo);
+          if (prev && prev.kind === 'report') {
+            duplicateReplyIds.add(prev.data.reportId);
+          }
+          replyByMessageId.set(body.inReplyTo, it);
+        }
       }
     }
     const placedReplies = new Set<string>();
     const out: TimelineItem[] = [];
     for (const it of chrono) {
-      if (it.kind === 'report' && it.data.type === 'chat_response' && placedReplies.has(it.data.reportId)) {
-        continue; // already inserted right after its question
+      if (it.kind === 'report' && it.data.type === 'chat_response') {
+        if (placedReplies.has(it.data.reportId)) continue; // already inserted right after its question
+        if (duplicateReplyIds.has(it.data.reportId)) continue; // older duplicate, hide
       }
       out.push(it);
       if (it.kind === 'message' && it.data.direction === 'to_agent') {
